@@ -1,9 +1,9 @@
 #!/bin/bash -e
 echo "Stopping container ........."
-docker stop rest_api
+docker stop cs128_hw1
 
 echo "Removing container........."
-docker container rm rest_api
+docker container rm cs128_hw1
 
 echo "All done..................."
 
