@@ -1,4 +1,14 @@
-package main
+/*-
+ * restful.go
+ *
+ * Pete Wilcox
+ * CruzID: pcwilcox
+ * CMPS 128, Fall 2018
+ *
+ * This is the main source code to satisfy HW1. It implements a Gorilla/Mux router and handles HTTP requests of the following form:
+ *
+ */
+package restful
 
 import (
 	"fmt"
@@ -9,8 +19,14 @@ import (
 )
 
 func main() {
+
+	/* Initialize a router */
 	r := mux.NewRouter()
+
+	/* Assign handlers for request endpoints */
 	r.HandleFunc("/hello", HelloHandler)
+
+	/* The test endpoint may or may not include a query */
 	r.HandleFunc("/test", TestHandler)
 	r.HandleFunc("/test", TestHandler).
 		Queries("msg", "{msg}")
@@ -23,10 +39,8 @@ func HelloHandler(w http.ResponseWriter, r *http.Request) {
 	if method == "GET" {
 		w.Write([]byte("Hello world!"))
 		w.WriteHeader(http.StatusOK)
-	} else if method == "POST" {
-		w.WriteHeader(http.StatusMethodNotAllowed)
 	} else {
-		w.WriteHeader(http.StatusNotFound)
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
 
@@ -41,6 +55,6 @@ func TestHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("POST message received: %s", message)))
 		w.WriteHeader(http.StatusOK)
 	} else {
-		w.WriteHeader(http.StatusNotFound)
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
 }
