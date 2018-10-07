@@ -28,11 +28,14 @@ pipeline {
                 sh "python ${TEST_SCRIPT}"
             }
         }
-        stage('Cleanup') {
+    }
+    post {
+        always {
             steps {
-                echo 'Cleaning up...'
-                sh "docker stop ${CONTAINER}"
-            }
+                    echo 'Cleaning up...'
+                    sh "docker stop ${CONTAINER}"
+                }
         }
     }
 }
+
