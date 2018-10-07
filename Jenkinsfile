@@ -33,10 +33,8 @@ pipeline {
     }
     post {
         always {
-            steps {
-                    echo 'Cleaning up...'
-                    sh "docker stop ${CONTAINER}"
-                }
+                echo 'Cleaning up...'
+                sh "docker stop ${CONTAINER}"
         }
     }
 }
