@@ -25,7 +25,9 @@ pipeline {
         stage('Test') {
             steps {
                 echo 'Testing app...'
-                sh "python ${TEST_SCRIPT}"
+                withEnv(['PYTHONPATH=/usr/bin/python']) {
+                    sh "python ${TEST_SCRIPT}"
+                }
             }
         }
     }
