@@ -2,7 +2,7 @@ import unittest
 import subprocess
 import requests
 
-PORT = 8080
+PORT = 5000
 
 
 class TestHW1(unittest.TestCase):

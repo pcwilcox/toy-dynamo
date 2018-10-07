@@ -2,8 +2,8 @@ pipeline {
     agent any
     environment {
         def TEST_SCRIPT = "test_HW1.py"
-        def PORT_EXT = "8080"
-        def PORT_INT = "8080"
+        def PORT_EXT = "5000" // Set this to the externally-visible port
+        def PORT_INT = "8080" // This is specified by the program requirements
         def CONTAINER = "CS128-HW1"
         def TAG = "local:${CONTAINER}"
         def BUILD_FLAGS = "--force-rm --no-cache --tag ${TAG}"
