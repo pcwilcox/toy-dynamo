@@ -36,8 +36,9 @@ pipeline {
                 echo 'Cleaning up...'
                 sh "docker stop ${CONTAINER}"
                 echo 'Sending Discord notification'
-                def MESSAGE = sh "git log --oneline --format=%B -n 1 ${GIT_COMMIT} | head -n 1"
-                discordSend description: 'Jenkins Pipeline Build', footer: "${MESSAGE}", link: env.BUILD_URL, successful: currentBuild.resultIsBetterOrEqualTo('SUCCESS'), unstable: false, title: JOB_NAME, webhookURL: 'https://discordapp.com/api/webhooks/498390089228091412/4s3NOtQyGfdBq2BBr0d_keemA84Lt2zOKsSWcvQlpaTgyPZOmDRaTTQd-n4B2yfw3wZq'
+                withEnv(["MESSAGE=$(git log --oneline --format=%B -n 1 ${GIT_COMMIT} | head -n 1"]) {
+                    discordSend description: 'Jenkins Pipeline Build', footer: "${MESSAGE}", link: env.BUILD_URL, successful: currentBuild.resultIsBetterOrEqualTo('SUCCESS'), unstable: false, title: JOB_NAME, webhookURL: 'https://discordapp.com/api/webhooks/498390089228091412/4s3NOtQyGfdBq2BBr0d_keemA84Lt2zOKsSWcvQlpaTgyPZOmDRaTTQd-n4B2yfw3wZq'
+                }
         }
     }
 }
