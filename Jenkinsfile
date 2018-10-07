@@ -6,14 +6,14 @@ pipeline {
         def PORT_INT = "8080"
         def CONTAINER = "CS128-HW1"
         def TAG = "local:${CONTAINER}"
-        def BUILD_FLAGS = "--force-rm --no-cache"
+        def BUILD_FLAGS = "--force-rm --no-cache --tag ${TAG}"
         def RUN_FLAGS = "-p ${PORT_EXT}:${PORT_INT} -d --name ${CONTAINER} --rm ${TAG}"
     }
     stages {
         stage('Build') {
             steps {
                 echo 'Building container...'
-                sh "docker build ${BUILD_FLAGS} ${TAG} ."
+                sh "docker build ${BUILD_FLAGS} ."
             }
         }
         stage('Run') {
