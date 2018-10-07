@@ -25,7 +25,7 @@ pipeline {
         stage('Test') {
             steps {
                 echo 'Testing app...'
-                sh "./${TEST_SCRIPT}"
+                sh "python ${TEST_SCRIPT}"
             }
         }
         stage('Cleanup') {
