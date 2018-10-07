@@ -1,0 +1,15 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+PORT	../test_HW1.py	/^PORT = 5000$/;"	kind:variable	line:5
+TestHW1	../test_HW1.py	/^class TestHW1(unittest.TestCase):$/;"	kind:class	line:8
+requests	../test_HW1.py	/^import requests$/;"	kind:namespace	line:3
+subprocess	../test_HW1.py	/^import subprocess$/;"	kind:namespace	line:2
+test1	../test_HW1.py	/^    def test1(self):$/;"	kind:member	line:10
+test2	../test_HW1.py	/^    def test2(self):$/;"	kind:member	line:17
+test3	../test_HW1.py	/^    def test3(self):$/;"	kind:member	line:25
+test_HW1.py	../test_HW1.py	1;"	kind:file	line:1
+unittest	../test_HW1.py	/^import unittest$/;"	kind:namespace	line:1
