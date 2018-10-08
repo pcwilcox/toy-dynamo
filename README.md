@@ -1,9 +1,7 @@
 ## CMPS128 Distributed Systems
 Author: Pete Wilcox
-[![Build Status](https://jenkins.pcwilcox.com/CS128-HW1/lastBuild/buildStatus)](https://jenkins.pcwilcox.com/CS128-HW1/lastBuild/)
+[![Build Status](https://jenkins.pcwilcox.com/job/cs128-bb/job/master/badge/icon)](https://jenkins.pcwilcox.com/job/cs128-bb/job/master/)
 
-Repo for programming assignments. No real info yet.
+This is HW1 for CMPS128 Fall 2018. 
 
-Added work for HW1 and some testing/CI stuff.
-
-Got jenkins integration working.
+To execute, clone the repo and simply run `run.sh`.
