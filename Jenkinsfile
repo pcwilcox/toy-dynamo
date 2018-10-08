@@ -17,7 +17,7 @@ pipeline {
             steps {
                 echo 'Building container...'
                 script {
-                    CONTAINER = sh(returnStdout: true, script: "docker build ${BUILD_FLAGS} .").trim()
+                    sh "docker build ${BUILD_FLAGS} ."
                     GIT_COMMIT_MESSAGE = sh(returnStdout: true, script: "git log --oneline --format=%B -n 1 ${GIT_COMMIT} | head -n 1").trim()
                 }
             }
@@ -41,7 +41,7 @@ pipeline {
         always {
             echo 'Cleaning up...'
             sh "docker stop ${NAME}"
-            sh "docker rm ${CONTAINER}"
+            sh "docker image rm ${TAG}"
         }
     }
 }
