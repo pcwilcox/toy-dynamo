@@ -42,6 +42,8 @@ pipeline {
             echo 'Cleaning up...'
             sh "docker stop ${NAME}"
             sh "docker image rm ${TAG}"
+            echo 'Sending Discord notification'
+            discordSend description: 'Jenkins Pipeline Build', footer: "${GIT_COMMIT_MESSAGE}", link: env.BUILD_URL, successful: currentBuild.resultIsBetterOrEqualTo('SUCCESS'), unstable: false, title: JOB_NAME, webhookURL: 'https://discordapp.com/api/webhooks/498390089228091412/4s3NOtQyGfdBq2BBr0d_keemA84Lt2zOKsSWcvQlpaTgyPZOmDRaTTQd-n4B2yfw3wZq'
         }
     }
 }
