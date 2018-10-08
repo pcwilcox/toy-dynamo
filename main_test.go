@@ -1,5 +1,5 @@
 /*-
- * restful_test.go
+ * main_test.go
  *
  * Pete Wilcox
  * CruzID: pcwilcox
@@ -8,7 +8,7 @@
  * This is the unit test suite for restful.go
  *
  */
-package restful
+package main
 
 import (
 	"net/http"
