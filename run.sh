@@ -1,6 +1,14 @@
 #!/bin/bash -e
-echo "Building new image.............."
-docker image build --tag local:cs128_hw1 .
+source values
+echo "=========================>   BUILDING DOCKERFILE  <========================"
+docker build ${BUILD_FLAGS} .
 
-echo "Starting app...................."
-docker run -d -p 8080:8080 --name cs128_hw1 local:cs128_hw1
+echo "=========================>   RUNNING CONTAINER    <========================"
+docker run ${RUN_FLAGS}
+
+echo "=========================>      APP RUNNING       <========================"
+echo ""
+echo "App is now running on: http://localhost:${PORT_EXT}"
+echo ""
+echo 'Execute "docker attach ${NAME}" to attach to console output.'
+echo 'Execute "stop.sh" to terminate app and remove container.'

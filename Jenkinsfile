@@ -31,7 +31,7 @@ pipeline {
         stage('Test') {
             steps {
                 echo 'Testing app...'
-                withEnv(['PYTHONPATH=/usr/bin/python']) {
+                withEnv(['PYTHONPATH=/usr/bin/python', 'PORT_EXT="5000"']) {
                     sh "python ${TEST_SCRIPT}"
                 }
             }

@@ -1,0 +1,13 @@
+#!/bin/bash -x
+# Variables used for run, test, and stop scripts.
+
+PORT_INT="8080"                                                         # Don't change this without modifying source code
+NAME="cs128-hw1"                                                        # Container name once it's running
+TAG="local:${NAME}"                                                     # Image tag
+BUILD_FLAGS="--force-rm --no-cache --tag ${TAG}"                        # These are used to setup the container build properly
+RUN_FLAGS="-p ${PORT_EXT}:${PORT_INT} -d --name ${NAME} --rm ${TAG}"    # This gets the app running correctly with an accessible name
+TEST_SCRIPT="python test_HW1.py"                                        # Configure this as needed
+
+if [ -z "${PORT_EXT}" ]; then
+    export PORT_EXT="8080"                                              # Export environment variable $PORT_EXT as needed (i.e. in Jenkins) to overwrite
+fi

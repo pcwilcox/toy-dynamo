@@ -1,8 +1,10 @@
 import unittest
 import subprocess
 import requests
+import os
 
-PORT = 5000
+# This is set in the test script, default 8080
+PORT = int(os.environ['PORT_EXT'])
 
 
 class TestHW1(unittest.TestCase):

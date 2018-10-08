@@ -1,9 +1,14 @@
 #!/bin/bash
-echo "Executing run.sh..."
+source values
+
+echo "=========================>   RUNNING UNIT TESTS   <========================"
+echo "$(go test -bench=. -v)"
+
+echo "=========================>  SETTING UP CONTAINER  <========================"
 ./run.sh
 
-echo "Executing test_HW1.py..."
-python test_HW1.py
+echo "=========================>   INTEGRATION TESTING  <========================"
+${TEST_SCRIPT}
 
-echo "Tests completed.................."
+echo "=========================>       TEARDOWN         <========================"
 ./stop.sh
