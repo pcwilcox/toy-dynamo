@@ -1,1 +1,6 @@
 *.sh
+Jenkinsfile
+values
+.gitignore
+*.md
+*.py
