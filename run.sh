@@ -8,7 +8,12 @@ docker run ${RUN_FLAGS}
 
 echo "=========================>      APP RUNNING       <========================"
 echo ""
-echo "App is now running on: http://localhost:${PORT_EXT}"
+echo "App is now listening on: http://localhost:${PORT_EXT}"
 echo ""
-echo 'Execute "docker attach ${NAME}" to attach to console output.'
-echo 'Execute "stop.sh" to terminate app and remove container.'
+echo "To attach to console output:"
+echo ""
+echo "  docker attach ${NAME}"
+echo ""
+echo "To terminate app and remove container:"
+echo "  stop.sh"
+echo ""

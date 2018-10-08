@@ -4,7 +4,8 @@ import requests
 import os
 
 # This is set in the test script, default 8080
-PORT = int(os.environ['PORT_EXT'])
+# Need to strip a lot of quotes because the scripts store it as '"5000"' or as "'5000'"
+PORT = int(os.environ['PORT_EXT'].strip("'").strip('"'))
 
 
 class TestHW1(unittest.TestCase):
