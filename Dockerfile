@@ -1,5 +1,5 @@
 # Build the binary from alpine
-FROM golang:alpine as builder
+FROM golang:alpine
 RUN mkdir /app
 COPY . /app/
 WORKDIR /app
