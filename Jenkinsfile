@@ -2,6 +2,8 @@ def GIT_COMMIT_MESSAGE = 'NOPE'
 def CONTAINER = 'NIL'
 def CONTAINER_NAME = 'NIL'
 def CONTAINER_TAG = 'NIL'
+def RUN_FLAGS = 'NIL'
+def BUILD_FLAGS = 'NIL'
 
 pipeline {
     agent any
@@ -9,8 +11,6 @@ pipeline {
         def TEST_SCRIPT = "test_HW1.py"
         def PORT_EXT = "5000" // Set this to the externally-visible port
         def PORT_INT = "8080" // This is specified by the program requirements
-        def BUILD_FLAGS = "--force-rm --no-cache --tag ${TAG}"
-        def RUN_FLAGS = "-p ${PORT_EXT}:${PORT_INT} -d --name ${CONTAINER_NAME} --rm ${TAG}"
     }
     stages {
         stage('Build') {
@@ -20,6 +20,8 @@ pipeline {
                     GIT_COMMIT_MESSAGE = sh(returnStdout: true, script: "git log --oneline --format=%B -n 1 ${GIT_COMMIT} | head -n 1").trim()
                     CONTAINER_NAME = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
                     TAG = "local:${CONTAINER_NAME}"
+                    BUILD_FLAGS = "--force-rm --no-cache --tag ${TAG}"
+                    RUN_FLAGS = "-p ${PORT_EXT}:${PORT_INT} -d --name ${CONTAINER_NAME} --rm ${TAG}"
                     sh "docker build ${BUILD_FLAGS} ."
                 }
             }
