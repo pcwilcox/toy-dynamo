@@ -4,10 +4,10 @@
 
 
 Authors:
- * Lawrence Lawson
- * Alfredo Vicuna
- * Pete Wilcox
+ * Lawrence Lawson - lelawson@ucsc.edu
+ * Alfredo Vicuna  - avvicuna@ucsc.edu
+ * Pete Wilcox     - pcwilcox@ucsc.edu
 
-This is our team project for CMPS128 Fall 2018. We've developed it using Go and Docker.
+This is our team project for CMPS128 Fall 2018. We've developed it using Go and Docker. It runs on a Jenkins server in Pete's apartment for CI testing.
 
-To execute, clone the repo and simply run `run.sh`.
+To execute, clone the repo and simply run `run.sh`. To run end-to-end testing, clone and run `test.sh`.
