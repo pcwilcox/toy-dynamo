@@ -1,9 +1,11 @@
 #!/bin/bash -e
-echo "Stopping container ........."
-docker stop rest_api
+source values
 
-echo "Removing container........."
-docker container rm rest_api
+echo "============> STOPPING CONTAINER <============"
+docker stop ${NAME}
 
-echo "All done..................."
+echo "============> REMOVING IMAGE <============"
+docker image rm ${TAG}
+
+echo "============> TEARDOWN COMPLETE <============"
 

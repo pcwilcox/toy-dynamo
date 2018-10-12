@@ -1,6 +1,6 @@
-## CMPS128 Distributed Systems
+# CMPS128 Distributed Systems
 
-[![Build Status](https://jenkins.pcwilcox.com/job/CMPS%20128%20Fall%2018/job/cmps128fall18hw/job/master/badge/icon?style=plastic)](https://jenkins.pcwilcox.com/job/CMPS%20128%20Fall%2018/job/cmps128fall18hw/job/master/)
+[![Build Status](https://jenkins.pcwilcox.com/job/CMPS%20128%20Fall%2018/job/cmps128fall18hw/job/master/badge/icon)](https://jenkins.pcwilcox.com/job/CMPS%20128%20Fall%2018/job/cmps128fall18hw/job/master/)
 
 
 Authors:
