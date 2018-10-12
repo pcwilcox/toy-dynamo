@@ -17,10 +17,10 @@ pipeline {
             steps {
                 echo 'Building container...'
                 script {
-                    sh "docker build ${BUILD_FLAGS} ."
                     GIT_COMMIT_MESSAGE = sh(returnStdout: true, script: "git log --oneline --format=%B -n 1 ${GIT_COMMIT} | head -n 1").trim()
                     CONTAINER_NAME = sh(returnStdout: true, script: "git rev-parse HEAD").trim()
                     TAG = "local:${CONTAINER_NAME}"
+                    sh "docker build ${BUILD_FLAGS} ."
                 }
             }
         }
