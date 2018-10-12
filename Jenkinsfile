@@ -1,17 +1,14 @@
 def GIT_COMMIT_MESSAGE = 'NOPE'
-def CONTAINER = 'NIL'
 def CONTAINER_NAME = 'NIL'
 def CONTAINER_TAG = 'NIL'
 def RUN_FLAGS = 'NIL'
 def BUILD_FLAGS = 'NIL'
+def TEST_SCRIPT = "test_HW1.py"
+def PORT_EXT = "5000" // Set this to the externally-visible port
+def PORT_INT = "8080" // This is specified by the program requirements
 
 pipeline {
     agent any
-    environment {
-        def TEST_SCRIPT = "test_HW1.py"
-        def PORT_EXT = "5000" // Set this to the externally-visible port
-        def PORT_INT = "8080" // This is specified by the program requirements
-    }
     stages {
         stage('Build') {
             steps {
@@ -45,7 +42,7 @@ pipeline {
         always {
             echo 'Cleaning up...'
             sh "docker stop ${CONTAINER_NAME}"
-            sh "docker image rm ${TAG}"
+            sh "docker rmi -f ${TAG}"
             echo 'Sending Discord notification'
             discordSend description: 'Jenkins Pipeline Build', footer: "${GIT_COMMIT_MESSAGE}", link: env.BUILD_URL, successful: currentBuild.resultIsBetterOrEqualTo('SUCCESS'), unstable: false, title: JOB_CONTAINER_NAME, webhookURL: 'https://discordapp.com/api/webhooks/498390089228091412/4s3NOtQyGfdBq2BBr0d_keemA84Lt2zOKsSWcvQlpaTgyPZOmDRaTTQd-n4B2yfw3wZq'
         }
