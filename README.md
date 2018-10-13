@@ -7,6 +7,6 @@ Authors:
  * Alfredo Vicuna  - avvicuna@ucsc.edu
  * Pete Wilcox     - pcwilcox@ucsc.edu
 
-This is our team project for CMPS128 Fall 2018. We've developed it using Go and Docker. It runs on a Jenkins server in Pete's apartment for CI testing.
+This is our team project for CMPS128 Fall 2018. We've developed it using Go and Docker. ~~It runs on a Jenkins server in Pete's apartment for CI testing.~~ Jenkins is terrible so we're going to implement CircleCI.
 
 To execute, clone the repo and simply run `run.sh`. To run end-to-end testing, clone and run `test.sh`.
