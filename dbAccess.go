@@ -12,40 +12,19 @@ package main
 
 // dbAccess interface defines methods for interactions between the REST API front end and the key-value store
 type dbAccess interface {
+
+	// Contains returns true if the dbAccess object contains an object with key equal to the input
 	Contains(string) bool
-	Count() int
+
+	// Get returns the value associated with a particular key. If the key does not exist it returns ""
 	Get(string) string
+
+	// Delete removes a key-value pair from the object. If the key does not exist it returns false.
 	Delete(string) bool
+
+	// Put adds a key-value pair to the DB. If the key already exists, then it overwrites the existing value. If the key does not exist then it is added.
 	Put(string, string)
-}
 
-/* this is an example of how this interface can be implemented
-type kvs struct {
-	db map[string]string
+	// ServiceUp returns true if the interface is able to communicate with the DB
+	ServiceUp() bool
 }
-
-func (k *kvs) Contains(key string) bool {
-	_, exist := k.db[key]
-	return exist
-}
-
-func (k *kvs) Count() int {
-	return len(k.db)
-}
-
-func (k *kvs) Get(key string) (string, bool) {
-	val, exist := k.db[key]
-	return val, exist
-}
-
-func (k *kvs) Delete(key string) bool {
-	delete(k.db, key)
-	return true
-}
-
-func (k *kvs) Put(key, val string) bool {
-	k.db[key] = val
-	return true
-}
-
-*/
