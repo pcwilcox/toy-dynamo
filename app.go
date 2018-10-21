@@ -27,17 +27,17 @@ import (
 // Initialized with: App app := App{db, port} where port is the ":8080" part
 // and db is an object implementing the dbAccess interface (see dbAccess.go)
 type App struct {
-	db   dbAccess
-	port string
+	db dbAccess
 }
 
 // rootURL is the path prefix for the kvs as in: http://localhost:{port}/ROOT_URL/foo
-const rootURL = "/keyValue-store"
+const (
+	rootURL = "/keyValue-store"
+	port    = ":8080"
+)
 
 // Initialize fires up the router and such
-func (app *App) Initialize(k *dbAccess, p string) {
-	// set the port
-	port := p
+func (app *App) Initialize() {
 
 	/* Initialize a router */
 	r := mux.NewRouter()
@@ -51,7 +51,7 @@ func (app *App) Initialize(k *dbAccess, p string) {
 	s.HandleFunc("/{subject}", app.DeleteHandler).Methods("DELETE")
 
 	/* Load up the server through a logger interface */
-	err := http.ListenAndServe(":"+port, handlers.LoggingHandler(os.Stdout, r))
+	err := http.ListenAndServe(port, handlers.LoggingHandler(os.Stdout, r))
 	if err != nil {
 		log.Fatalln(err)
 	}
