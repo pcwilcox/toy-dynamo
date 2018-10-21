@@ -80,7 +80,8 @@ func (t *TestKVS) ServiceUp() bool {
 }
 
 // idk lets try this
-func (t *TestKVS) Put(key, valExists string) {
+func (t *TestKVS) Put(key, valExists string) bool {
+	return true
 }
 
 // TestPutRequestKeyExists should return that the key has been replaced/updated successfully
