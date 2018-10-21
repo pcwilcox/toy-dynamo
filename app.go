@@ -134,7 +134,7 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(status)
 		w.Write(body)
 	} else {
-		w.WriteHeader(http.StatusNotImplemented)
+		w.WriteHeader(http.StatusNotImplemented) // code 501
 		w.Write(ServiceDownHandler())
 	}
 }
@@ -171,11 +171,9 @@ func (app *App) GetHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(body)
 	} else {
-		w.WriteHeader(http.StatusNotFound)
-		w.Write([]byte("not implemented yet"))
+		w.WriteHeader(http.StatusNotImplemented) // code 501
+		w.Write(ServiceDownHandler())
 	}
-
-	w.Write(ServiceDownHandler())
 }
 
 // DeleteHandler deletes k:v pairs from the db
@@ -210,9 +208,10 @@ func (app *App) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(body)
+	} else {
+		w.WriteHeader(http.StatusNotImplemented) // code 501
+		w.Write(ServiceDownHandler())
 	}
-	w.WriteHeader(http.StatusNotFound)
-	w.Write(ServiceDownHandler())
 }
 
 // ServiceDownHandler spits out the required error in JSON format
