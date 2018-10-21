@@ -18,7 +18,7 @@ COVERFILE = out
 EXEC      = cs128hw2
 
 # Add source files to this list
-SOURCES   = main.go
+SOURCES   = main.go dbAccess.go app.go kvs.go
 
 all : ${EXEC}
 

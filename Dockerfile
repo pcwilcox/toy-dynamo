@@ -10,8 +10,8 @@ RUN apk add --no-cache git mercurial \
     && go get -d -v
 
 # Build the app.
-RUN go build -o cs128-hw1 .
+RUN make
 
 # Expose the required port
 EXPOSE 8080
-CMD ["/app/cs128-hw1"]
+CMD ["/app/cs128-hw2"]
