@@ -19,7 +19,7 @@ func (k *kvs) Get(key string) string {
 	}
 }
 // Delete removes a key-value pair from the object. If the key does not exist it returns false.
-func (k kvs) Delete(key string) bool {
+func (k *kvs) Delete(key string) bool {
 	if Contains(key)
 		delete(k.db, key)
 		return true
@@ -37,7 +37,7 @@ func (k *kvs) Put(key string, val string) bool {
 	} else if !(Contains(key)) {
 		k.db[key] = val
 		return true
-	} else {
+	} else { //something something error checking will get to later
 	return false
 	}
 }
