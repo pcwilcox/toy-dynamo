@@ -197,8 +197,8 @@ func TestPutRequestKeyDoesntExist(t *testing.T) {
 	equals(t, expectedBody, gotBody)
 }
 
-// TestPutRequestInvalExistsidKey makes a key with length == 201 and tests it for failure
-func TestPutRequestInvalExistsidKey(t *testing.T) {
+// TestPutRequestInvalidKey makes a key with length == 201 and tests it for failure
+func TestPutRequestInvalidKey(t *testing.T) {
 	// Stub the db
 	db := TestKVS{keyExists, valExists, true}
 
@@ -256,8 +256,8 @@ func TestPutRequestInvalExistsidKey(t *testing.T) {
 	equals(t, expectedBody, gotBody)
 }
 
-// TestPutRequestInvalExistsidValue tests for values that are too large
-func TestPutRequestInvalExistsidValue(t *testing.T) {
+// TestPutRequestInvalidValue tests for values that are too large
+func TestPutRequestInvalidValue(t *testing.T) {
 	// Stub the db
 	db := TestKVS{keyExists, valExists, true}
 
@@ -319,6 +319,63 @@ func TestPutRequestInvalExistsidValue(t *testing.T) {
 	equals(t, expectedBody, gotBody)
 }
 
+// TestPutRequestServiceDown should return that the service is down
+func TestPutRequestServiceDown(t *testing.T) {
+	// Stub the db
+	db := TestKVS{keyExists, valExists, false}
+
+	// Stub the app
+	app := App{&db, ":5000"}
+
+	l, err := net.Listen("tcp", "127.0.0.1:5000")
+	ok(t, err)
+
+	// Create a router
+	r := mux.NewRouter()
+	r.HandleFunc(root+"/{subject}", app.PutHandler)
+	// Stub the server
+	ts := httptest.NewUnstartedServer(r)
+	ts.Listener.Close()
+	ts.Listener = l
+	ts.Start()
+	defer ts.Close()
+
+	// Use a httptest recorder to observe responses
+	recorder := httptest.NewRecorder()
+
+	// This subject exists in the store already
+	subject := keyExists
+
+	// Set up the URL
+	url := ts.URL + root + "/" + subject
+
+	// Stub a request
+	method := "PUT"
+	reqBody := strings.NewReader(valExists)
+	req, err := http.NewRequest(method, url, reqBody)
+	ok(t, err)
+
+	// Finally, make the request to the function being tested.
+	r.ServeHTTP(recorder, req)
+
+	expectedStatus := http.StatusNotImplemented // code 501
+	gotStatus := recorder.Code
+	equals(t, expectedStatus, gotStatus)
+	body, err := ioutil.ReadAll(recorder.Body)
+	ok(t, err)
+
+	var gotBody map[string]interface{}
+
+	err = json.Unmarshal(body, &gotBody)
+	ok(t, err)
+	expectedBody := map[string]interface{}{
+		"result": "Error",
+		"msg":    "Server unavailable",
+	}
+
+	equals(t, expectedBody, gotBody)
+}
+
 // TestGetRequestKeyExists should return success with the "VAL_EXISTS" string
 func TestGetRequestKeyExists(t *testing.T) {
 	// Stub the db
@@ -370,6 +427,62 @@ func TestGetRequestKeyExists(t *testing.T) {
 	expectedBody := map[string]interface{}{
 		"result": "Success",
 		"value":  valExists,
+	}
+
+	equals(t, expectedBody, gotBody)
+}
+
+// TestGetRequestServiceDown should return server unavailable
+func TestGetRequestServiceDown(t *testing.T) {
+	// Stub the db
+	db := TestKVS{keyExists, valExists, false}
+
+	// Stub the app
+	app := App{&db, ":5000"}
+
+	l, err := net.Listen("tcp", "127.0.0.1:5000")
+	ok(t, err)
+
+	// Create a router
+	r := mux.NewRouter()
+	r.HandleFunc(root+"/{subject}", app.GetHandler)
+	// Stub the server
+	ts := httptest.NewUnstartedServer(r)
+	ts.Listener.Close()
+	ts.Listener = l
+	ts.Start()
+	defer ts.Close()
+
+	// Use a httptest recorder to observe responses
+	recorder := httptest.NewRecorder()
+
+	// This subject exists in the store already
+	subject := keyExists
+
+	// Set up the URL
+	url := ts.URL + root + "/" + subject
+
+	// Stub a request
+	method := "GET"
+	req, err := http.NewRequest(method, url, nil)
+	ok(t, err)
+
+	// Finally, make the request to the function being tested.
+	r.ServeHTTP(recorder, req)
+
+	expectedStatus := http.StatusNotImplemented // code 501
+	gotStatus := recorder.Code
+	equals(t, expectedStatus, gotStatus)
+
+	body, err := ioutil.ReadAll(recorder.Body)
+	ok(t, err)
+
+	var gotBody map[string]interface{}
+	err = json.Unmarshal(body, &gotBody)
+	ok(t, err)
+	expectedBody := map[string]interface{}{
+		"result": "Error",
+		"msg":    "Server unavailable",
 	}
 
 	equals(t, expectedBody, gotBody)
@@ -428,6 +541,62 @@ func TestGetRequestKeyNotExists(t *testing.T) {
 	equals(t, expectedBody, gotBody)
 }
 
+// TestDeleteServerDown should return server unavailable
+func TestDeleteServerDown(t *testing.T) {
+	// Stub the db
+	db := TestKVS{keyExists, valExists, false}
+
+	// Stub the app
+	app := App{&db, ":5000"}
+
+	l, err := net.Listen("tcp", "127.0.0.1:5000")
+	ok(t, err)
+
+	// Create a router
+	r := mux.NewRouter()
+	r.HandleFunc(root+"/{subject}", app.DeleteHandler)
+	// Stub the server
+	ts := httptest.NewUnstartedServer(r)
+	ts.Listener.Close()
+	ts.Listener = l
+	ts.Start()
+	defer ts.Close()
+
+	// Use a httptest recorder to observe responses
+	recorder := httptest.NewRecorder()
+
+	// This subject exists in the store already
+	subject := keyExists
+
+	// Set up the URL
+	url := ts.URL + root + "/" + subject
+
+	// Stub a request
+	method := "DELETE"
+	req, err := http.NewRequest(method, url, nil)
+	ok(t, err)
+
+	// Finally, make the request to the function being tested.
+	r.ServeHTTP(recorder, req)
+
+	expectedStatus := http.StatusNotImplemented // code 501
+	gotStatus := recorder.Code
+	equals(t, expectedStatus, gotStatus)
+
+	body, err := ioutil.ReadAll(recorder.Body)
+	ok(t, err)
+
+	var gotBody map[string]interface{}
+	err = json.Unmarshal(body, &gotBody)
+	ok(t, err)
+	expectedBody := map[string]interface{}{
+		"result": "Error",
+		"msg":    "Server unavailable",
+	}
+
+	equals(t, expectedBody, gotBody)
+}
+
 // TestDeleteKeyExists should return success
 func TestDeleteKeyExists(t *testing.T) {
 	// Stub the db
@@ -478,6 +647,62 @@ func TestDeleteKeyExists(t *testing.T) {
 	ok(t, err)
 	expectedBody := map[string]interface{}{
 		"result": "Success",
+	}
+
+	equals(t, expectedBody, gotBody)
+}
+
+// TestDeleteKeyNotExists should return success
+func TestDeleteKeyNotExists(t *testing.T) {
+	// Stub the db
+	db := TestKVS{keyExists, valExists, true}
+
+	// Stub the app
+	app := App{&db, ":5000"}
+
+	l, err := net.Listen("tcp", "127.0.0.1:5000")
+	ok(t, err)
+
+	// Create a router
+	r := mux.NewRouter()
+	r.HandleFunc(root+"/{subject}", app.DeleteHandler)
+	// Stub the server
+	ts := httptest.NewUnstartedServer(r)
+	ts.Listener.Close()
+	ts.Listener = l
+	ts.Start()
+	defer ts.Close()
+
+	// Use a httptest recorder to observe responses
+	recorder := httptest.NewRecorder()
+
+	// This subject exists in the store already
+	subject := KeyNotExists
+
+	// Set up the URL
+	url := ts.URL + root + "/" + subject
+
+	// Stub a request
+	method := "DELETE"
+	req, err := http.NewRequest(method, url, nil)
+	ok(t, err)
+
+	// Finally, make the request to the function being tested.
+	r.ServeHTTP(recorder, req)
+
+	expectedStatus := http.StatusNotFound // code 404
+	gotStatus := recorder.Code
+	equals(t, expectedStatus, gotStatus)
+
+	body, err := ioutil.ReadAll(recorder.Body)
+	ok(t, err)
+
+	var gotBody map[string]interface{}
+	err = json.Unmarshal(body, &gotBody)
+	ok(t, err)
+	expectedBody := map[string]interface{}{
+		"result": "Error",
+		"msg":    "Status code 404",
 	}
 
 	equals(t, expectedBody, gotBody)

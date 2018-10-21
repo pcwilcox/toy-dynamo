@@ -134,8 +134,7 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(status)
 		w.Write(body)
 	} else {
-		w.WriteHeader(http.StatusNotImplemented) // code 501
-		w.Write(ServiceDownHandler())
+		ServiceDownHandler(w, r)
 	}
 }
 
@@ -171,8 +170,7 @@ func (app *App) GetHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(body)
 	} else {
-		w.WriteHeader(http.StatusNotImplemented) // code 501
-		w.Write(ServiceDownHandler())
+		ServiceDownHandler(w, r)
 	}
 }
 
@@ -209,14 +207,20 @@ func (app *App) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write(body)
 	} else {
-		w.WriteHeader(http.StatusNotImplemented) // code 501
-		w.Write(ServiceDownHandler())
+		ServiceDownHandler(w, r)
 	}
 }
 
-// ServiceDownHandler spits out the required error in JSON format
-func ServiceDownHandler() []byte {
-	responseMap := map[string]string{"result": "Error", "msg": "Server unavilable"}
-	js, _ := json.Marshal(responseMap)
-	return js
+// ServiceDownWriter writes to the responseWriter the service down message
+func ServiceDownHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented) // code 501
+	resp := map[string]interface{}{
+		"result": "Error",
+		"msg":    "Server unavailable",
+	}
+	js, err := json.Marshal(resp)
+	if err != nil {
+		panic(err)
+	}
+	w.Write(js)
 }
