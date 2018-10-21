@@ -21,33 +21,36 @@ import (
 	"github.com/gorilla/mux"
 )
 
-/* Set this externally */
-var port string
-
-// The data access object
-var db dbAccess
+// App is a struct to hold the state for the REST API
+//
+// Initialized with: App app := App{db, port} where port is the ":8080" part
+// and db is an object implementing the dbAccess interface (see dbAccess.go)
+type App struct {
+	db   dbAccess
+	port string
+}
 
 // rootURL is the path prefix for the kvs as in: http://localhost:{port}/ROOT_URL/foo
 const rootURL = "/keyValue-store"
 
 // Initialize fires up the router and such
-func Initialize(k *dbAccess) {
+func (app *App) Initialize(k *dbAccess, p string) {
+	// set the port
+	port := p
+
 	/* Initialize a router */
 	r := mux.NewRouter()
-
-	// access the database hopefully
-	db = *k
 
 	/* There's basically two endpoints here so we'll set up a subrouter */
 	s := r.PathPrefix(rootURL).Subrouter()
 
 	/* This handles COUNT calls */
-	r.HandleFunc(rootURL, CountHandler).Methods("COUNT")
+	r.HandleFunc(rootURL, app.CountHandler).Methods("COUNT")
 
 	/* Methods for specific items */
-	s.HandleFunc("/{subject}", PutHandler).Methods("PUT")
-	s.HandleFunc("/{subject}", GetHandler).Methods("GET")
-	s.HandleFunc("/{subject}", DeleteHandler).Methods("Delete")
+	s.HandleFunc("/{subject}", app.PutHandler).Methods("PUT")
+	s.HandleFunc("/{subject}", app.GetHandler).Methods("GET")
+	s.HandleFunc("/{subject}", app.DeleteHandler).Methods("Delete")
 
 	/* Load up the server through a logger interface */
 	err := http.ListenAndServe(":"+port, handlers.LoggingHandler(os.Stdout, r))
@@ -57,11 +60,11 @@ func Initialize(k *dbAccess) {
 }
 
 // CountHandler returns the db's count function result
-func CountHandler(w http.ResponseWriter, r *http.Request) {
-	if ServiceUp() {
+func (app *App) CountHandler(w http.ResponseWriter, r *http.Request) {
+	if app.ServiceUp() {
 		w.WriteHeader(http.StatusOK) // code 200
 		w.Header().Set("Content-Type", "application/json")
-		count := strconv.Itoa(db.Count())
+		count := strconv.Itoa(app.db.Count())
 		resp := map[string]string{"result": "success", "msg": count}
 		body, _ := json.Marshal(resp)
 		w.Write([]byte(body))
@@ -72,8 +75,8 @@ func CountHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // PutHandler attempts to put the key:val into the db
-func PutHandler(w http.ResponseWriter, r *http.Request) {
-	if ServiceUp() {
+func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
+	if app.ServiceUp() {
 		// This automatically loads the form values from the request
 		r.ParseForm()
 		val := r.FormValue("val")
@@ -103,7 +106,7 @@ func PutHandler(w http.ResponseWriter, r *http.Request) {
 			resp = map[string]string{"msg": "Key not valid", "result": "Error"}
 		} else {
 			// key/val are valid inputs, let's insert into the db
-			if db.Put(key, val) {
+			if app.db.Put(key, val) {
 				newKey = true // we made a new entry
 				replaced = "False"
 				msg = "Added successfully"
@@ -126,14 +129,14 @@ func PutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetHandler gets the corresponding val from the db
-func GetHandler(w http.ResponseWriter, r *http.Request) {
-	if ServiceUp() {
+func (app *App) GetHandler(w http.ResponseWriter, r *http.Request) {
+	if app.ServiceUp() {
 		vars := mux.Vars(r)
 		key := vars["subject"]
 		resp := map[string]string{}
-		if db.Contains(key) {
+		if app.db.Contains(key) {
 			w.WriteHeader(http.StatusOK)
-			val, _ := db.Get(key)
+			val, _ := app.db.Get(key)
 			resp = map[string]string{"result": "Success", "value": val}
 		} else {
 			w.WriteHeader(http.StatusNotFound)
@@ -148,14 +151,14 @@ func GetHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteHandler deletes k:v pairs from the db
-func DeleteHandler(w http.ResponseWriter, r *http.Request) {
-	if ServiceUp() {
+func (app *App) DeleteHandler(w http.ResponseWriter, r *http.Request) {
+	if app.ServiceUp() {
 		vars := mux.Vars(r)
 		key := vars["subject"]
 		resp := map[string]string{}
-		if db.Contains(key) {
+		if app.db.Contains(key) {
 			w.WriteHeader(http.StatusOK)
-			db.Delete(key)
+			app.db.Delete(key)
 			resp = map[string]string{"result": "Success"}
 
 		} else {
@@ -178,6 +181,6 @@ func ServiceDownHandler() []byte {
 }
 
 // ServiceUp checks to see if the leader is up
-func ServiceUp() bool {
+func (app *App) ServiceUp() bool {
 	return true
 }
