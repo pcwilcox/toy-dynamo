@@ -16,7 +16,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/gorilla/handlers"
@@ -46,9 +45,6 @@ func (app *App) Initialize(k *dbAccess, p string) {
 	/* There's basically two endpoints here so we'll set up a subrouter */
 	s := r.PathPrefix(rootURL).Subrouter()
 
-	/* This handles COUNT calls */
-	r.HandleFunc(rootURL, app.CountHandler).Methods("COUNT")
-
 	/* Methods for specific items */
 	s.HandleFunc("/{subject}", app.PutHandler).Methods("PUT")
 	s.HandleFunc("/{subject}", app.GetHandler).Methods("GET")
@@ -61,24 +57,9 @@ func (app *App) Initialize(k *dbAccess, p string) {
 	}
 }
 
-// CountHandler returns the db's count function result
-func (app *App) CountHandler(w http.ResponseWriter, r *http.Request) {
-	if app.ServiceUp() {
-		w.WriteHeader(http.StatusOK) // code 200
-		w.Header().Set("Content-Type", "application/json")
-		count := strconv.Itoa(app.db.Count())
-		resp := map[string]string{"result": "success", "msg": count}
-		body, _ := json.Marshal(resp)
-		w.Write([]byte(body))
-	} else {
-		w.WriteHeader(http.StatusNotImplemented)
-		w.Write(ServiceDownHandler())
-	}
-}
-
 // PutHandler attempts to put the key:val into the db
 func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
-	if app.ServiceUp() {
+	if app.db.ServiceUp() {
 		var err error
 		var val string
 		if r.Body != nil {
@@ -160,7 +141,7 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 
 // GetHandler gets the corresponding val from the db
 func (app *App) GetHandler(w http.ResponseWriter, r *http.Request) {
-	if app.ServiceUp() {
+	if app.db.ServiceUp() {
 		vars := mux.Vars(r)
 		key := vars["subject"]
 		var body []byte
@@ -193,11 +174,13 @@ func (app *App) GetHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 		w.Write([]byte("not implemented yet"))
 	}
+
+	w.Write(ServiceDownHandler())
 }
 
 // DeleteHandler deletes k:v pairs from the db
 func (app *App) DeleteHandler(w http.ResponseWriter, r *http.Request) {
-	if app.ServiceUp() {
+	if app.db.ServiceUp() {
 		vars := mux.Vars(r)
 		key := vars["subject"]
 		var err error
@@ -229,7 +212,7 @@ func (app *App) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write(body)
 	}
 	w.WriteHeader(http.StatusNotFound)
-	w.Write([]byte("not implemented yet"))
+	w.Write(ServiceDownHandler())
 }
 
 // ServiceDownHandler spits out the required error in JSON format
@@ -237,9 +220,4 @@ func ServiceDownHandler() []byte {
 	responseMap := map[string]string{"result": "Error", "msg": "Server unavilable"}
 	js, _ := json.Marshal(responseMap)
 	return js
-}
-
-// ServiceUp checks to see if the leader is up
-func (app *App) ServiceUp() bool {
-	return true
 }
