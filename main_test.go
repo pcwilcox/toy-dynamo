@@ -16,11 +16,6 @@ import (
 	"testing"
 )
 
-/* Define some constants. These can be reconfigured as needed. */
-const DOMAIN = "http://localhost"
-const PORT = "8080"
-const HOSTNAME = DOMAIN + ":" + PORT
-
 func TestHelloHandler(t *testing.T) {
 	/* Stub the handler */
 	handler := http.HandlerFunc(HelloHandler)

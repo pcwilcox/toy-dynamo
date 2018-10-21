@@ -67,6 +67,11 @@ func (t *TestKVS) Delete(key string) bool {
 	return false
 }
 
+// idk lets try this
+func (t *TestKVS) Put(key, val string) bool {
+	return true
+}
+
 // Responds to PUT requests on http://localhost:IP/keyValue-Store/{subject} with message body "val={value}"
 func TestPutRequest(t *testing.T) {
 	// Stub the db
@@ -101,12 +106,16 @@ func TestPutRequest(t *testing.T) {
 	handler.ServeHTTP(recorder, req)
 
 	expectedStatus := http.StatusOK
-	expectedBody := json.Marshal(map[string]string{"replaced": "True", "msg": "Updated successfully"})
+	var expectedBody string
+	trythis, _ := json.Marshal(map[string]string{"replaced": "True", "msg": "Updated successfully"})
+	err = json.Unmarshal(trythis, expectedBody)
 
 	gotStatus := recorder.Code
 	gotBody := recorder.Body.String()
 
-	equals(t, expected, got)
+	equals(t, expectedBody, gotBody)
+
+	equals(t, expectedStatus, gotStatus)
 }
 
 /* These functions were taken from Ben Johnson's post here:

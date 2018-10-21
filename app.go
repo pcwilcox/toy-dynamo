@@ -136,7 +136,7 @@ func (app *App) GetHandler(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]string{}
 		if app.db.Contains(key) {
 			w.WriteHeader(http.StatusOK)
-			val, _ := app.db.Get(key)
+			val := app.db.Get(key)
 			resp = map[string]string{"result": "Success", "value": val}
 		} else {
 			w.WriteHeader(http.StatusNotFound)
