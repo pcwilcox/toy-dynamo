@@ -13,23 +13,27 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strings"
 	"testing"
+
+	"github.com/gorilla/mux"
 )
 
 // Define some constants. These can be reconfigured as needed.
 const (
-	domain   = "http://localhost"
-	port     = "8080"
-	root     = "/keyValue-store"
-	hostname = domain + ":" + port + root
-	key      = "KEY_EXISTS"
-	notkey   = "KEY_DOESN'T_EXIST"
-	val      = "VAL_EXISTS"
+	domain       = "http://localhost"
+	port         = "8080"
+	root         = "/keyValue-store"
+	hostname     = domain + ":" + port + root
+	keyExists    = "KEY_EXISTS"
+	KeyNotExists = "KEY_DOESN'T_EXIST"
+	val          = "VAL_EXISTS"
 )
 
 type resp struct {
@@ -47,7 +51,7 @@ type TestKVS struct {
 
 /* This stub returns true for the key which exists and false for the one which doesn't */
 func (t *TestKVS) Contains(key string) bool {
-	if key == t.key {
+	if strings.Compare(key, t.key) == 0 {
 		return true
 	}
 	return false
@@ -82,30 +86,41 @@ func (t *TestKVS) Put(key, val string) {
 // TestPutRequestKeyExists should return that the key has been replaced/updated successfully
 func TestPutRequestKeyExists(t *testing.T) {
 	// Stub the db
-	db := TestKVS{key, val, 1}
+	db := TestKVS{keyExists, val, 1}
 
 	// Stub the app
-	app := App{&db, ":8080"}
+	app := App{&db, ":5000"}
 
-	// Stub the handler
-	handler := http.HandlerFunc(app.PutHandler)
+	l, err := net.Listen("tcp", "127.0.0.1:5000")
+	ok(t, err)
+
+	// Create a router
+	r := mux.NewRouter()
+	r.HandleFunc(root+"/{subject}", app.PutHandler)
+	// Stub the server
+	ts := httptest.NewUnstartedServer(r)
+	ts.Listener.Close()
+	ts.Listener = l
+	ts.Start()
+	defer ts.Close()
 
 	// Use a httptest recorder to observe responses
 	recorder := httptest.NewRecorder()
 
 	// This subject exists in the store already
-	subject := key
+	subject := keyExists
 
 	// Set up the URL
-	url := hostname + "/" + subject
+	url := ts.URL + root + "/" + subject
 
 	// Stub a request
 	method := "PUT"
-	req, err := http.NewRequest(method, url, nil)
+	reqBody := strings.NewReader(val)
+	req, err := http.NewRequest(method, url, reqBody)
 	ok(t, err)
 
 	// Finally, make the request to the function being tested.
-	handler.ServeHTTP(recorder, req)
+	r.ServeHTTP(recorder, req)
 
 	expectedStatus := http.StatusOK // code 200
 	gotStatus := recorder.Code
@@ -124,30 +139,41 @@ func TestPutRequestKeyExists(t *testing.T) {
 // TestPutRequestKeyDoesntExist should return that the key has been created
 func TestPutRequestKeyDoesntExist(t *testing.T) {
 	// Stub the db
-	db := TestKVS{key, val, 1}
+	db := TestKVS{keyExists, val, 1}
 
 	// Stub the app
-	app := App{&db, ":8080"}
+	app := App{&db, ":5000"}
 
-	// Stub the handler
-	handler := http.HandlerFunc(app.PutHandler)
+	l, err := net.Listen("tcp", "127.0.0.1:5000")
+	ok(t, err)
+
+	// Create a router
+	r := mux.NewRouter()
+	r.HandleFunc(root+"/{subject}", app.PutHandler)
+	// Stub the server
+	ts := httptest.NewUnstartedServer(r)
+	ts.Listener.Close()
+	ts.Listener = l
+	ts.Start()
+	defer ts.Close()
 
 	// Use a httptest recorder to observe responses
 	recorder := httptest.NewRecorder()
 
 	// This subject exists in the store already
-	subject := notkey
+	subject := KeyNotExists
 
 	// Set up the URL
-	url := hostname + "/" + subject
+	url := ts.URL + root + "/" + subject
 
 	// Stub a request
 	method := "PUT"
+	//reqBody := strings.NewReader(val)
 	req, err := http.NewRequest(method, url, nil)
 	ok(t, err)
 
 	// Finally, make the request to the function being tested.
-	handler.ServeHTTP(recorder, req)
+	r.ServeHTTP(recorder, req)
 
 	expectedStatus := http.StatusCreated // code 201
 	gotStatus := recorder.Code
@@ -158,6 +184,123 @@ func TestPutRequestKeyDoesntExist(t *testing.T) {
 	expectedBody := map[string]interface{}{
 		"replaced": "False",
 		"msg":      "Added successfully",
+	}
+
+	equals(t, expectedBody, gotBody)
+}
+
+// TestPutRequestInvalidKey makes a key with length == 201 and tests it for failure
+func TestPutRequestInvalidKey(t *testing.T) {
+	// Stub the db
+	db := TestKVS{keyExists, val, 1}
+
+	// Stub the app
+	app := App{&db, ":5000"}
+
+	l, err := net.Listen("tcp", "127.0.0.1:5000")
+	ok(t, err)
+
+	// Create a router
+	r := mux.NewRouter()
+	r.HandleFunc(root+"/{subject}", app.PutHandler)
+	// Stub the server
+	ts := httptest.NewUnstartedServer(r)
+	ts.Listener.Close()
+	ts.Listener = l
+	ts.Start()
+	defer ts.Close()
+
+	// Use a httptest recorder to observe responses
+	recorder := httptest.NewRecorder()
+
+	// This subject needs to be very long
+	subject := ""
+	for i := 0; i < 201; i++ {
+		subject = subject + "a"
+	}
+
+	// Set up the URL
+	url := ts.URL + root + "/" + subject
+
+	// Stub a request
+	method := "PUT"
+	req, err := http.NewRequest(method, url, nil)
+	ok(t, err)
+
+	// Finally, make the request to the function being tested.
+	r.ServeHTTP(recorder, req)
+
+	expectedStatus := http.StatusUnprocessableEntity // code 422
+	gotStatus := recorder.Code
+	equals(t, expectedStatus, gotStatus)
+
+	var gotBody map[string]interface{}
+	json.Unmarshal([]byte(recorder.Body.String()), &gotBody)
+	expectedBody := map[string]interface{}{
+		"msg":    "Key not valid",
+		"result": "Error",
+	}
+
+	equals(t, expectedBody, gotBody)
+}
+
+// TestPutRequestInvalidValue tests for values that are too large
+func TestPutRequestInvalidValue(t *testing.T) {
+	// Stub the db
+	db := TestKVS{keyExists, val, 1}
+
+	// Stub the app
+	app := App{&db, ":5000"}
+
+	l, err := net.Listen("tcp", "127.0.0.1:5000")
+	ok(t, err)
+
+	// Create a router
+	r := mux.NewRouter()
+	r.HandleFunc(root+"/{subject}", app.PutHandler)
+	// Stub the server
+	ts := httptest.NewUnstartedServer(r)
+	ts.Listener.Close()
+	ts.Listener = l
+	ts.Start()
+	defer ts.Close()
+
+	// Use a httptest recorder to observe responses
+	recorder := httptest.NewRecorder()
+
+	// This subject doesn't really matter
+	subject := keyExists
+
+	// The value needs to be > 1MB
+	val := "val="
+	big := "a"
+	for i := 1; i < 1048577; i *= 2 {
+		big = big + big
+	}
+	val = val + big
+
+	// Convert it to a reader
+	reader := strings.NewReader(val)
+	// Set up the URL
+	url := ts.URL + root + "/" + subject
+
+	// Stub a request
+	method := "PUT"
+	req, err := http.NewRequest(method, url, reader)
+	ok(t, err)
+
+	// Finally, make the request to the function being tested.
+	r.ServeHTTP(recorder, req)
+
+	expectedStatus := http.StatusUnprocessableEntity // code 422
+	gotStatus := recorder.Code
+	equals(t, expectedStatus, gotStatus)
+
+	var gotBody map[string]interface{}
+	json.Unmarshal([]byte(recorder.Body.String()), &gotBody)
+	expectedBody := map[string]interface{}{
+		"msg":    "Object too large. Size limit is 1MB",
+		"result": "Error",
 	}
 
 	equals(t, expectedBody, gotBody)

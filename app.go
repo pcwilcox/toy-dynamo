@@ -12,10 +12,12 @@ package main
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -77,9 +79,18 @@ func (app *App) CountHandler(w http.ResponseWriter, r *http.Request) {
 // PutHandler attempts to put the key:val into the db
 func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 	if app.ServiceUp() {
-		// This automatically loads the form values from the request
-		r.ParseForm()
-		val := r.FormValue("val")
+		var err error
+		var val string
+		if r.Body != nil {
+			reqBody, err := ioutil.ReadAll(r.Body)
+			if err != nil {
+				panic(err)
+			}
+
+			s := string(reqBody[:])
+			prefix := "val="
+			val = strings.TrimPrefix(s, prefix)
+		}
 
 		// These values are fixed per spec
 		maxVal := 1048576 // 1 megabyte
@@ -89,15 +100,10 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		key := vars["subject"]
 
-		// assume the key is there already
-		replaced := "True"
-		msg := "Updated successfully"
-
 		// Same content type for everything
 		w.Header().Set("Content-Type", "application/json")
 
 		var body []byte
-		var err error
 		var status int
 
 		// Check for valid input
@@ -125,17 +131,21 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 			// key/val are valid inputs, let's insert into the db
 			if app.db.Contains(key) {
 				status = http.StatusOK // code 200
+				resp := map[string]interface{}{
+					"replaced": "True",
+					"msg":      "Updated successfully",
+				}
+				body, err = json.Marshal(resp)
 			} else {
 				status = http.StatusCreated // code 201
 				app.db.Put(key, val)
-				replaced = "False"
-				msg = "Added successfully"
+				resp := map[string]interface{}{
+					"replaced": "False",
+					"msg":      "Added successfully",
+				}
+				body, err = json.Marshal(resp)
+
 			}
-			resp := map[string]interface{}{
-				"replaced": replaced,
-				"msg":      msg,
-			}
-			body, err = json.Marshal(resp)
 			if err != nil {
 				log.Fatalln("oh no")
 			}
