@@ -33,7 +33,7 @@ const (
 	hostname     = domain + ":" + port + root
 	keyExists    = "KEY_EXISTS"
 	KeyNotExists = "KEY_DOESN'T_EXIST"
-	val          = "VAL_EXISTS"
+	valExists    = "VAL_EXISTS"
 )
 
 type resp struct {
@@ -44,9 +44,9 @@ type resp struct {
 }
 
 type TestKVS struct {
-	key   string
-	val   string
-	count int
+	key       string
+	valExists string
+	count     int
 }
 
 /* This stub returns true for the key which exists and false for the one which doesn't */
@@ -62,10 +62,10 @@ func (t *TestKVS) Count() int {
 	return t.count
 }
 
-/* This stub returns the value associated with the key which exists, and returns nil for the key which doesn't */
+/* This stub returns the valExistsue associated with the key which exists, and returns nil for the key which doesn't */
 func (t *TestKVS) Get(key string) string {
 	if key == t.key {
-		return t.val
+		return t.valExists
 	}
 	return ""
 }
@@ -80,13 +80,13 @@ func (t *TestKVS) Delete(key string) bool {
 }
 
 // idk lets try this
-func (t *TestKVS) Put(key, val string) {
+func (t *TestKVS) Put(key, valExists string) {
 }
 
 // TestPutRequestKeyExists should return that the key has been replaced/updated successfully
 func TestPutRequestKeyExists(t *testing.T) {
 	// Stub the db
-	db := TestKVS{keyExists, val, 1}
+	db := TestKVS{keyExists, valExists, 1}
 
 	// Stub the app
 	app := App{&db, ":5000"}
@@ -115,7 +115,7 @@ func TestPutRequestKeyExists(t *testing.T) {
 
 	// Stub a request
 	method := "PUT"
-	reqBody := strings.NewReader(val)
+	reqBody := strings.NewReader(valExists)
 	req, err := http.NewRequest(method, url, reqBody)
 	ok(t, err)
 
@@ -139,7 +139,7 @@ func TestPutRequestKeyExists(t *testing.T) {
 // TestPutRequestKeyDoesntExist should return that the key has been created
 func TestPutRequestKeyDoesntExist(t *testing.T) {
 	// Stub the db
-	db := TestKVS{keyExists, val, 1}
+	db := TestKVS{keyExists, valExists, 1}
 
 	// Stub the app
 	app := App{&db, ":5000"}
@@ -168,7 +168,7 @@ func TestPutRequestKeyDoesntExist(t *testing.T) {
 
 	// Stub a request
 	method := "PUT"
-	//reqBody := strings.NewReader(val)
+	//reqBody := strings.NewReader(valExists)
 	req, err := http.NewRequest(method, url, nil)
 	ok(t, err)
 
@@ -189,10 +189,10 @@ func TestPutRequestKeyDoesntExist(t *testing.T) {
 	equals(t, expectedBody, gotBody)
 }
 
-// TestPutRequestInvalidKey makes a key with length == 201 and tests it for failure
-func TestPutRequestInvalidKey(t *testing.T) {
+// TestPutRequestInvalExistsidKey makes a key with length == 201 and tests it for failure
+func TestPutRequestInvalExistsidKey(t *testing.T) {
 	// Stub the db
-	db := TestKVS{keyExists, val, 1}
+	db := TestKVS{keyExists, valExists, 1}
 
 	// Stub the app
 	app := App{&db, ":5000"}
@@ -244,10 +244,10 @@ func TestPutRequestInvalidKey(t *testing.T) {
 	equals(t, expectedBody, gotBody)
 }
 
-// TestPutRequestInvalidValue tests for values that are too large
-func TestPutRequestInvalidValue(t *testing.T) {
+// TestPutRequestInvalExistsidValue tests for values that are too large
+func TestPutRequestInvalExistsidValue(t *testing.T) {
 	// Stub the db
-	db := TestKVS{keyExists, val, 1}
+	db := TestKVS{keyExists, valExists, 1}
 
 	// Stub the app
 	app := App{&db, ":5000"}
@@ -301,6 +301,161 @@ func TestPutRequestInvalidValue(t *testing.T) {
 	expectedBody := map[string]interface{}{
 		"msg":    "Object too large. Size limit is 1MB",
 		"result": "Error",
+	}
+
+	equals(t, expectedBody, gotBody)
+}
+
+// TestGetRequestKeyExists should return success with the "VAL_EXISTS" string
+func TestGetRequestKeyExists(t *testing.T) {
+	// Stub the db
+	db := TestKVS{keyExists, valExists, 1}
+
+	// Stub the app
+	app := App{&db, ":5000"}
+
+	l, err := net.Listen("tcp", "127.0.0.1:5000")
+	ok(t, err)
+
+	// Create a router
+	r := mux.NewRouter()
+	r.HandleFunc(root+"/{subject}", app.GetHandler)
+	// Stub the server
+	ts := httptest.NewUnstartedServer(r)
+	ts.Listener.Close()
+	ts.Listener = l
+	ts.Start()
+	defer ts.Close()
+
+	// Use a httptest recorder to observe responses
+	recorder := httptest.NewRecorder()
+
+	// This subject exists in the store already
+	subject := keyExists
+
+	// Set up the URL
+	url := ts.URL + root + "/" + subject
+
+	// Stub a request
+	method := "GET"
+	req, err := http.NewRequest(method, url, nil)
+	ok(t, err)
+
+	// Finally, make the request to the function being tested.
+	r.ServeHTTP(recorder, req)
+
+	expectedStatus := http.StatusOK // code 200
+	gotStatus := recorder.Code
+	equals(t, expectedStatus, gotStatus)
+
+	var gotBody map[string]interface{}
+	json.Unmarshal([]byte(recorder.Body.String()), &gotBody)
+	expectedBody := map[string]interface{}{
+		"result": "Success",
+		"value":  valExists,
+	}
+
+	equals(t, expectedBody, gotBody)
+}
+
+// TestGetRequestKeyNotExists should return that the key has been replaced/updated successfully
+func TestGetRequestKeyNotExists(t *testing.T) {
+	// Stub the db
+	db := TestKVS{keyExists, valExists, 1}
+
+	// Stub the app
+	app := App{&db, ":5000"}
+
+	l, err := net.Listen("tcp", "127.0.0.1:5000")
+	ok(t, err)
+
+	// Create a router
+	r := mux.NewRouter()
+	r.HandleFunc(root+"/{subject}", app.GetHandler)
+	// Stub the server
+	ts := httptest.NewUnstartedServer(r)
+	ts.Listener.Close()
+	ts.Listener = l
+	ts.Start()
+	defer ts.Close()
+
+	// Use a httptest recorder to observe responses
+	recorder := httptest.NewRecorder()
+
+	// This subject exists in the store already
+	subject := KeyNotExists
+
+	// Set up the URL
+	url := ts.URL + root + "/" + subject
+
+	// Stub a request
+	method := "GET"
+	req, err := http.NewRequest(method, url, nil)
+	ok(t, err)
+
+	// Finally, make the request to the function being tested.
+	r.ServeHTTP(recorder, req)
+
+	expectedStatus := http.StatusNotFound // code 404
+	gotStatus := recorder.Code
+	equals(t, expectedStatus, gotStatus)
+
+	var gotBody map[string]interface{}
+	json.Unmarshal([]byte(recorder.Body.String()), &gotBody)
+	expectedBody := map[string]interface{}{
+		"result": "Error",
+		"value":  "Not Found",
+	}
+
+	equals(t, expectedBody, gotBody)
+}
+
+// TestDeleteKeyExists should return success
+func TestDeleteKeyExists(t *testing.T) {
+	// Stub the db
+	db := TestKVS{keyExists, valExists, 1}
+
+	// Stub the app
+	app := App{&db, ":5000"}
+
+	l, err := net.Listen("tcp", "127.0.0.1:5000")
+	ok(t, err)
+
+	// Create a router
+	r := mux.NewRouter()
+	r.HandleFunc(root+"/{subject}", app.GetHandler)
+	// Stub the server
+	ts := httptest.NewUnstartedServer(r)
+	ts.Listener.Close()
+	ts.Listener = l
+	ts.Start()
+	defer ts.Close()
+
+	// Use a httptest recorder to observe responses
+	recorder := httptest.NewRecorder()
+
+	// This subject exists in the store already
+	subject := keyExists
+
+	// Set up the URL
+	url := ts.URL + root + "/" + subject
+
+	// Stub a request
+	method := "DELETE"
+	req, err := http.NewRequest(method, url, nil)
+	ok(t, err)
+
+	// Finally, make the request to the function being tested.
+	r.ServeHTTP(recorder, req)
+
+	expectedStatus := http.StatusOK // code 404
+	gotStatus := recorder.Code
+	equals(t, expectedStatus, gotStatus)
+
+	var gotBody map[string]interface{}
+	json.Unmarshal([]byte(recorder.Body.String()), &gotBody)
+	expectedBody := map[string]interface{}{
+		"result": "Success",
 	}
 
 	equals(t, expectedBody, gotBody)

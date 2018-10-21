@@ -52,7 +52,7 @@ func (app *App) Initialize(k *dbAccess, p string) {
 	/* Methods for specific items */
 	s.HandleFunc("/{subject}", app.PutHandler).Methods("PUT")
 	s.HandleFunc("/{subject}", app.GetHandler).Methods("GET")
-	s.HandleFunc("/{subject}", app.DeleteHandler).Methods("Delete")
+	s.HandleFunc("/{subject}", app.DeleteHandler).Methods("DELETE")
 
 	/* Load up the server through a logger interface */
 	err := http.ListenAndServe(":"+port, handlers.LoggingHandler(os.Stdout, r))
@@ -163,21 +163,36 @@ func (app *App) GetHandler(w http.ResponseWriter, r *http.Request) {
 	if app.ServiceUp() {
 		vars := mux.Vars(r)
 		key := vars["subject"]
-		resp := map[string]string{}
+		var body []byte
+		var err error
 		if app.db.Contains(key) {
-			w.WriteHeader(http.StatusOK)
+			w.WriteHeader(http.StatusOK) // code 200
 			val := app.db.Get(key)
-			resp = map[string]string{"result": "Success", "value": val}
+			resp := map[string]interface{}{
+				"result": "Success",
+				"value":  val,
+			}
+			body, err = json.Marshal(resp)
+			if err != nil {
+				log.Fatalln("oh no")
+			}
 		} else {
-			w.WriteHeader(http.StatusNotFound)
-			resp = map[string]string{"result": "Error", "value": "Not Found"}
+			w.WriteHeader(http.StatusNotFound) // code 404
+			resp := map[string]interface{}{
+				"result": "Error",
+				"value":  "Not Found",
+			}
+			body, err = json.Marshal(resp)
+			if err != nil {
+				log.Fatalln("oh no")
+			}
 		}
 		w.Header().Set("Content-Type", "application/json")
-		body, _ := json.Marshal(resp)
 		w.Write(body)
+	} else {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte("not implemented yet"))
 	}
-	w.WriteHeader(http.StatusNotFound)
-	w.Write([]byte("not implemented yet"))
 }
 
 // DeleteHandler deletes k:v pairs from the db
@@ -185,18 +200,32 @@ func (app *App) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	if app.ServiceUp() {
 		vars := mux.Vars(r)
 		key := vars["subject"]
-		resp := map[string]string{}
+		var err error
+		var body []byte
+
 		if app.db.Contains(key) {
-			w.WriteHeader(http.StatusOK)
+			w.WriteHeader(http.StatusOK) // code 200
 			app.db.Delete(key)
-			resp = map[string]string{"result": "Success"}
+			resp := map[string]interface{}{
+				"result": "Success",
+			}
+			body, err = json.Marshal(resp)
+			if err != nil {
+				log.Fatalln("oh no")
+			}
 
 		} else {
-			w.WriteHeader(http.StatusNotFound)
-			resp = map[string]string{"result": "Error", "msg": "Status code 404"}
+			w.WriteHeader(http.StatusNotFound) // code 404
+			resp := map[string]interface{}{
+				"result": "Error",
+				"msg":    "Status code 404",
+			}
+			body, err = json.Marshal(resp)
+			if err != nil {
+				log.Fatalln("oh no")
+			}
 		}
 		w.Header().Set("Content-Type", "application/json")
-		body, _ := json.Marshal(resp)
 		w.Write(body)
 	}
 	w.WriteHeader(http.StatusNotFound)
