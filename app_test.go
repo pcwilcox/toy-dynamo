@@ -29,7 +29,6 @@ import (
 // Define some constants. These can be reconfigured as needed.
 const (
 	domain       = "http://localhost"
-	port         = "8080"
 	root         = "/keyValue-store"
 	hostname     = domain + ":" + port + root
 	keyExists    = "KEY_EXISTS"
@@ -90,9 +89,9 @@ func TestPutRequestKeyExists(t *testing.T) {
 	db := TestKVS{keyExists, valExists, true}
 
 	// Stub the app
-	app := App{&db, ":5000"}
+	app := App{&db}
 
-	l, err := net.Listen("tcp", "127.0.0.1:5000")
+	l, err := net.Listen("tcp", "127.0.0.1:8080")
 	ok(t, err)
 
 	// Create a router
@@ -147,9 +146,9 @@ func TestPutRequestKeyDoesntExist(t *testing.T) {
 	db := TestKVS{keyExists, valExists, true}
 
 	// Stub the app
-	app := App{&db, ":5000"}
+	app := App{&db}
 
-	l, err := net.Listen("tcp", "127.0.0.1:5000")
+	l, err := net.Listen("tcp", "127.0.0.1:8080")
 	ok(t, err)
 
 	// Create a router
@@ -204,9 +203,9 @@ func TestPutRequestInvalidKey(t *testing.T) {
 	db := TestKVS{keyExists, valExists, true}
 
 	// Stub the app
-	app := App{&db, ":5000"}
+	app := App{&db}
 
-	l, err := net.Listen("tcp", "127.0.0.1:5000")
+	l, err := net.Listen("tcp", "127.0.0.1:8080")
 	ok(t, err)
 
 	// Create a router
@@ -263,9 +262,9 @@ func TestPutRequestInvalidValue(t *testing.T) {
 	db := TestKVS{keyExists, valExists, true}
 
 	// Stub the app
-	app := App{&db, ":5000"}
+	app := App{&db}
 
-	l, err := net.Listen("tcp", "127.0.0.1:5000")
+	l, err := net.Listen("tcp", "127.0.0.1:8080")
 	ok(t, err)
 
 	// Create a router
@@ -326,9 +325,9 @@ func TestPutRequestServiceDown(t *testing.T) {
 	db := TestKVS{keyExists, valExists, false}
 
 	// Stub the app
-	app := App{&db, ":5000"}
+	app := App{&db}
 
-	l, err := net.Listen("tcp", "127.0.0.1:5000")
+	l, err := net.Listen("tcp", "127.0.0.1:8080")
 	ok(t, err)
 
 	// Create a router
@@ -383,9 +382,9 @@ func TestGetRequestKeyExists(t *testing.T) {
 	db := TestKVS{keyExists, valExists, true}
 
 	// Stub the app
-	app := App{&db, ":5000"}
+	app := App{&db}
 
-	l, err := net.Listen("tcp", "127.0.0.1:5000")
+	l, err := net.Listen("tcp", "127.0.0.1:8080")
 	ok(t, err)
 
 	// Create a router
@@ -439,9 +438,9 @@ func TestGetRequestServiceDown(t *testing.T) {
 	db := TestKVS{keyExists, valExists, false}
 
 	// Stub the app
-	app := App{&db, ":5000"}
+	app := App{&db}
 
-	l, err := net.Listen("tcp", "127.0.0.1:5000")
+	l, err := net.Listen("tcp", "127.0.0.1:8080")
 	ok(t, err)
 
 	// Create a router
@@ -495,9 +494,9 @@ func TestGetRequestKeyNotExists(t *testing.T) {
 	db := TestKVS{keyExists, valExists, true}
 
 	// Stub the app
-	app := App{&db, ":5000"}
+	app := App{&db}
 
-	l, err := net.Listen("tcp", "127.0.0.1:5000")
+	l, err := net.Listen("tcp", "127.0.0.1:8080")
 	ok(t, err)
 
 	// Create a router
@@ -548,9 +547,9 @@ func TestDeleteServerDown(t *testing.T) {
 	db := TestKVS{keyExists, valExists, false}
 
 	// Stub the app
-	app := App{&db, ":5000"}
+	app := App{&db}
 
-	l, err := net.Listen("tcp", "127.0.0.1:5000")
+	l, err := net.Listen("tcp", "127.0.0.1:8080")
 	ok(t, err)
 
 	// Create a router
@@ -604,9 +603,9 @@ func TestDeleteKeyExists(t *testing.T) {
 	db := TestKVS{keyExists, valExists, true}
 
 	// Stub the app
-	app := App{&db, ":5000"}
+	app := App{&db}
 
-	l, err := net.Listen("tcp", "127.0.0.1:5000")
+	l, err := net.Listen("tcp", "127.0.0.1:8080")
 	ok(t, err)
 
 	// Create a router
@@ -659,9 +658,9 @@ func TestDeleteKeyNotExists(t *testing.T) {
 	db := TestKVS{keyExists, valExists, true}
 
 	// Stub the app
-	app := App{&db, ":5000"}
+	app := App{&db}
 
-	l, err := net.Listen("tcp", "127.0.0.1:5000")
+	l, err := net.Listen("tcp", "127.0.0.1:8080")
 	ok(t, err)
 
 	// Create a router

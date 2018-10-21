@@ -34,7 +34,7 @@ func main() {
 
 	if leader == true {
 		// We're the leader so we'll set up a local data store
-		k = kvs
+		k = &kvs{}
 	}
 	// TODO: else we'll set up a remote
 
