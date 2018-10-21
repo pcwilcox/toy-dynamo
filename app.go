@@ -90,37 +90,57 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 		key := vars["subject"]
 
 		// assume the key is there already
-		newKey := false
 		replaced := "True"
 		msg := "Updated successfully"
 
-		// Init an empty response and overwrite it below
-		resp := map[string]string{}
+		// Same content type for everything
+		w.Header().Set("Content-Type", "application/json")
+
+		var body []byte
+		var err error
+		var status int
 
 		// Check for valid input
 		if len(val) > maxVal {
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			resp = map[string]string{"result": "Error", "msg": "Object too large. Size limit is 1MB"}
+			status = http.StatusUnprocessableEntity // code 422
+			resp := map[string]interface{}{
+				"result": "Error",
+				"msg":    "Object too large. Size limit is 1MB",
+			}
+			body, err = json.Marshal(resp)
+			if err != nil {
+				log.Fatalln("oh no")
+			}
 		} else if len(key) > maxKey {
-			w.WriteHeader(http.StatusUnprocessableEntity)
-			resp = map[string]string{"msg": "Key not valid", "result": "Error"}
+			status = http.StatusUnprocessableEntity // code 422
+			resp := map[string]interface{}{
+				"msg":    "Key not valid",
+				"result": "Error",
+			}
+			body, err = json.Marshal(resp)
+			if err != nil {
+				log.Fatalln("oh no")
+			}
 		} else {
 			// key/val are valid inputs, let's insert into the db
-			if app.db.Put(key, val) {
-				newKey = true // we made a new entry
+			if app.db.Contains(key) {
+				status = http.StatusOK // code 200
+			} else {
+				status = http.StatusCreated // code 201
+				app.db.Put(key, val)
 				replaced = "False"
 				msg = "Added successfully"
 			}
-			resp = map[string]string{"replaced": replaced, "msg": msg}
-
-			if newKey == true {
-				w.WriteHeader(http.StatusCreated) // code 201
-			} else {
-				w.WriteHeader(http.StatusOK) // code 200
+			resp := map[string]interface{}{
+				"replaced": replaced,
+				"msg":      msg,
+			}
+			body, err = json.Marshal(resp)
+			if err != nil {
+				log.Fatalln("oh no")
 			}
 		}
-		body, _ := json.Marshal(resp)
-		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(status)
 		w.Write(body)
 	} else {
 		w.WriteHeader(http.StatusNotImplemented)

@@ -23,13 +23,21 @@ import (
 
 // Define some constants. These can be reconfigured as needed.
 const (
-	DOMAIN   = "http://localhost"
-	PORT     = "8080"
-	ROOT     = "/keyValue-store"
-	HOSTNAME = DOMAIN + ":" + PORT + ROOT
-	KEY      = "KEY_EXISTS"
-	VAL      = "VAL_EXISTS"
+	domain   = "http://localhost"
+	port     = "8080"
+	root     = "/keyValue-store"
+	hostname = domain + ":" + port + root
+	key      = "KEY_EXISTS"
+	notkey   = "KEY_DOESN'T_EXIST"
+	val      = "VAL_EXISTS"
 )
+
+type resp struct {
+	buf       []uint8
+	off       int
+	bootstrap []uint8
+	lastread  int
+}
 
 type TestKVS struct {
 	key   string
@@ -68,54 +76,91 @@ func (t *TestKVS) Delete(key string) bool {
 }
 
 // idk lets try this
-func (t *TestKVS) Put(key, val string) bool {
-	return true
+func (t *TestKVS) Put(key, val string) {
 }
 
-// Responds to PUT requests on http://localhost:IP/keyValue-Store/{subject} with message body "val={value}"
-func TestPutRequest(t *testing.T) {
+// TestPutRequestKeyExists should return that the key has been replaced/updated successfully
+func TestPutRequestKeyExists(t *testing.T) {
 	// Stub the db
-	db := TestKVS{KEY, VAL, 1}
+	db := TestKVS{key, val, 1}
 
 	// Stub the app
 	app := App{&db, ":8080"}
 
-	/* Stub the handler */
+	// Stub the handler
 	handler := http.HandlerFunc(app.PutHandler)
 
-	/* Use a httptest recorder to observe responses */
+	// Use a httptest recorder to observe responses
 	recorder := httptest.NewRecorder()
 
-	/*********************************
-	 * FIRST TEST:
-	 * 'subject' exist in the db
-	 *********************************/
+	// This subject exists in the store already
+	subject := key
 
-	/* This subject exists in the store already */
-	subject := KEY
+	// Set up the URL
+	url := hostname + "/" + subject
 
-	/* Set up the URL */
-	url := HOSTNAME + "/" + subject
-
-	/* Stub a request */
-	method := "GET"
+	// Stub a request
+	method := "PUT"
 	req, err := http.NewRequest(method, url, nil)
 	ok(t, err)
 
-	/* Finally, make the request to the function being tested. */
+	// Finally, make the request to the function being tested.
 	handler.ServeHTTP(recorder, req)
 
-	expectedStatus := http.StatusOK
-	var expectedBody string
-	trythis, _ := json.Marshal(map[string]string{"replaced": "True", "msg": "Updated successfully"})
-	err = json.Unmarshal(trythis, expectedBody)
-
+	expectedStatus := http.StatusOK // code 200
 	gotStatus := recorder.Code
-	gotBody := recorder.Body.String()
+	equals(t, expectedStatus, gotStatus)
+
+	var gotBody map[string]interface{}
+	json.Unmarshal([]byte(recorder.Body.String()), &gotBody)
+	expectedBody := map[string]interface{}{
+		"replaced": "True",
+		"msg":      "Updated successfully",
+	}
 
 	equals(t, expectedBody, gotBody)
+}
 
+// TestPutRequestKeyDoesntExist should return that the key has been created
+func TestPutRequestKeyDoesntExist(t *testing.T) {
+	// Stub the db
+	db := TestKVS{key, val, 1}
+
+	// Stub the app
+	app := App{&db, ":8080"}
+
+	// Stub the handler
+	handler := http.HandlerFunc(app.PutHandler)
+
+	// Use a httptest recorder to observe responses
+	recorder := httptest.NewRecorder()
+
+	// This subject exists in the store already
+	subject := notkey
+
+	// Set up the URL
+	url := hostname + "/" + subject
+
+	// Stub a request
+	method := "PUT"
+	req, err := http.NewRequest(method, url, nil)
+	ok(t, err)
+
+	// Finally, make the request to the function being tested.
+	handler.ServeHTTP(recorder, req)
+
+	expectedStatus := http.StatusCreated // code 201
+	gotStatus := recorder.Code
 	equals(t, expectedStatus, gotStatus)
+
+	var gotBody map[string]interface{}
+	json.Unmarshal([]byte(recorder.Body.String()), &gotBody)
+	expectedBody := map[string]interface{}{
+		"replaced": "False",
+		"msg":      "Added successfully",
+	}
+
+	equals(t, expectedBody, gotBody)
 }
 
 /* These functions were taken from Ben Johnson's post here:

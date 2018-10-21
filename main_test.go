@@ -29,7 +29,7 @@ func TestHelloHandler(t *testing.T) {
 	 *********************************/
 
 	/* Set up the URL */
-	url := HOSTNAME + "/hello"
+	url := hostname + "/hello"
 
 	/* Stub a request */
 	method := "GET"
@@ -71,7 +71,7 @@ func TestHelloHandler(t *testing.T) {
 	for _, method := range methods {
 
 		/* set up the URL */
-		url = HOSTNAME + "/hello"
+		url = hostname + "/hello"
 
 		/* stub the request */
 		req, err := http.NewRequest(method, url, nil)
@@ -108,7 +108,7 @@ func TestTestHandler(t *testing.T) {
 	 *********************************/
 
 	/* Set up the URL */
-	url := HOSTNAME + "/test"
+	url := hostname + "/test"
 
 	/* Stub a request */
 	method := "GET"
@@ -150,7 +150,7 @@ func TestTestHandler(t *testing.T) {
 	for _, message := range messages {
 
 		/* set up the URL */
-		url = HOSTNAME + "/test?msg=" + message
+		url = hostname + "/test?msg=" + message
 
 		/* stub the request */
 		method = "POST"
@@ -195,7 +195,7 @@ func TestTestHandler(t *testing.T) {
 	for _, method := range methods {
 
 		/* set up the URL */
-		url = HOSTNAME + "/test"
+		url = hostname + "/test"
 
 		/* stub the request */
 		req, err := http.NewRequest(method, url, nil)

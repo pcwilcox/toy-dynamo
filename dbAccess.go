@@ -16,7 +16,7 @@ type dbAccess interface {
 	Count() int
 	Get(string) string
 	Delete(string) bool
-	Put(string, string) bool
+	Put(string, string)
 }
 
 /* this is an example of how this interface can be implemented
