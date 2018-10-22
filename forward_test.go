@@ -72,6 +72,8 @@ func (t *testRest) Teardown() {
 func (t *testRest) PutHandler(w http.ResponseWriter, r *http.Request) {
 	if t.keyInvalid || t.valInvalid {
 		w.WriteHeader(http.StatusUnprocessableEntity) // code 422
+	} else if len(t.key) > 200 || len(t.val) > 1024*1024 {
+		w.WriteHeader(http.StatusUnprocessableEntity) // code 422
 	} else if strings.Compare(t.key, keyExists) == 0 {
 		w.WriteHeader(http.StatusOK) // code 200
 	} else {
@@ -113,10 +115,10 @@ func TestForwarderContainsKeyExistsReturnsTrue(t *testing.T) {
 	f := Forwarder{mainIP: IP}
 
 	// Use the key that's in the db
-	key := keyExists
+	s.key = keyExists
 
 	// Here's the actual test
-	assert(t, f.Contains(key), "Contains() returned false for KeyExists")
+	assert(t, f.Contains(s.key), "Contains() returned false for KeyExists")
 }
 
 // TestForwarderContainsKeyNotExistsReturnsFalse verifies that the Contains() method returns false if the data store doesn't have the key
@@ -133,10 +135,10 @@ func TestForwarderContainsKeyNotExistsReturnsFalse(t *testing.T) {
 	f := Forwarder{mainIP: IP}
 
 	// Use the key that's in the db
-	key := keyNotExists
+	s.key = keyNotExists
 
 	// Here's the actual test
-	assert(t, !f.Contains(key), "Contains() returned true for keyNotExists")
+	assert(t, !f.Contains(s.key), "Contains() returned true for keyNotExists")
 }
 
 // TestForwarderContainsServiceDownReturnsFalse verifies that the ServiceUp check works
@@ -156,10 +158,10 @@ func TestForwarderContainsServiceDownReturnsFalse(t *testing.T) {
 	f := Forwarder{mainIP: IP}
 
 	// Use the key that's in the db
-	key := keyNotExists
+	s.key = keyNotExists
 
 	// Here's the actual test
-	assert(t, !f.Contains(key), "Contains() returned true when service was down")
+	assert(t, !f.Contains(s.key), "Contains() returned true when service was down")
 }
 
 // TestForwarderPutKeyExistsReturnsTrue verifies that the Put() function returns true if it overwrites a key
@@ -176,11 +178,11 @@ func TestForwarderPutKeyExistsReturnsTrue(t *testing.T) {
 	f := Forwarder{mainIP: IP}
 
 	// Use the key that's in the db
-	key := keyExists
-	val := valExists
+	s.key = keyExists
+	s.val = valExists
 
 	// Here's the actual test
-	assert(t, f.Put(key, val), "Put() keyExists returned false")
+	assert(t, f.Put(s.key, s.val), "Put() keyExists returned false")
 }
 
 // TestForwarderPutKeyNotExistsReturnsFalse verifies that the Put() function returns false if it doesn't overwrite a key
@@ -197,11 +199,11 @@ func TestForwarderPutKeyNotExistsReturnsFalse(t *testing.T) {
 	f := Forwarder{mainIP: IP}
 
 	// Use the key that's in the db
-	key := keyNotExists
-	val := valExists
+	s.key = keyNotExists
+	s.val = valExists
 
 	// Here's the actual test
-	assert(t, !f.Put(key, val), "Put() keyNotExists returned true")
+	assert(t, !f.Put(s.key, s.val), "Put() keyNotExists returned true")
 }
 
 // TestForwarderPutKeyInvalidReturnsFalse verifies that sending an invalid key returns false
@@ -218,15 +220,15 @@ func TestForwarderPutKeyInvalidReturnsFalse(t *testing.T) {
 	f := Forwarder{mainIP: IP}
 
 	// Use the key that's in the db
-	key := "a"
-	val := valExists
+	s.key = "a"
+	s.val = valExists
 
 	for i := 1; i < 202; i = i * 2 {
-		key = key + key
+		s.key = s.key + s.key
 	}
 
 	// Here's the actual test
-	assert(t, !f.Put(key, val), "Put() invalid key returned true")
+	assert(t, !f.Put(s.key, s.val), "Put() invalid key returned true")
 }
 
 //TestForwarderPutValInvalidReturnsFalse verifies that sending an invalid value returns false
@@ -243,15 +245,15 @@ func TestForwarderPutValInvalidReturnsFalse(t *testing.T) {
 	f := Forwarder{mainIP: IP}
 
 	// Use the key that's in the db
-	key := keyExists
-	val := "a"
+	s.key = keyExists
+	s.val = "a"
 
 	for i := 1; i < (1024*1024)+2; i *= 2 {
-		val = val + val
+		s.val = s.val + s.val
 	}
 
 	// Here's the actual test
-	assert(t, !f.Put(key, val), "Put() invalid value returned true")
+	assert(t, !f.Put(s.key, s.val), "Put() invalid value returned true")
 }
 
 // TestForwarderPutServiceDownReturnsFalse verifies that attempting a Put() when the service is down fails
@@ -271,11 +273,11 @@ func TestForwarderPutServiceDownReturnsFalse(t *testing.T) {
 	f := Forwarder{mainIP: IP}
 
 	// Use the key that's in the db
-	key := keyExists
-	val := valExists
+	s.key = keyExists
+	s.val = valExists
 
 	// Here's the actual test
-	assert(t, !f.Put(key, val), "Put() returned true when the service was down")
+	assert(t, !f.Put(s.key, s.val), "Put() returned true when the service was down")
 }
 
 // TestForwarderDeleteKeyExistsReturnsTrue verifies that deleting a key which exists returns true
@@ -292,10 +294,10 @@ func TestForwarderDeleteKeyExists(t *testing.T) {
 	f := Forwarder{mainIP: IP}
 
 	// Use the key that's in the db
-	key := keyExists
+	s.key = keyExists
 
 	// Here's the actual test
-	assert(t, f.Delete(key), "Delete() returned false for keyExists")
+	assert(t, f.Delete(s.key), "Delete() returned false for keyExists")
 }
 
 // TestForwarderDeleteKeyNotExists checks that Delete() returns false if the key doesn't exist
@@ -312,10 +314,10 @@ func TestForwarderDeleteKeyNotExists(t *testing.T) {
 	f := Forwarder{mainIP: IP}
 
 	// Use the key that's not in the db
-	key := keyNotExists
+	s.key = keyNotExists
 
 	// Here's the actual test
-	assert(t, !f.Delete(key), "Delete() returned true for keyNotExists")
+	assert(t, !f.Delete(s.key), "Delete() returned true for keyNotExists")
 }
 
 // TestForwarderDeleteServiceDownReturnsFalse ... returns false if the service is down
@@ -335,10 +337,10 @@ func TestForwarderDeleteServiceDownReturnsFalse(t *testing.T) {
 	f := Forwarder{mainIP: IP}
 
 	// Use the key that's not in the db
-	key := keyNotExists
+	s.key = keyNotExists
 
 	// Here's the actual test
-	assert(t, !f.Delete(key), "Delete() returned true when service was down")
+	assert(t, !f.Delete(s.key), "Delete() returned true when service was down")
 }
 
 // TestForwarderGetKeyExistsReturnsVal checks that Get returns the value when given a key that exists
@@ -355,11 +357,11 @@ func TestForwarderGetKeyExistsReturnsVal(t *testing.T) {
 	f := Forwarder{mainIP: IP}
 
 	// Use the key that's not in the db
-	key := keyExists
-	val := valExists
+	s.key = keyExists
+	s.val = valExists
 
 	// Here's the actual test
-	assert(t, strings.Compare(f.Get(key), val) == 0, "Get() did not return matching string valExists")
+	assert(t, strings.Compare(f.Get(s.key), s.val) == 0, "Get() did not return matching string valExists")
 }
 
 // TestForwarderGetKeyNotExistsReturnsEmpty verifies that Get returns an empty string if given a key that doesn't exist
@@ -376,11 +378,11 @@ func TestForwarderGetKeyNotExistsReturnsEmpty(t *testing.T) {
 	f := Forwarder{mainIP: IP}
 
 	// Use the key that's not in the db
-	key := keyNotExists
-	val := ""
+	s.key = keyNotExists
+	s.val = ""
 
 	// Here's the actual test
-	assert(t, strings.Compare(f.Get(key), val) == 0, "Get() did not return empty string for valNotExists")
+	assert(t, strings.Compare(f.Get(s.key), s.val) == 0, "Get() did not return empty string for valNotExists")
 }
 
 // TestForwarderGetServiceDownReturnsEmpty checks that Get returns an empty string if the service is down
@@ -400,11 +402,11 @@ func TestForwarderGetServiceDownReturnsEmpty(t *testing.T) {
 	f := Forwarder{mainIP: IP}
 
 	// Use the key that's not in the db
-	key := keyExists
-	val := ""
+	s.key = keyExists
+	s.val = ""
 
 	// Here's the actual test
-	assert(t, strings.Compare(f.Get(key), val) == 0, "Get() did not return empty string when service was down")
+	assert(t, strings.Compare(f.Get(s.key), s.val) == 0, "Get() did not return empty string when service was down")
 }
 
 // TestServiceDownWhenServiceUpReturnsTrue ... it should return true if the service is up
