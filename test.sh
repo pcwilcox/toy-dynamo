@@ -2,7 +2,9 @@
 source values
 
 echo "=========================>   RUNNING UNIT TESTS   <========================"
-echo "$(go test -bench=. -v -coverprofile out && rm out)"
+echo "$(make test)"
+echo "$(make cover)"
+echo "$(make bench)"
 
 echo "=========================>  SETTING UP CONTAINER  <========================"
 ./run.sh
