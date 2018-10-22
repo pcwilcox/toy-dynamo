@@ -11,7 +11,9 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -53,6 +55,8 @@ func (t *testRest) Initialize() {
 	r.HandleFunc(rootURL+"/{subject}", t.PutHandler).Methods("PUT")
 	r.HandleFunc(rootURL+"/{subject}", t.GetHandler).Methods("GET")
 	r.HandleFunc(rootURL+"/{subject}", t.DeleteHandler).Methods("DELETE")
+	r.HandleFunc("/alive", t.AliveHandler).Methods("GET")
+
 	// Stub the server
 	t.server = httptest.NewUnstartedServer(r)
 	t.server.Listener.Close()
@@ -83,6 +87,17 @@ func (t *testRest) PutHandler(w http.ResponseWriter, r *http.Request) {
 func (t *testRest) GetHandler(w http.ResponseWriter, r *http.Request) {
 	if strings.Compare(t.key, keyExists) == 0 {
 		w.WriteHeader(http.StatusOK) // code 200
+		resp := map[string]interface{}{
+			"result": "Success",
+			"value":  valExists,
+		}
+		body, err := json.Marshal(resp)
+		if err != nil {
+			log.Fatalln("oh no")
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(body)
+
 	} else {
 		w.WriteHeader(http.StatusNotFound) // code 404
 	}
@@ -98,6 +113,10 @@ func (t *testRest) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 func (t *testRest) ServiceDownHandler(http.ResponseWriter, *http.Request) {
 	// goes nowhere does nothing
+}
+
+func (t *testRest) AliveHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
 }
 
 // TestForwarderContainsKeyExistsReturnsTrue verifies that the Contains() method returns true if the data store has the key
@@ -426,7 +445,7 @@ func TestServiceUpWhenServiceUpReturnsTrue(t *testing.T) {
 }
 
 // TestServiceUpWhenServiceDownReturnsFalse ... should return false when service is down
-func TestServiceDownWhenServiceDown(t *testing.T) {
+func TestServiceUpWhenServiceDownReturnsFalse(t *testing.T) {
 	// Create a stub server
 	s := testRest{}
 	s.Initialize()

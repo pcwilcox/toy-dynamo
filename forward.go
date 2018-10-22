@@ -178,5 +178,24 @@ func (f *Forwarder) Put(key, val string) bool {
 
 // ServiceUp pings the server to see if it's up
 func (f *Forwarder) ServiceUp() bool {
-	return true
+	// Make the URL
+	URL := f.mainIP + "/alive"
+
+	// Do the request
+	resp, err := http.Get(URL)
+	if err != nil {
+		return false
+	}
+
+	// Make sure we close the body
+	defer resp.Body.Close()
+
+	// Read the status code
+	if resp.StatusCode == http.StatusOK {
+		// Code 200 means the service is up
+		return true
+	}
+	// Any other code means it isn't
+	return false
+
 }
