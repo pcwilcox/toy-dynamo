@@ -26,6 +26,9 @@ func (f *Forwarder) Contains(key string) bool {
 
 // Get sends a GET request to the server for the value associated with the given key
 func (f *Forwarder) Get(key string) string {
+	if !f.ServiceUp() {
+		return ""
+	}
 	return "foo"
 }
 

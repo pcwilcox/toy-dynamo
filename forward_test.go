@@ -11,11 +11,21 @@
 package main
 
 import (
+	"fmt"
+	"net"
 	"net/http"
+	"net/http/httptest"
+	"path/filepath"
+	"reflect"
+	"runtime"
+	"strings"
 	"testing"
+
+	"github.com/gorilla/mux"
 )
 
 const (
+	rootURL      = "/keyValue-store"
 	keyExists    = "KEY_EXISTS"
 	keyNotExists = "KEY_NOT_EXISTS"
 	valExists    = "VAL_EXISTS"
@@ -23,84 +33,442 @@ const (
 )
 
 type testRest struct {
+	server     *httptest.Server
+	key        string
+	val        string
+	keyInvalid bool
+	valInvalid bool
 }
 
+// Initialize makes a test server for our unit tests to use as a stub
 func (t *testRest) Initialize() {
+
+	// We make a local listener and hook a server up to it
+	l, err := net.Listen("tcp", "127.0.0.1:8080")
+	if err != nil {
+		panic(err)
+	}
+
+	// Create a router
+	r := mux.NewRouter()
+	r.HandleFunc(rootURL+"/{subject}", t.PutHandler).Methods("PUT")
+	r.HandleFunc(rootURL+"/{subject}", t.GetHandler).Methods("GET")
+	r.HandleFunc(rootURL+"/{subject}", t.DeleteHandler).Methods("DELETE")
+	// Stub the server
+	t.server = httptest.NewUnstartedServer(r)
+	t.server.Listener.Close()
+	t.server.Listener = l
+	t.server.Start()
+}
+
+// Teardwon simply stops the server we set up earlier
+func (t *testRest) Teardown() {
+	if t.server != nil {
+		t.server.Close()
+	}
 
 }
 
 func (t *testRest) PutHandler(w http.ResponseWriter, r *http.Request) {
-
+	if t.keyInvalid || t.valInvalid {
+		w.WriteHeader(http.StatusUnprocessableEntity) // code 422
+	} else if strings.Compare(t.key, keyExists) == 0 {
+		w.WriteHeader(http.StatusOK) // code 200
+	} else {
+		w.WriteHeader(http.StatusCreated) // code 201
+	}
 }
-func (t *testRest) GetHandler(w http.ResponseWriter, r *http.Request) {
 
+func (t *testRest) GetHandler(w http.ResponseWriter, r *http.Request) {
+	if strings.Compare(t.key, keyExists) == 0 {
+		w.WriteHeader(http.StatusOK) // code 200
+	} else {
+		w.WriteHeader(http.StatusNotFound) // code 404
+	}
 }
 
 func (t *testRest) DeleteHandler(w http.ResponseWriter, r *http.Request) {
-
+	if strings.Compare(t.key, keyExists) == 0 {
+		w.WriteHeader(http.StatusOK) // code 200
+	} else {
+		w.WriteHeader(http.StatusNotFound) // code 404
+	}
 }
 
 func (t *testRest) ServiceDownHandler(http.ResponseWriter, *http.Request) {
-
-}
-func TestForwarderContainsKeyExists(t *testing.T) {
-
+	// goes nowhere does nothing
 }
 
-func TestForwarderContainsKeyNotExists(t *testing.T) {
+// TestForwarderContainsKeyExistsReturnsTrue verifies that the Contains() method returns true if the data store has the key
+func TestForwarderContainsKeyExistsReturnsTrue(t *testing.T) {
+	// Create a stub server
+	s := testRest{}
+	s.Initialize()
+	defer s.Teardown()
 
+	// Get its IP
+	IP := s.server.URL
+
+	// Create the test object
+	f := Forwarder{mainIP: IP}
+
+	// Use the key that's in the db
+	key := keyExists
+
+	// Here's the actual test
+	assert(t, f.Contains(key), "Contains() returned false for KeyExists")
 }
 
-func TestForwarderContainsServiceDown(t *testing.T) {
+// TestForwarderContainsKeyNotExistsReturnsFalse verifies that the Contains() method returns false if the data store doesn't have the key
+func TestForwarderContainsKeyNotExistsReturnsFalse(t *testing.T) {
+	// Create a stub server
+	s := testRest{}
+	s.Initialize()
+	defer s.Teardown()
 
+	// Get its IP
+	IP := s.server.URL
+
+	// Create the test object
+	f := Forwarder{mainIP: IP}
+
+	// Use the key that's in the db
+	key := keyNotExists
+
+	// Here's the actual test
+	assert(t, !f.Contains(key), "Contains() returned true for keyNotExists")
 }
 
-func TestForwarderPutKeyExists(t *testing.T) {
+// TestForwarderContainsServiceDownReturnsFalse verifies that the ServiceUp check works
+func TestForwarderContainsServiceDownReturnsFalse(t *testing.T) {
+	// Create a stub server
+	s := testRest{}
+	s.Initialize()
+	defer s.Teardown()
 
+	// Get its IP
+	IP := s.server.URL
+
+	// Close the server
+	s.Teardown()
+
+	// Create the test object
+	f := Forwarder{mainIP: IP}
+
+	// Use the key that's in the db
+	key := keyNotExists
+
+	// Here's the actual test
+	assert(t, !f.Contains(key), "Contains() returned true when service was down")
 }
 
-func TestForwarderPutKeyNotExists(t *testing.T) {
+// TestForwarderPutKeyExistsReturnsTrue verifies that the Put() function returns true if it overwrites a key
+func TestForwarderPutKeyExistsReturnsTrue(t *testing.T) {
+	// Create a stub server
+	s := testRest{}
+	s.Initialize()
+	defer s.Teardown()
 
+	// Get its IP
+	IP := s.server.URL
+
+	// Create the test object
+	f := Forwarder{mainIP: IP}
+
+	// Use the key that's in the db
+	key := keyExists
+	val := valExists
+
+	// Here's the actual test
+	assert(t, f.Put(key, val), "Put() keyExists returned false")
 }
 
-func TestForwarderPutKeyInvalid(t *testing.T) {
+// TestForwarderPutKeyNotExistsReturnsFalse verifies that the Put() function returns false if it doesn't overwrite a key
+func TestForwarderPutKeyNotExistsReturnsFalse(t *testing.T) {
+	// Create a stub server
+	s := testRest{}
+	s.Initialize()
+	defer s.Teardown()
 
+	// Get its IP
+	IP := s.server.URL
+
+	// Create the test object
+	f := Forwarder{mainIP: IP}
+
+	// Use the key that's in the db
+	key := keyNotExists
+	val := valExists
+
+	// Here's the actual test
+	assert(t, !f.Put(key, val), "Put() keyNotExists returned true")
 }
 
-func TestForwarderPutValInvalid(t *testing.T) {
+// TestForwarderPutKeyInvalidReturnsFalse verifies that sending an invalid key returns false
+func TestForwarderPutKeyInvalidReturnsFalse(t *testing.T) {
+	// Create a stub server
+	s := testRest{}
+	s.Initialize()
+	defer s.Teardown()
 
+	// Get its IP
+	IP := s.server.URL
+
+	// Create the test object
+	f := Forwarder{mainIP: IP}
+
+	// Use the key that's in the db
+	key := "a"
+	val := valExists
+
+	for i := 1; i < 202; i = i * 2 {
+		key = key + key
+	}
+
+	// Here's the actual test
+	assert(t, !f.Put(key, val), "Put() invalid key returned true")
 }
 
-func TestForwarderPutServiceDown(t *testing.T) {
+//TestForwarderPutValInvalidReturnsFalse verifies that sending an invalid value returns false
+func TestForwarderPutValInvalidReturnsFalse(t *testing.T) {
+	// Create a stub server
+	s := testRest{}
+	s.Initialize()
+	defer s.Teardown()
 
+	// Get its IP
+	IP := s.server.URL
+
+	// Create the test object
+	f := Forwarder{mainIP: IP}
+
+	// Use the key that's in the db
+	key := keyExists
+	val := "a"
+
+	for i := 1; i < (1024*1024)+2; i *= 2 {
+		val = val + val
+	}
+
+	// Here's the actual test
+	assert(t, !f.Put(key, val), "Put() invalid value returned true")
 }
+
+// TestForwarderPutServiceDownReturnsFalse verifies that attempting a Put() when the service is down fails
+func TestForwarderPutServiceDownReturnsFalse(t *testing.T) {
+	// Create a stub server
+	s := testRest{}
+	s.Initialize()
+	defer s.Teardown()
+
+	// Get its IP
+	IP := s.server.URL
+
+	// Close the server
+	s.Teardown()
+
+	// Create the test object
+	f := Forwarder{mainIP: IP}
+
+	// Use the key that's in the db
+	key := keyExists
+	val := valExists
+
+	// Here's the actual test
+	assert(t, !f.Put(key, val), "Put() returned true when the service was down")
+}
+
+// TestForwarderDeleteKeyExistsReturnsTrue verifies that deleting a key which exists returns true
 func TestForwarderDeleteKeyExists(t *testing.T) {
+	// Create a stub server
+	s := testRest{}
+	s.Initialize()
+	defer s.Teardown()
 
+	// Get its IP
+	IP := s.server.URL
+
+	// Create the test object
+	f := Forwarder{mainIP: IP}
+
+	// Use the key that's in the db
+	key := keyExists
+
+	// Here's the actual test
+	assert(t, f.Delete(key), "Delete() returned false for keyExists")
 }
 
+// TestForwarderDeleteKeyNotExists checks that Delete() returns false if the key doesn't exist
 func TestForwarderDeleteKeyNotExists(t *testing.T) {
+	// Create a stub server
+	s := testRest{}
+	s.Initialize()
+	defer s.Teardown()
 
+	// Get its IP
+	IP := s.server.URL
+
+	// Create the test object
+	f := Forwarder{mainIP: IP}
+
+	// Use the key that's not in the db
+	key := keyNotExists
+
+	// Here's the actual test
+	assert(t, !f.Delete(key), "Delete() returned true for keyNotExists")
 }
 
-func TestForwarderDeleteServiceDown(t *testing.T) {
+// TestForwarderDeleteServiceDownReturnsFalse ... returns false if the service is down
+func TestForwarderDeleteServiceDownReturnsFalse(t *testing.T) {
+	// Create a stub server
+	s := testRest{}
+	s.Initialize()
+	defer s.Teardown()
 
+	// Get its IP
+	IP := s.server.URL
+
+	// Close the server
+	s.Teardown()
+
+	// Create the test object
+	f := Forwarder{mainIP: IP}
+
+	// Use the key that's not in the db
+	key := keyNotExists
+
+	// Here's the actual test
+	assert(t, !f.Delete(key), "Delete() returned true when service was down")
 }
-func TestForwarderGetKeyExists(t *testing.T) {
 
+// TestForwarderGetKeyExistsReturnsVal checks that Get returns the value when given a key that exists
+func TestForwarderGetKeyExistsReturnsVal(t *testing.T) {
+	// Create a stub server
+	s := testRest{}
+	s.Initialize()
+	defer s.Teardown()
+
+	// Get its IP
+	IP := s.server.URL
+
+	// Create the test object
+	f := Forwarder{mainIP: IP}
+
+	// Use the key that's not in the db
+	key := keyExists
+	val := valExists
+
+	// Here's the actual test
+	assert(t, strings.Compare(f.Get(key), val) == 0, "Get() did not return matching string valExists")
 }
 
-func TestForwarderGetKeyNotExists(t *testing.T) {
+// TestForwarderGetKeyNotExistsReturnsEmpty verifies that Get returns an empty string if given a key that doesn't exist
+func TestForwarderGetKeyNotExistsReturnsEmpty(t *testing.T) {
+	// Create a stub server
+	s := testRest{}
+	s.Initialize()
+	defer s.Teardown()
 
+	// Get its IP
+	IP := s.server.URL
+
+	// Create the test object
+	f := Forwarder{mainIP: IP}
+
+	// Use the key that's not in the db
+	key := keyNotExists
+	val := ""
+
+	// Here's the actual test
+	assert(t, strings.Compare(f.Get(key), val) == 0, "Get() did not return empty string for valNotExists")
 }
 
-func TestForwarderGetServiceDown(t *testing.T) {
+// TestForwarderGetServiceDownReturnsEmpty checks that Get returns an empty string if the service is down
+func TestForwarderGetServiceDownReturnsEmpty(t *testing.T) {
+	// Create a stub server
+	s := testRest{}
+	s.Initialize()
+	defer s.Teardown()
 
+	// Get its IP
+	IP := s.server.URL
+
+	// Close the server
+	s.Teardown()
+
+	// Create the test object
+	f := Forwarder{mainIP: IP}
+
+	// Use the key that's not in the db
+	key := keyExists
+	val := ""
+
+	// Here's the actual test
+	assert(t, strings.Compare(f.Get(key), val) == 0, "Get() did not return empty string when service was down")
 }
 
-func TestServiceDownWhenServiceUp(t *testing.T) {
+// TestServiceDownWhenServiceUpReturnsTrue ... it should return true if the service is up
+func TestServiceUpWhenServiceUpReturnsTrue(t *testing.T) {
+	// Create a stub server
+	s := testRest{}
+	s.Initialize()
+	defer s.Teardown()
 
+	// Get its IP
+	IP := s.server.URL
+
+	// Create the test object
+	f := Forwarder{mainIP: IP}
+
+	// Here's the actual test
+	assert(t, f.ServiceUp(), "ServiceUp() returned false when the service was up")
 }
 
+// TestServiceUpWhenServiceDownReturnsFalse ... should return false when service is down
 func TestServiceDownWhenServiceDown(t *testing.T) {
+	// Create a stub server
+	s := testRest{}
+	s.Initialize()
+	defer s.Teardown()
 
+	// Get its IP
+	IP := s.server.URL
+
+	// Close the server
+	s.Teardown()
+
+	// Create the test object
+	f := Forwarder{mainIP: IP}
+
+	// Here's the actual test
+	assert(t, !f.ServiceUp(), "ServiceUp() returned true when the service was down")
+}
+
+// These functions were taken from Ben Johnson's post here: https://medium.com/@benbjohnson/structuring-tests-in-go-46ddee7a25c
+
+// assert fails the test if the condition is false.
+func assert(tb testing.TB, condition bool, msg string, v ...interface{}) {
+	if !condition {
+		_, file, line, _ := runtime.Caller(1)
+		fmt.Printf("\033[31m%s:%d: "+msg+"\033[39m\n\n", append([]interface{}{filepath.Base(file), line}, v...)...)
+		tb.FailNow()
+	}
+}
+
+// ok fails the test if an err is not nil.
+func ok(tb testing.TB, err error) {
+	if err != nil {
+		_, file, line, _ := runtime.Caller(1)
+		fmt.Printf("\033[31m%s:%d: unexpected error: %s\033[39m\n\n", filepath.Base(file), line, err.Error())
+		tb.FailNow()
+	}
+}
+
+// equals fails the test if exp is not equal to act.
+func equals(tb testing.TB, exp, act interface{}) {
+	if !reflect.DeepEqual(exp, act) {
+		_, file, line, _ := runtime.Caller(1)
+		fmt.Printf("\033[31m%s:%d:\n\n\texp: %#v\n\n\tgot: %#v\033[39m\n\n", filepath.Base(file), line, exp, act)
+		tb.FailNow()
+	}
 }
