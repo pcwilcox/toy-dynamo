@@ -25,7 +25,6 @@ import (
 )
 
 const (
-	rootURL      = "/keyValue-store"
 	keyExists    = "KEY_EXISTS"
 	keyNotExists = "KEY_NOT_EXISTS"
 	valExists    = "VAL_EXISTS"
