@@ -1,12 +1,12 @@
-/* app_test.go
- *
- * CMPS 128 Fall 2018
- *
- * Lawrence Lawson     lelawson
- * Pete Wilcox         pcwilcox
- *
- * Unit test definitions for app.go
- */
+// app_test.go
+//
+// CMPS 128 Fall 2018
+//
+// Lawrence Lawson     lelawson
+// Pete Wilcox         pcwilcox
+//
+// Unit test definitions for app.go
+//
 
 package main
 
@@ -36,20 +36,14 @@ const (
 	valExists    = "VAL_EXISTS"
 )
 
-type resp struct {
-	buf       []uint8
-	off       int
-	bootstrap []uint8
-	lastread  int
-}
-
+// This struct is a stub for the dbAccess object required by the app
 type TestKVS struct {
 	key       string
 	valExists string
 	service   bool
 }
 
-/* This stub returns true for the key which exists and false for the one which doesn't */
+// This stub returns true for the key which exists and false for the one which doesn't
 func (t *TestKVS) Contains(key string) bool {
 	if strings.Compare(key, t.key) == 0 {
 		return true
@@ -57,7 +51,7 @@ func (t *TestKVS) Contains(key string) bool {
 	return false
 }
 
-/* This stub returns the valExistsue associated with the key which exists, and returns nil for the key which doesn't */
+// This stub returns the valExistsue associated with the key which exists, and returns nil for the key which doesn't //
 func (t *TestKVS) Get(key string) string {
 	if key == t.key {
 		return t.valExists
@@ -65,7 +59,7 @@ func (t *TestKVS) Get(key string) string {
 	return ""
 }
 
-/* This stub returns true for the key which exists and false for the one which doesn't */
+// This stub returns true for the key which exists and false for the one which doesn't
 func (t *TestKVS) Delete(key string) bool {
 	if key == t.key {
 		return true
@@ -83,7 +77,7 @@ func (t *TestKVS) Put(key, valExists string) bool {
 	return true
 }
 
-// TestPutRequestKeyExists should return that the key has been replaced/updated successfully
+// TestPutRequestKeyExists verifies the response given when updating a key
 func TestPutRequestKeyExists(t *testing.T) {
 	// Stub the db
 	db := TestKVS{keyExists, valExists, true}
@@ -140,7 +134,7 @@ func TestPutRequestKeyExists(t *testing.T) {
 	equals(t, expectedBody, gotBody)
 }
 
-// TestPutRequestKeyDoesntExist should return that the key has been created
+// TestPutRequestKeyDoesntExist verifies the response given when adding a new key
 func TestPutRequestKeyDoesntExist(t *testing.T) {
 	// Stub the db
 	db := TestKVS{keyExists, valExists, true}
@@ -197,7 +191,7 @@ func TestPutRequestKeyDoesntExist(t *testing.T) {
 	equals(t, expectedBody, gotBody)
 }
 
-// TestPutRequestInvalidKey makes a key with length == 201 and tests it for failure
+// TestPutRequestInvalidKey makes a key with length == 201 and verifies that it fails
 func TestPutRequestInvalidKey(t *testing.T) {
 	// Stub the db
 	db := TestKVS{keyExists, valExists, true}
@@ -708,9 +702,7 @@ func TestDeleteKeyNotExists(t *testing.T) {
 	equals(t, expectedBody, gotBody)
 }
 
-/* These functions were taken from Ben Johnson's post here:
- * https://medium.com/@benbjohnson/structuring-tests-in-go-46ddee7a25c
- */
+// These functions were taken from Ben Johnson's post here: https://medium.com/@benbjohnson/structuring-tests-in-go-46ddee7a25c
 
 // assert fails the test if the condition is false.
 func assert(tb testing.TB, condition bool, msg string, v ...interface{}) {

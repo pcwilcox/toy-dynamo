@@ -30,14 +30,18 @@ func main() {
 	// TODO: Change this to check the environment later
 	leader := true
 
+	// This object represents the interface between the REST API and the data store
 	var k dbAccess
 
 	if leader == true {
 		// We're the leader so we'll set up a local data store
-		k = &kvs{}
+		k = NewKVS()
 	}
 	// TODO: else we'll set up a remote
 
+	// The App object is the front end
 	a := App{db: k}
+
+	// Initialize starts the server
 	a.Initialize()
 }
