@@ -27,10 +27,6 @@ type Forwarder struct {
 	mainIP string
 }
 
-const (
-	rootURL = "/keyValue-store"
-)
-
 // Contains returns true if the server at mainIP says it has the given key
 func (f *Forwarder) Contains(key string) bool {
 	if f.ServiceUp() && key != "" {
