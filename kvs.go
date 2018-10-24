@@ -12,9 +12,12 @@
 
 package main
 
+import "sync"
+
 // KVS represents a key-value store and implements the dbAccess interface
 type KVS struct {
-	db map[string]string
+	db    map[string]string
+	mutex sync.RWMutex
 }
 
 // NewKVS initializes a KVS object and returns a pointer to it function
@@ -26,12 +29,16 @@ func NewKVS() *KVS {
 
 // Contains returns true if the dbAccess object contains an object with key equal to the input
 func (k *KVS) Contains(key string) bool {
+	k.mutex.RLock()
+	defer k.mutex.RUnlock()
 	_, ok := k.db[key]
 	return ok
 }
 
 // Get returns the value associated with a particular key. If the key does not exist it returns ""
 func (k *KVS) Get(key string) string {
+	k.mutex.RLock()
+	defer k.mutex.RUnlock()
 	if k.Contains(key) {
 		return k.db[key]
 	}
@@ -40,6 +47,8 @@ func (k *KVS) Get(key string) string {
 
 // Delete removes a key-value pair from the object. If the key does not exist it returns false.
 func (k *KVS) Delete(key string) bool {
+	k.mutex.Lock()
+	defer k.mutex.Unlock()
 	if k.Contains(key) {
 		delete(k.db, key)
 		return true
@@ -56,6 +65,8 @@ func (k *KVS) Put(key string, val string) bool {
 	valLen := len(val)
 
 	if keyLen <= maxKey && valLen <= maxVal {
+		k.mutex.Lock()
+		defer k.mutex.Unlock()
 		if k.Contains(key) {
 			k.db[key] = val
 			return true
