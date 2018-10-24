@@ -15,10 +15,10 @@ COVER     = ${TEST} -coverprofile ${COVERFILE}
 COVERFILE = out
 
 # Change this to the application name
-EXEC      = cs128hw2
+EXEC      = cs128-hw2
 
 # Add source files to this list
-SOURCES   = main.go
+SOURCES   = main.go dbAccess.go app.go kvs.go
 
 all : ${EXEC}
 
