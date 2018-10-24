@@ -50,16 +50,21 @@ func (k *KVS) Delete(key string) bool {
 
 // Put adds a key-value pair to the DB. If the key already exists, then it overwrites the existing value. If the key does not exist then it is added.
 func (k *KVS) Put(key string, val string) bool {
-	//k.db[key] = val
-	if k.Contains(key) {
-		k.db[key] = val
-		return true
-	} else if !(k.Contains(key)) {
-		k.db[key] = val
-		return true
-	} else { //something something error checking will get to later
-		return false
+	maxVal := 1048576 // 1 megabyte
+	maxKey := 200     // 200 characters
+	keyLen := len(key)
+	valLen := len(val)
+
+	if keyLen <= maxKey && valLen <= maxVal {
+		if k.Contains(key) {
+			k.db[key] = val
+			return true
+		} else if !(k.Contains(key)) {
+			k.db[key] = val
+			return true
+		}
 	}
+	return false
 }
 
 // ServiceUp returns true if the interface is able to communicate with the DB
