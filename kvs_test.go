@@ -2,6 +2,7 @@ package main
 
 import (
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -23,7 +24,8 @@ func TestKVSContainsCheckIfDoesntExist(t *testing.T) {
 	db := map[string]string{
 		keyone: valone,
 	}
-	k := KVS{db}
+	var m sync.RWMutex
+	k := KVS{db: db, mutex: &m}
 
 	assert(t, !k.Contains(keyNotHere), "Key found that does not exist.")
 }
@@ -31,8 +33,9 @@ func TestKVSContainsCheckIfDoesExist(t *testing.T) {
 	db := map[string]string{
 		keyone: valone,
 	}
-	k := KVS{db}
 
+	var m sync.RWMutex
+	k := KVS{db: db, mutex: &m}
 	assert(t, k.Contains(keyone), "Key not found that does exist.")
 
 }
@@ -41,7 +44,9 @@ func TestKVSGetExistingVal(t *testing.T) {
 	db := map[string]string{
 		keyone: valone,
 	}
-	k := KVS{db}
+
+	var m sync.RWMutex
+	k := KVS{db: db, mutex: &m}
 	equals(t, valone, k.Get(keyone))
 }
 
@@ -49,7 +54,8 @@ func TestKVSGetValDoesntExist(t *testing.T) {
 	db := map[string]string{
 		keyone: valone,
 	}
-	k := KVS{db}
+	var m sync.RWMutex
+	k := KVS{db: db, mutex: &m}
 	equals(t, "", k.Get(keyNotHere))
 }
 
@@ -57,7 +63,8 @@ func TestKVSDeleteExistingKeyValPair(t *testing.T) {
 	db := map[string]string{
 		keyone: valone,
 	}
-	k := KVS{db}
+	var m sync.RWMutex
+	k := KVS{db: db, mutex: &m}
 	assert(t, k.Delete(keyone), "Did not delete Key Val Pair")
 }
 
@@ -65,7 +72,8 @@ func TestKVSDeleteKeyDoesntExist(t *testing.T) {
 	db := map[string]string{
 		keyone: valone,
 	}
-	k := KVS{db}
+	var m sync.RWMutex
+	k := KVS{db: db, mutex: &m}
 	assert(t, !k.Delete(keyNotHere), "Deleted a keyvalue pair not in data store prior")
 }
 
@@ -78,7 +86,8 @@ func TestKVSPutExistKeyOverwriteVal(t *testing.T) {
 	db := map[string]string{
 		keyone: valone,
 	}
-	k := KVS{db}
+	var m sync.RWMutex
+	k := KVS{db: db, mutex: &m}
 	assert(t, k.Put(keyone, valtwo), "Did not overwrite existing key's value")
 
 }
