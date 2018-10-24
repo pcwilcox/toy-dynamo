@@ -27,17 +27,24 @@ func main() {
 	// Set up the logging output to stdout
 	log.SetOutput(os.Stdout)
 
-	// TODO: Change this to check the environment later
-	leader := true
-
-	// This object represents the interface between the REST API and the data store
+	// We'll be using a dbAccess object to interface to the back end
 	var k dbAccess
 
-	if leader == true {
-		// We're the leader so we'll set up a local data store
+	// Check to see if ${MAINIP} is defined in the environment. If it is, we're a follower.
+	envMainIP := os.Getenv("MAINIP")
+
+	if envMainIP == "" {
+		// We're the leader, so we need a local key-value store as our dbAccess
 		k = NewKVS()
+		log.Println("Using local key-value store")
+	} else {
+		// We're a follower, so we need to set up a forwarder as our dbAccess
+		prefix := "http://"
+		URL := prefix + envMainIP
+
+		log.Println("Implementing forwarder to address " + URL)
+		k = &Forwarder{mainIP: URL}
 	}
-	// TODO: else we'll set up a remote
 
 	// The App object is the front end
 	a := App{db: k}

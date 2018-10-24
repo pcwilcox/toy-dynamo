@@ -45,6 +45,9 @@ func (app *App) Initialize() {
 	// Initialize a router
 	r := mux.NewRouter()
 
+	// This responds to let forwarders know the server is alive
+	r.HandleFunc("/alive", app.AliveHandler).Methods("GET")
+
 	// Since all endpoints use the rootURL we just use a subrouter here
 	s := r.PathPrefix(rootURL).Subrouter()
 
@@ -57,6 +60,13 @@ func (app *App) Initialize() {
 	err := http.ListenAndServe(port, handlers.LoggingHandler(os.Stdout, r))
 	if err != nil {
 		log.Fatalln(err)
+	}
+}
+
+// AliveHandler responds to GET requests with http.StatusOK
+func (app *App) AliveHandler(w http.ResponseWriter, r *http.Request) {
+	if app.db.ServiceUp() {
+		w.WriteHeader(http.StatusOK)
 	}
 }
 
@@ -190,6 +200,9 @@ func (app *App) GetHandler(w http.ResponseWriter, r *http.Request) {
 		var body []byte
 		var err error
 
+		// Same content type for everything
+		w.Header().Set("Content-Type", "application/json")
+
 		// See if the key exists in the db
 		if app.db.Contains(key) {
 			// It does
@@ -221,7 +234,6 @@ func (app *App) GetHandler(w http.ResponseWriter, r *http.Request) {
 				log.Fatalln("oh no")
 			}
 		}
-		w.Header().Set("Content-Type", "application/json")
 		w.Write(body)
 	} else {
 		// oh no it's down
@@ -241,6 +253,8 @@ func (app *App) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		// Declare here, define below
 		var err error
 		var body []byte
+
+		w.Header().Set("Content-Type", "application/json")
 
 		// Check to see if we've got the key
 		if app.db.Contains(key) {
@@ -273,7 +287,6 @@ func (app *App) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 				log.Fatalln("oh no")
 			}
 		}
-		w.Header().Set("Content-Type", "application/json")
 		w.Write(body)
 	} else {
 		// oh no what happened to the server?

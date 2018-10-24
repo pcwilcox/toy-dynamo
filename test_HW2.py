@@ -63,7 +63,7 @@ class TestHW2(unittest.TestCase):
 
     def test_a_put_nonexistent_key(self):
         res = requests.put(
-            self.__class__.nodes_address[0]+'/kvs', data={'value': 'bart', 'key': 'foo'})
+            self.__class__.nodes_address[0]+'/keyValue-Store', data={'value': 'bart', 'key': 'foo'})
         d = res.json()
         self.assertEqual(res.status_code, 201)
         self.assertEqual(int(d['replaced']), 0)
@@ -71,38 +71,43 @@ class TestHW2(unittest.TestCase):
 
     def test_b_put_existing_key(self):
         res = requests.put(
-            self.__class__.nodes_address[1]+'/kvs', data={'value': 'bart', 'key': 'foo'})
+            self.__class__.nodes_address[1]+'/keyValue-Store', data={'value': 'bart', 'key': 'foo'})
         d = res.json()
         self.assertEqual(d['replaced'], 1)
         self.assertEqual(d['msg'], 'success')
 
     def test_c_get_nonexistent_key(self):
-        res = requests.get(self.__class__.nodes_address[2]+'/kvs?key=faa')
+        res = requests.get(
+            self.__class__.nodes_address[2]+'/keyValue-store?key=faa')
         d = res.json()
         self.assertEqual(res.status_code, 404)
         self.assertEqual(d['msg'], 'error')
         self.assertEqual(d['error'], 'key does not exist')
 
     def test_d_get_existing_key(self):
-        res = requests.get(self.__class__.nodes_address[2]+'/kvs?key=foo')
+        res = requests.get(
+            self.__class__.nodes_address[2]+'/keyValue-store?key=foo')
         d = res.json()
         self.assertEqual(d['msg'], 'success')
         self.assertEqual(d['value'], 'bart')
 
     def test_e_del_nonexistent_key(self):
-        res = requests.delete(self.__class__.nodes_address[0]+'/kvs?key=faa')
+        res = requests.delete(
+            self.__class__.nodes_address[0]+'/keyValue-store?key=faa')
         d = res.json()
         self.assertEqual(res.status_code, 404)
         self.assertEqual(d['msg'], 'error')
         self.assertEqual(d['error'], 'key does not exist')
 
     def test_f_del_existing_key(self):
-        res = requests.delete(self.__class__.nodes_address[1]+'/kvs?key=foo')
+        res = requests.delete(
+            self.__class__.nodes_address[1]+'/keyValue-store?key=foo')
         d = res.json()
         self.assertEqual(d['msg'], 'success')
 
     def test_g_get_deleted_key(self):
-        res = requests.get(self.__class__.nodes_address[0]+'/kvs?key=foo')
+        res = requests.get(
+            self.__class__.nodes_address[0]+'/keyValue-store?key=foo')
         d = res.json()
         self.assertEqual(res.status_code, 404)
         self.assertEqual(d['msg'], 'error')
@@ -110,14 +115,14 @@ class TestHW2(unittest.TestCase):
 
     def test_h_put_deleted_key(self):
         res = requests.put(
-            self.__class__.nodes_address[2]+'/kvs', data={'value': 'bart', 'key': 'foo'})
+            self.__class__.nodes_address[2]+'/keyValue-Store', data={'value': 'bart', 'key': 'foo'})
         d = res.json()
         self.assertEqual(res.status_code, 201)
         self.assertEqual(d['replaced'], 0)
         self.assertEqual(d['msg'], 'success')
 
     def test_i_put_nonexistent_key(self):
-        res = requests.put(self.__class__.nodes_address[1]+'/kvs', data={
+        res = requests.put(self.__class__.nodes_address[1]+'/keyValue-Store', data={
                            'value': self.__class__.val1, 'key': self.__class__.key1})
         d = res.json()
         self.assertEqual(res.status_code, 201)
@@ -125,7 +130,7 @@ class TestHW2(unittest.TestCase):
         self.assertEqual(d['msg'], 'success')
 
     def test_j_put_existing_key(self):
-        res = requests.put(self.__class__.nodes_address[0]+'/kvs', data={
+        res = requests.put(self.__class__.nodes_address[0]+'/keyValue-Store', data={
                            'value': self.__class__.val2, 'key': self.__class__.key1})
         d = res.json()
         self.assertEqual(d['replaced'], 1)
@@ -133,7 +138,7 @@ class TestHW2(unittest.TestCase):
 
     def test_k_get_nonexistent_key(self):
         res = requests.get(
-            self.__class__.nodes_address[1]+'/kvs?key='+self.__class__.key2)
+            self.__class__.nodes_address[1]+'/keyValue-store?key='+self.__class__.key2)
         d = res.json()
         self.assertEqual(res.status_code, 404)
         self.assertEqual(d['msg'], 'error')
@@ -141,13 +146,13 @@ class TestHW2(unittest.TestCase):
 
     def test_l_get_existing_key(self):
         res = requests.get(
-            self.__class__.nodes_address[2]+'/kvs?key='+self.__class__.key1)
+            self.__class__.nodes_address[2]+'/keyValue-store?key='+self.__class__.key1)
         d = res.json()
         self.assertEqual(d['msg'], 'success')
         self.assertEqual(d['value'], self.__class__.val2)
 
     def test_m_put_key_too_long(self):
-        res = requests.put(self.__class__.nodes_address[0]+'/kvs', data={
+        res = requests.put(self.__class__.nodes_address[0]+'/keyValue-Store', data={
                            'value': self.__class__.val2, 'key': self.__class__.key3})
         d = res.json()
         self.assertNotEqual(res.status_code, 200)
@@ -156,7 +161,7 @@ class TestHW2(unittest.TestCase):
         #self.assertEqual(d['error'],'key too long')
 
     def test_n_put_key_too_long_on_forwarding_instance(self):
-        res = requests.put(self.__class__.nodes_address[1]+'/kvs', data={
+        res = requests.put(self.__class__.nodes_address[1]+'/keyValue-Store', data={
                            'value': self.__class__.val2, 'key': self.__class__.key3})
         d = res.json()
         self.assertNotEqual(res.status_code, 200)
@@ -166,7 +171,7 @@ class TestHW2(unittest.TestCase):
 
     def test_o_put_key_without_value(self):
         res = requests.put(
-            self.__class__.nodes_address[0]+'/kvs', data={'key': self.__class__.key1})
+            self.__class__.nodes_address[0]+'/keyValue-Store', data={'key': self.__class__.key1})
         d = res.json()
         self.assertNotEqual(res.status_code, 200)
         self.assertNotEqual(res.status_code, 201)
@@ -174,7 +179,7 @@ class TestHW2(unittest.TestCase):
 
     def test_p_put_key_without_value_on_forwarding_instance(self):
         res = requests.put(
-            self.__class__.nodes_address[2]+'/kvs', data={'key': self.__class__.key1})
+            self.__class__.nodes_address[2]+'/keyValue-Store', data={'key': self.__class__.key1})
         d = res.json()
         self.assertNotEqual(res.status_code, 200)
         self.assertNotEqual(res.status_code, 201)
@@ -184,7 +189,7 @@ class TestHW2(unittest.TestCase):
         shell_command = "docker stop " + str(self.__class__.node_ids[1])
         subprocess.check_output(shell_command, shell=True)
         res = requests.get(
-            self.__class__.nodes_address[2]+'/kvs?key='+self.__class__.key1)
+            self.__class__.nodes_address[2]+'/keyValue-store?key='+self.__class__.key1)
         d = res.json()
         self.assertEqual(d['msg'], 'success')
         self.assertEqual(d['value'], self.__class__.val2)
@@ -194,7 +199,7 @@ class TestHW2(unittest.TestCase):
         shell_command = "docker stop " + str(self.__class__.node_ids[0])
         subprocess.check_output(shell_command, shell=True)
         res = requests.get(
-            self.__class__.nodes_address[2]+'/kvs?key='+self.__class__.key1)
+            self.__class__.nodes_address[2]+'/keyValue-store?key='+self.__class__.key1)
         d = res.json()
         self.assertEqual(d['msg'], 'error')
         self.assertEqual(d['error'], 'service is not available')
