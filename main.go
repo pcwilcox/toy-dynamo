@@ -19,19 +19,30 @@
 package main
 
 import (
+	"io"
 	"log"
 	"os"
 )
 
+// MultiLogOutput controls logging output to stdout and to a log file
+var MultiLogOutput io.Writer
+
 func main() {
+	logFile, err := os.OpenFile("app.log", os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
+	if err != nil {
+		panic(err)
+	}
+	MultiLogOutput = io.MultiWriter(os.Stdout, logFile)
 	// Set up the logging output to stdout
-	log.SetOutput(os.Stdout)
+	log.SetFlags(log.Ltime | log.Lshortfile)
+	log.SetOutput(MultiLogOutput)
 
 	// We'll be using a dbAccess object to interface to the back end
 	var k dbAccess
 
 	// Check to see if ${MAINIP} is defined in the environment. If it is, we're a follower.
 	envMainIP := os.Getenv("MAINIP")
+	log.Println("MAINIP: " + envMainIP)
 
 	if envMainIP == "" {
 		// We're the leader, so we need a local key-value store as our dbAccess
@@ -49,6 +60,7 @@ func main() {
 	// The App object is the front end
 	a := App{db: k}
 
+	log.Println("Starting server...")
 	// Initialize starts the server
 	a.Initialize()
 }
