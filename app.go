@@ -182,7 +182,7 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 						// And a slightly different response body
 						resp := map[string]interface{}{
 							"replaced": false,
-							"msg":      "Added Successfully",
+							"msg":      "Added successfully",
 						}
 						body, err = json.Marshal(resp)
 						if err != nil {

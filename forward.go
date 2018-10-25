@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strings"
 )
@@ -140,6 +141,7 @@ func (f *Forwarder) Put(key, val string) bool {
 		// Request body needs to be an io.Reader
 		var body io.Reader
 		body = strings.NewReader("val=" + val)
+		log.Printf("Forwarding PUT request with body: %s\n", body)
 
 		// Go's http library doesn't have a handy request method for PUT
 		req, err := http.NewRequest(http.MethodPut, URL, body)

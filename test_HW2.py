@@ -140,7 +140,7 @@ class TestHW2(unittest.TestCase):
         d = res.json()
         self.assertEqual(res.status_code, 201)
         self.assertEqual(d['replaced'], 0)
-        self.assertEqual(d['msg'], 'Added Successfully')
+        self.assertEqual(d['msg'], 'Added successfully')
 
     def test_l_put_nonexistent_key(self):
         res = requests.put(self.__class__.nodes_address[1] + '/keyValue-store/' + self.__class__.key1,
@@ -148,7 +148,7 @@ class TestHW2(unittest.TestCase):
         d = res.json()
         self.assertEqual(res.status_code, 201)
         self.assertEqual(d['replaced'], 0)
-        self.assertEqual(d['msg'], 'Added Successfully')
+        self.assertEqual(d['msg'], 'Added successfully')
 
     def test_m_put_existing_key(self):
         res = requests.put(
