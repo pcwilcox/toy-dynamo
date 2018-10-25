@@ -65,7 +65,7 @@ class TestHW2(unittest.TestCase):
     def test_b_get_existing_key(self):
         res = requests.get(self.__class__.nodes_address[2] + '/keyValue-store/subject')
         d = res.json()
-        self.assertEqual(d['msg'], 'success')
+        self.assertEqual(d['msg'], 'Success')
         self.assertEqual(d['value'], 'Distributed System')
 
     
@@ -80,14 +80,14 @@ class TestHW2(unittest.TestCase):
         res = requests.get(self.__class__.nodes_address[2] + '/keyValue-store/subject2')
         d = res.json()
         self.assertEqual(res.status_code, 404)
-        self.assertEqual(d['msg'], 'error')
-        self.assertEqual(d['error'], 'key does not exist')
+        self.assertEqual(d['msg'], 'Error')
+        self.assertEqual(d['error'], 'Key does not exist')
 
     
     def test_e_get_existing_key(self):
         res = requests.get(self.__class__.nodes_address[2] + '/keyValue-store/subject')
         d = res.json()
-        self.assertEqual(d['msg'], 'success')
+        self.assertEqual(d['msg'], 'Success')
         self.assertEqual(d['value'], 'Data Structures')
 
     
@@ -95,14 +95,14 @@ class TestHW2(unittest.TestCase):
         res = requests.get(self.__class__.nodes_address[2] + '/keyValue-store/search/subject2')
         d = res.json()
         self.assertEqual(res.status_code, 404)
-        self.assertEqual(d['msg'], 'key does not exist')
+        self.assertEqual(d['msg'], 'Key does not exist')
         self.assertEqual(d['flag'], 'false')
 
    
     def test_g_get_existing_key(self):
         res = requests.get(self.__class__.nodes_address[2] + '/keyValue-store/search/subject')
         d = res.json()
-        self.assertEqual(d['msg'], 'key does exist')
+        self.assertEqual(d['msg'], 'Key does exist')
         self.assertEqual(d['flag'], 'true')
 
     # delete nonexistent key from forwarding 
@@ -110,22 +110,22 @@ class TestHW2(unittest.TestCase):
         res = requests.delete(self.__class__.nodes_address[0] + '/keyValue-store/subject2')
         d = res.json()
         self.assertEqual(res.status_code, 404)
-        self.assertEqual(d['msg'], 'error')
-        self.assertEqual(d['error'], 'key does not exist')
+        self.assertEqual(d['msg'], 'Error')
+        self.assertEqual(d['error'], 'Key does not exist')
 
     
     def test_i_del_existing_key(self):
         res = requests.delete(self.__class__.nodes_address[1] + '/keyValue-store/subject')
         d = res.json()
-        self.assertEqual(d['msg'], 'success')
+        self.assertEqual(d['msg'], 'Success')
 
 
     def test_j_get_deleted_key(self):
         res = requests.get(self.__class__.nodes_address[0] + '/keyValue-store/subject')
         d = res.json()
         self.assertEqual(res.status_code, 404)
-        self.assertEqual(d['msg'], 'error')
-        self.assertEqual(d['error'], 'key does not exist')
+        self.assertEqual(d['msg'], 'Error')
+        self.assertEqual(d['error'], 'Key does not exist')
 
     
     def test_k_put_deleted_key(self):
@@ -133,7 +133,7 @@ class TestHW2(unittest.TestCase):
         d = res.json()
         self.assertEqual(res.status_code, 201)
         self.assertEqual(d['replaced'], 0)
-        self.assertEqual(d['msg'], 'success')
+        self.assertEqual(d['msg'], 'Success')
 
     
     def test_l_put_nonexistent_key(self):
@@ -142,7 +142,7 @@ class TestHW2(unittest.TestCase):
         d = res.json()
         self.assertEqual(res.status_code, 201)
         self.assertEqual(d['replaced'], 0)
-        self.assertEqual(d['msg'], 'success')
+        self.assertEqual(d['msg'], 'Success')
 
     
     def test_m_put_existing_key(self):
@@ -158,7 +158,7 @@ class TestHW2(unittest.TestCase):
         d = res.json()
         self.assertEqual(res.status_code, 404)
         self.assertEqual(d['msg'], 'Error')
-        self.assertEqual(d['error'], 'key does not exist')
+        self.assertEqual(d['error'], 'Key does not exist')
 
     def test_o_get_existing_key(self):
         res = requests.get(self.__class__.nodes_address[2] + '/keyValue-store/' + self.__class__.key1)
@@ -167,21 +167,21 @@ class TestHW2(unittest.TestCase):
         self.assertEqual(d['value'], self.__class__.val2)
 
     def test_p_put_key_too_long(self):
-        res = requests.put(self.__class__.nodes_address[0] + '/keyValue-store/'+self.__class__.key3, data={val:'self.__class__.val2'})
+        res = requests.put(self.__class__.nodes_address[0] + '/keyValue-store/'+self.__class__.key3, data={'val':self.__class__.val2})
 
         d = res.json()
         self.assertNotEqual(res.status_code, 200)
         self.assertNotEqual(res.status_code, 201)
-        self.assertEqual(d['msg'], 'error')
+        self.assertEqual(d['msg'], 'Error')
         self.assertEqual(d['error'],'Object too large. Size limit is 1MB')
 
     def test_q_put_key_too_long_on_forwarding_instance(self):
-        res = requests.put(self.__class__.nodes_address[1] + '/keyValue-store/'+self.__class__.key3, data={val:'self.__class__.val2'})
+        res = requests.put(self.__class__.nodes_address[1] + '/keyValue-store/'+self.__class__.key3, data={'val':self.__class__.val2})
 
         d = res.json()
         self.assertNotEqual(res.status_code, 200)
         self.assertNotEqual(res.status_code, 201)
-        self.assertEqual(d['msg'], 'error')
+        self.assertEqual(d['msg'], 'Error')
         self.assertEqual(d['error'],'Object too large. Size limit is 1MB')
 
 
@@ -190,7 +190,7 @@ class TestHW2(unittest.TestCase):
         d = res.json()
         self.assertNotEqual(res.status_code, 200)
         self.assertNotEqual(res.status_code, 201)
-        self.assertEqual(d['msg'], 'error')
+        self.assertEqual(d['msg'], 'Error')
         self.assertEqual(d['error'], 'Value is missing')
 
     

@@ -55,7 +55,7 @@ func (k *KVS) Put(key string, val string) bool {
 	keyLen := len(key)
 	valLen := len(val)
 
-	if keyLen <= maxKey && valLen <= maxVal {
+	if keyLen < maxKey && valLen < maxVal {
 		if k.Contains(key) {
 			k.db[key] = val
 			return true
