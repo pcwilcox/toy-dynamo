@@ -28,6 +28,10 @@ type Forwarder struct {
 	mainIP string
 }
 
+type query struct {
+	Val string `json:"val"`
+}
+
 // Contains returns true if the server at mainIP says it has the given key
 func (f *Forwarder) Contains(key string) bool {
 	if f.ServiceUp() && key != "" {
@@ -137,17 +141,17 @@ func (f *Forwarder) Put(key, val string) bool {
 	if f.ServiceUp() && key != "" {
 		// Make the URL
 		URL := f.mainIP + rootURL + "/" + key
+		log.Printf("Forwarding PUT request with body: 'val=" + val + "'")
 
-		// Request body needs to be an io.Reader
-		var body io.Reader
-		body = strings.NewReader("val=" + val)
-		log.Printf("Forwarding PUT request with body: %s\n", body)
+		body := strings.NewReader("val=" + val)
+		log.Println(body)
 
 		// Go's http library doesn't have a handy request method for PUT
 		req, err := http.NewRequest(http.MethodPut, URL, body)
 		if err != nil {
 			return false
 		}
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 		// Need a client in order to make the request
 		client := http.DefaultClient

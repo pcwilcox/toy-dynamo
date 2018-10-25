@@ -98,6 +98,7 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 		if r.Body != nil {
 			// Parse the form so we can read values
 			r.ParseForm()
+			log.Println(r.Form)
 
 			if len(r.Form) > 0 {
 				value = r.Form["val"][0]

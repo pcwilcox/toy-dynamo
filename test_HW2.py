@@ -155,7 +155,7 @@ class TestHW2(unittest.TestCase):
             self.__class__.nodes_address[0] + '/keyValue-store/subject', data={'val': self.__class__.val2})
         d = res.json()
         self.assertEqual(d['replaced'], 1)
-        self.assertEqual(d['msg'], 'Success')
+        self.assertEqual(d['msg'], 'Updated successfully')
 
     def test_n_get_nonexistent_key(self):
         res = requests.get(
@@ -170,7 +170,7 @@ class TestHW2(unittest.TestCase):
             self.__class__.nodes_address[2] + '/keyValue-store/' + self.__class__.key1)
         d = res.json()
         self.assertEqual(d['msg'], 'Success')
-        self.assertEqual(d['value'], self.__class__.val2)
+        self.assertEqual(d['value'], self.__class__.val1)
 
     def test_p_put_key_too_long(self):
         res = requests.put(
