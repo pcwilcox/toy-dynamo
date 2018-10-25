@@ -64,3 +64,10 @@ docker :
 # This builds the subnet in Docker
 network :
 	sudo docker network create --subnet=10.0.0.0/16 mynet
+
+leader :
+	docker run -p 8083:8080 --net=mynet --ip=10.0.0.20 -d ${EXEC}
+
+follower :
+	docker run -p 8084:8080 --net=mynet -e MAINIP=10.0.0.20:8080 -d ${EXEC}
+
