@@ -12,7 +12,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -85,95 +84,110 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 		var err error
 		var value string
 
+		// These get written below
+		var body []byte
+		var status int
+
+		// Same content type for everything
+		w.Header().Set("Content-Type", "application/json")
+
 		// Safety check - the system will panic trying to read a nil body
 		if r.Body != nil {
 			// Parse the form so we can read values
 			r.ParseForm()
 
-			// Python's json is built in a weird way
-			fmt.Println(r.Form["val"][0])
-			value = r.Form["val"][0]
-		}
+			if len(r.Form) > 0 {
+				value = r.Form["val"][0]
 
-		// Maximum input restrictions
-		maxVal := 1048576 // 1 megabyte
-		maxKey := 200     // 200 characters
+				// Maximum input restrictions
+				maxVal := 1048576 // 1 megabyte
+				maxKey := 200     // 200 characters
 
-		// This pulls the {subject} out of the URL, that forms the key
-		vars := mux.Vars(r)
-		key := vars["subject"]
+				// This pulls the {subject} out of the URL, that forms the key
+				vars := mux.Vars(r)
+				key := vars["subject"]
 
-		// Same content type for everything
-		w.Header().Set("Content-Type", "application/json")
+				// Check for valid input
+				if len(value) > maxVal {
+					// The value is > 1MB so error out
 
-		// These get written below
-		var body []byte
-		var status int
+					// Set the status code
+					status = http.StatusUnprocessableEntity // code 422
 
-		// Check for valid input
-		if len(value) > maxVal {
-			// The value is > 1MB so error out
+					// Form the response into something that JSON can handle
+					resp := map[string]interface{}{
+						"result": "Error",
+						"msg":    "Object too large. Size limit is 1MB",
+					}
 
-			// Set the status code
-			status = http.StatusUnprocessableEntity // code 422
+					// Convert it from a map into a []byte
+					body, err = json.Marshal(resp)
+					if err != nil {
+						// Could try and make this a recoverable error maybe
+						log.Fatalln("oh no")
+					}
+				} else if len(key) > maxKey {
+					// The key is more than 200 characters so error out
 
-			// Form the response into something that JSON can handle
-			resp := map[string]interface{}{
-				"result": "Error",
-				"msg":    "Object too large. Size limit is 1MB",
-			}
+					// Set the status code
+					status = http.StatusUnprocessableEntity // code 422
 
-			// Convert it from a map into a []byte
-			body, err = json.Marshal(resp)
-			if err != nil {
-				// Could try and make this a recoverable error maybe
-				log.Fatalln("oh no")
-			}
-		} else if len(key) > maxKey {
-			// The key is more than 200 characters so error out
+					// Build the response and shove it into a JSON-[]byte
+					resp := map[string]interface{}{
+						"msg":   "Error",
+						"error": "Key not valid",
+					}
+					body, err = json.Marshal(resp)
+					if err != nil {
+						log.Fatalln("oh no")
+					}
+				} else {
+					// key/val are valid inputs, let's insert into the db
 
-			// Set the status code
-			status = http.StatusUnprocessableEntity // code 422
+					// Check to see if the db already contains the key
+					if app.db.Contains(key) {
+						// It does so we'll update it
+						app.db.Put(key, value)
 
-			// Build the response and shove it into a JSON-[]byte
-			resp := map[string]interface{}{
-				"msg":    "Key not valid",
-				"result": "Error",
-			}
-			body, err = json.Marshal(resp)
-			if err != nil {
-				log.Fatalln("oh no")
-			}
-		} else {
-			// key/val are valid inputs, let's insert into the db
+						log.Printf("Inserted key %s with value %s\n", key, value)
+						// Set status
+						status = http.StatusOK // code 200
 
-			// Check to see if the db already contains the key
-			if app.db.Contains(key) {
-				// It does so we'll update it
-				app.db.Put(key, value)
+						// Build the response body
+						resp := map[string]interface{}{
+							"replaced": true,
+							"msg":      "Updated successfully",
+						}
+						body, err = json.Marshal(resp)
+						if err != nil {
+							log.Fatalln("oh no")
+						}
+					} else {
+						// It's a new entry so it gets a different status code
+						status = http.StatusCreated // code 201
+						app.db.Put(key, value)
 
-				log.Printf("Inserted key %s with value %s\n", key, value)
-				// Set status
-				status = http.StatusOK // code 200
-
-				// Build the response body
-				resp := map[string]interface{}{
-					"replaced": "True",
-					"msg":      "Updated successfully",
+						// And a slightly different response body
+						resp := map[string]interface{}{
+							"replaced": false,
+							"msg":      "Added successfully",
+						}
+						body, err = json.Marshal(resp)
+						if err != nil {
+							log.Fatalln("oh no")
+						}
+					}
 				}
-				body, err = json.Marshal(resp)
-				if err != nil {
-					log.Fatalln("oh no")
-				}
+
 			} else {
-				// It's a new entry so it gets a different status code
-				status = http.StatusCreated // code 201
-				app.db.Put(key, value)
+
+				// There's no body in the request
+				status = http.StatusNotFound // code 404
 
 				// And a slightly different response body
 				resp := map[string]interface{}{
-					"replaced": false,
-					"msg":      "Added successfully",
+					"msg":   "Error",
+					"error": "Value is missing",
 				}
 				body, err = json.Marshal(resp)
 				if err != nil {
@@ -331,8 +345,8 @@ func (app *App) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 			// Error response
 			resp := map[string]interface{}{
-				"result": "Error",
-				"msg":    "Status code 404",
+				"error": "Key does not exist",
+				"msg":   "Error",
 			}
 			body, err = json.Marshal(resp)
 			if err != nil {

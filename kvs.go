@@ -81,19 +81,11 @@ func (k *KVS) Put(key string, val string) bool {
 	keyLen := len(key)
 	valLen := len(val)
 
-<<<<<<< HEAD
-	if keyLen < maxKey && valLen < maxVal {
-		if k.Contains(key) {
-			k.db[key] = val
-			return true
-		} else if !(k.Contains(key)) {
-=======
 	if keyLen <= maxKey && valLen <= maxVal {
 		// Grab a write lock
 		k.mutex.Lock()
 		defer k.mutex.Unlock()
 		if k.contains(key) {
->>>>>>> hw2
 			k.db[key] = val
 			return true
 		}
