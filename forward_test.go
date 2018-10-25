@@ -83,7 +83,7 @@ func (t *testRest) GetHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK) // code 200
 		resp := map[string]interface{}{
 			"result": "Success",
-			"value":  valExists,
+			"value":  valExists["val"],
 		}
 		body, err := json.Marshal(resp)
 		if err != nil {
@@ -191,7 +191,7 @@ func TestForwarderPutKeyExistsReturnsTrue(t *testing.T) {
 
 	// Use the key that's in the db
 	s.key = keyExists
-	s.val = valExists
+	s.val = valExists["val"]
 
 	// Here's the actual test
 	assert(t, f.Put(s.key, s.val), "Put() keyExists returned false")
@@ -212,7 +212,7 @@ func TestForwarderPutKeyNotExistsReturnsFalse(t *testing.T) {
 
 	// Use the key that's in the db
 	s.key = keyNotExists
-	s.val = valExists
+	s.val = valExists["val"]
 
 	// Here's the actual test
 	assert(t, !f.Put(s.key, s.val), "Put() keyNotExists returned true")
@@ -233,7 +233,7 @@ func TestForwarderPutKeyInvalidReturnsFalse(t *testing.T) {
 
 	// Use the key that's in the db
 	s.key = "a"
-	s.val = valExists
+	s.val = valExists["val"]
 
 	for i := 1; i < 202; i = i * 2 {
 		s.key = s.key + s.key
@@ -286,7 +286,7 @@ func TestForwarderPutServiceDownReturnsFalse(t *testing.T) {
 
 	// Use the key that's in the db
 	s.key = keyExists
-	s.val = valExists
+	s.val = valExists["val"]
 
 	// Here's the actual test
 	assert(t, !f.Put(s.key, s.val), "Put() returned true when the service was down")
@@ -370,7 +370,7 @@ func TestForwarderGetKeyExistsReturnsVal(t *testing.T) {
 
 	// Use the key that's not in the db
 	s.key = keyExists
-	s.val = valExists
+	s.val = valExists["val"]
 
 	// Here's the actual test
 	assert(t, strings.Compare(f.Get(s.key), s.val) == 0, "Get() did not return matching string valExists")

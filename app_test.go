@@ -11,6 +11,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -33,13 +34,16 @@ const (
 	hostname     = domain + ":" + port + root
 	keyExists    = "KEY_EXISTS"
 	KeyNotExists = "KEY_DOESN'T_EXIST"
-	valExists    = "VAL_EXISTS"
 )
+
+var valExists = map[string]string{
+	"val": "VALUE EXISTS",
+}
 
 // This struct is a stub for the dbAccess object required by the app
 type TestKVS struct {
 	key       string
-	valExists string
+	valExists map[string]string
 	service   bool
 }
 
@@ -54,7 +58,7 @@ func (t *TestKVS) Contains(key string) bool {
 // This stub returns the valExistsue associated with the key which exists, and returns nil for the key which doesn't //
 func (t *TestKVS) Get(key string) string {
 	if key == t.key {
-		return t.valExists
+		return t.valExists["val"]
 	}
 	return ""
 }
@@ -109,7 +113,9 @@ func TestPutRequestKeyExists(t *testing.T) {
 
 	// Stub a request
 	method := "PUT"
-	reqBody := strings.NewReader(valExists)
+	marsh, err := json.Marshal(valExists)
+	ok(t, err)
+	reqBody := bytes.NewReader(marsh)
 	req, err := http.NewRequest(method, url, reqBody)
 	ok(t, err)
 
@@ -161,13 +167,19 @@ func TestPutRequestKeyDoesntExist(t *testing.T) {
 	// This subject exists in the store already
 	subject := KeyNotExists
 
+	// The value needs to be > 1MB
+	submission := make(map[string]string)
+	submission["val"] = valNotExists
+	b, err := json.Marshal(submission)
+	ok(t, err)
+	reqBody := bytes.NewReader(b)
 	// Set up the URL
 	url := ts.URL + root + "/" + subject
 
 	// Stub a request
 	method := "PUT"
 	//reqBody := strings.NewReader(valExists)
-	req, err := http.NewRequest(method, url, nil)
+	req, err := http.NewRequest(method, url, reqBody)
 	ok(t, err)
 
 	// Finally, make the request to the function being tested.
@@ -184,7 +196,7 @@ func TestPutRequestKeyDoesntExist(t *testing.T) {
 	err = json.Unmarshal(body, &gotBody)
 	ok(t, err)
 	expectedBody := map[string]interface{}{
-		"replaced": "False",
+		"replaced": false,
 		"msg":      "Added successfully",
 	}
 
@@ -278,21 +290,22 @@ func TestPutRequestInvalidValue(t *testing.T) {
 	subject := keyExists
 
 	// The value needs to be > 1MB
-	val := "val="
+	submission := make(map[string]string)
 	big := "a"
 	for i := 1; i < 1048577; i *= 2 {
 		big = big + big
 	}
-	val = val + big
+	submission["val"] = big
+	b, err := json.Marshal(submission)
+	ok(t, err)
+	reqBody := bytes.NewReader(b)
 
-	// Convert it to a reader
-	reader := strings.NewReader(val)
 	// Set up the URL
 	url := ts.URL + root + "/" + subject
 
 	// Stub a request
 	method := "PUT"
-	req, err := http.NewRequest(method, url, reader)
+	req, err := http.NewRequest(method, url, reqBody)
 	ok(t, err)
 
 	// Finally, make the request to the function being tested.
@@ -345,7 +358,8 @@ func TestPutRequestServiceDown(t *testing.T) {
 
 	// Stub a request
 	method := "PUT"
-	reqBody := strings.NewReader(valExists)
+	m, err := json.Marshal(valExists)
+	reqBody := bytes.NewReader(m)
 	req, err := http.NewRequest(method, url, reqBody)
 	ok(t, err)
 
@@ -419,8 +433,8 @@ func TestGetRequestKeyExists(t *testing.T) {
 	err = json.Unmarshal(body, &gotBody)
 	ok(t, err)
 	expectedBody := map[string]interface{}{
-		"result": "Success",
-		"value":  valExists,
+		"msg":   "Success",
+		"value": valExists["val"],
 	}
 
 	equals(t, expectedBody, gotBody)
@@ -528,8 +542,8 @@ func TestGetRequestKeyNotExists(t *testing.T) {
 	err = json.Unmarshal([]byte(recorder.Body.String()), &gotBody)
 	ok(t, err)
 	expectedBody := map[string]interface{}{
-		"result": "Error",
-		"value":  "Not Found",
+		"error": "Key does not exist",
+		"msg":   "Error",
 	}
 
 	equals(t, expectedBody, gotBody)
@@ -640,7 +654,7 @@ func TestDeleteKeyExists(t *testing.T) {
 	err = json.Unmarshal(body, &gotBody)
 	ok(t, err)
 	expectedBody := map[string]interface{}{
-		"result": "Success",
+		"msg": "Success",
 	}
 
 	equals(t, expectedBody, gotBody)
@@ -697,6 +711,237 @@ func TestDeleteKeyNotExists(t *testing.T) {
 	expectedBody := map[string]interface{}{
 		"result": "Error",
 		"msg":    "Status code 404",
+	}
+
+	equals(t, expectedBody, gotBody)
+}
+
+// TestSearchRequestKeyExists verifies the response given when updating a key
+func TestSearchRequestKeyExists(t *testing.T) {
+	// Stub the db
+	db := TestKVS{keyExists, valExists, true}
+
+	// Stub the app
+	app := App{&db}
+
+	l, err := net.Listen("tcp", "127.0.0.1:8080")
+	ok(t, err)
+
+	// Create a router
+	r := mux.NewRouter()
+	r.HandleFunc(root+"/search/{subject}", app.SearchHandler)
+	// Stub the server
+	ts := httptest.NewUnstartedServer(r)
+	ts.Listener.Close()
+	ts.Listener = l
+	ts.Start()
+	defer ts.Close()
+
+	// Use a httptest recorder to observe responses
+	recorder := httptest.NewRecorder()
+
+	// This subject exists in the store already
+	subject := keyExists
+
+	// Set up the URL
+	url := ts.URL + root + "/search/" + subject
+
+	// Stub a request
+	method := "GET"
+	req, err := http.NewRequest(method, url, nil)
+	ok(t, err)
+
+	// Finally, make the request to the function being tested.
+	r.ServeHTTP(recorder, req)
+
+	expectedStatus := http.StatusOK // code 200
+	gotStatus := recorder.Code
+	equals(t, expectedStatus, gotStatus)
+	body, err := ioutil.ReadAll(recorder.Body)
+	ok(t, err)
+
+	var gotBody map[string]interface{}
+
+	err = json.Unmarshal(body, &gotBody)
+	ok(t, err)
+	expectedBody := map[string]interface{}{
+		"msg":     "Key does exist",
+		"isExist": "true",
+	}
+
+	equals(t, expectedBody, gotBody)
+}
+
+// TestSearchRequestKeyDoesntExist verifies the response given when adding a new key
+func TestSearchRequestKeyDoesntExist(t *testing.T) {
+	// Stub the db
+	db := TestKVS{keyExists, valExists, true}
+
+	// Stub the app
+	app := App{&db}
+
+	l, err := net.Listen("tcp", "127.0.0.1:8080")
+	ok(t, err)
+
+	// Create a router
+	r := mux.NewRouter()
+	r.HandleFunc(root+"/search/{subject}", app.SearchHandler)
+	// Stub the server
+	ts := httptest.NewUnstartedServer(r)
+	ts.Listener.Close()
+	ts.Listener = l
+	ts.Start()
+	defer ts.Close()
+
+	// Use a httptest recorder to observe responses
+	recorder := httptest.NewRecorder()
+
+	// This subject exists in the store already
+	subject := KeyNotExists
+
+	// Set up the URL
+	url := ts.URL + root + "/search/" + subject
+
+	// Stub a request
+	method := "GET"
+	//reqBody := strings.NewReader(valExists)
+	req, err := http.NewRequest(method, url, nil)
+	ok(t, err)
+
+	// Finally, make the request to the function being tested.
+	r.ServeHTTP(recorder, req)
+
+	expectedStatus := http.StatusNotFound // code 404
+	gotStatus := recorder.Code
+	equals(t, expectedStatus, gotStatus)
+	body, err := ioutil.ReadAll(recorder.Body)
+	ok(t, err)
+
+	var gotBody map[string]interface{}
+
+	err = json.Unmarshal(body, &gotBody)
+	ok(t, err)
+	expectedBody := map[string]interface{}{
+		"msg":     "Key does not exist",
+		"isExist": "false",
+	}
+
+	equals(t, expectedBody, gotBody)
+}
+
+// TestSearchRequestInvalidKey makes a key with length == 201 and verifies that it fails
+func TestSearchRequestInvalidKey(t *testing.T) {
+	// Stub the db
+	db := TestKVS{keyExists, valExists, true}
+
+	// Stub the app
+	app := App{&db}
+
+	l, err := net.Listen("tcp", "127.0.0.1:8080")
+	ok(t, err)
+
+	// Create a router
+	r := mux.NewRouter()
+	r.HandleFunc(root+"/search/{subject}", app.PutHandler)
+	// Stub the server
+	ts := httptest.NewUnstartedServer(r)
+	ts.Listener.Close()
+	ts.Listener = l
+	ts.Start()
+	defer ts.Close()
+
+	// Use a httptest recorder to observe responses
+	recorder := httptest.NewRecorder()
+
+	// This subject needs to be very long
+	subject := ""
+	for i := 0; i < 201; i++ {
+		subject = subject + "a"
+	}
+
+	// Set up the URL
+	url := ts.URL + root + "/search/" + subject
+
+	// Stub a request
+	method := "GET"
+	req, err := http.NewRequest(method, url, nil)
+	ok(t, err)
+
+	// Finally, make the request to the function being tested.
+	r.ServeHTTP(recorder, req)
+
+	expectedStatus := http.StatusUnprocessableEntity // code 422
+	gotStatus := recorder.Code
+	equals(t, expectedStatus, gotStatus)
+	body, err := ioutil.ReadAll(recorder.Body)
+	ok(t, err)
+
+	var gotBody map[string]interface{}
+
+	err = json.Unmarshal(body, &gotBody)
+	ok(t, err)
+	expectedBody := map[string]interface{}{
+		"msg":    "Key not valid",
+		"result": "Error",
+	}
+
+	equals(t, expectedBody, gotBody)
+}
+
+// TestSearchRequestServiceDown should return that the service is down
+func TestSearchRequestServiceDown(t *testing.T) {
+	// Stub the db
+	db := TestKVS{keyExists, valExists, false}
+
+	// Stub the app
+	app := App{&db}
+
+	l, err := net.Listen("tcp", "127.0.0.1:8080")
+	ok(t, err)
+
+	// Create a router
+	r := mux.NewRouter()
+	r.HandleFunc(root+"/search/{subject}", app.PutHandler)
+	// Stub the server
+	ts := httptest.NewUnstartedServer(r)
+	ts.Listener.Close()
+	ts.Listener = l
+	ts.Start()
+	defer ts.Close()
+
+	// Use a httptest recorder to observe responses
+	recorder := httptest.NewRecorder()
+
+	// This subject exists in the store already
+	subject := keyExists
+
+	// Set up the URL
+	url := ts.URL + root + "/search/" + subject
+
+	// Stub a request
+	method := "GET"
+	m, err := json.Marshal(valExists)
+	ok(t, err)
+	reqBody := bytes.NewReader(m)
+	req, err := http.NewRequest(method, url, reqBody)
+	ok(t, err)
+
+	// Finally, make the request to the function being tested.
+	r.ServeHTTP(recorder, req)
+
+	expectedStatus := http.StatusNotImplemented // code 501
+	gotStatus := recorder.Code
+	equals(t, expectedStatus, gotStatus)
+	body, err := ioutil.ReadAll(recorder.Body)
+	ok(t, err)
+
+	var gotBody map[string]interface{}
+
+	err = json.Unmarshal(body, &gotBody)
+	ok(t, err)
+	expectedBody := map[string]interface{}{
+		"result": "Error",
+		"msg":    "Server unavailable",
 	}
 
 	equals(t, expectedBody, gotBody)

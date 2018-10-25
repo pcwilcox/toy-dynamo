@@ -12,11 +12,10 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -39,6 +38,11 @@ const (
 	port    = ":8080"
 )
 
+// submission struct holds put request values
+type submission struct {
+	Value string `json:"val"`
+}
+
 // Initialize fires up the router and such
 func (app *App) Initialize() {
 
@@ -50,6 +54,9 @@ func (app *App) Initialize() {
 
 	// Since all endpoints use the rootURL we just use a subrouter here
 	s := r.PathPrefix(rootURL).Subrouter()
+
+	// This is the search handler, which has a different prefix
+	s.HandleFunc("/search/{subject}", app.SearchHandler).Methods("GET")
 
 	// Each of the request types gets a handler
 	s.HandleFunc("/{subject}", app.PutHandler).Methods("PUT")
@@ -76,22 +83,16 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 	if app.db.ServiceUp() {
 		// Predefine these so they can be used further down
 		var err error
-		var val string
+		var value string
 
 		// Safety check - the system will panic trying to read a nil body
 		if r.Body != nil {
-			// Reads the request body into a []byte
-			reqBody, err := ioutil.ReadAll(r.Body)
-			if err != nil {
-				panic(err)
-			}
+			// Parse the form so we can read values
+			r.ParseForm()
 
-			// Converts the []byte to a string
-			s := string(reqBody[:])
-
-			// Remove the prefix
-			prefix := "val="
-			val = strings.TrimPrefix(s, prefix)
+			// Python's json is built in a weird way
+			fmt.Println(r.Form["val"][0])
+			value = r.Form["val"][0]
 		}
 
 		// Maximum input restrictions
@@ -110,7 +111,7 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 		var status int
 
 		// Check for valid input
-		if len(val) > maxVal {
+		if len(value) > maxVal {
 			// The value is > 1MB so error out
 
 			// Set the status code
@@ -149,8 +150,9 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 			// Check to see if the db already contains the key
 			if app.db.Contains(key) {
 				// It does so we'll update it
-				app.db.Put(key, val)
+				app.db.Put(key, value)
 
+				log.Printf("Inserted key %s with value %s\n", key, value)
 				// Set status
 				status = http.StatusOK // code 200
 
@@ -166,11 +168,11 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 			} else {
 				// It's a new entry so it gets a different status code
 				status = http.StatusCreated // code 201
-				app.db.Put(key, val)
+				app.db.Put(key, value)
 
 				// And a slightly different response body
 				resp := map[string]interface{}{
-					"replaced": "False",
+					"replaced": false,
 					"msg":      "Added successfully",
 				}
 				body, err = json.Marshal(resp)
@@ -213,8 +215,8 @@ func (app *App) GetHandler(w http.ResponseWriter, r *http.Request) {
 
 			// Package it into a map->JSON->[]byte
 			resp := map[string]interface{}{
-				"result": "Success",
-				"value":  val,
+				"msg":   "Success",
+				"value": val,
 			}
 			body, err = json.Marshal(resp)
 			if err != nil {
@@ -226,8 +228,58 @@ func (app *App) GetHandler(w http.ResponseWriter, r *http.Request) {
 
 			// Error response
 			resp := map[string]interface{}{
-				"result": "Error",
-				"value":  "Not Found",
+				"msg":   "Error",
+				"error": "Key does not exist",
+			}
+			body, err = json.Marshal(resp)
+			if err != nil {
+				log.Fatalln("oh no")
+			}
+		}
+		w.Write(body)
+	} else {
+		// oh no it's down
+		ServiceDownHandler(w, r)
+	}
+}
+
+// SearchHandler checks if the db contains the key
+func (app *App) SearchHandler(w http.ResponseWriter, r *http.Request) {
+	// Is the service up?
+	if app.db.ServiceUp() {
+		// Read the key from the URL
+		vars := mux.Vars(r)
+		key := vars["subject"]
+
+		// Declare some vars
+		var body []byte
+		var err error
+
+		// Same content type for everything
+		w.Header().Set("Content-Type", "application/json")
+
+		// See if the key exists in the db
+		if app.db.Contains(key) {
+			// It does
+			w.WriteHeader(http.StatusOK) // code 200
+
+			// Package it into a map->JSON->[]byte
+			resp := map[string]interface{}{
+				"msg":     "Key does exist",
+				"isExist": "true",
+			}
+			body, err = json.Marshal(resp)
+			if err != nil {
+				log.Fatalln("oh no")
+			}
+		} else {
+			// The key doesn't exist in the db
+			w.WriteHeader(http.StatusNotFound) // code 404
+
+			// Error response
+			resp := map[string]interface{}{
+				"msg":     "Key does not exist",
+				"isExist": "false",
 			}
 			body, err = json.Marshal(resp)
 			if err != nil {
@@ -266,7 +318,7 @@ func (app *App) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 			// Successful response
 			resp := map[string]interface{}{
-				"result": "Success",
+				"msg": "Success",
 			}
 			body, err = json.Marshal(resp)
 			if err != nil {
