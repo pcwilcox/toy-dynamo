@@ -102,14 +102,14 @@ class TestHW2(unittest.TestCase):
             self.__class__.nodes_address[2] + '/keyValue-store/search/subject2')
         d = res.json()
         self.assertEqual(res.status_code, 404)
-        self.assertEqual(d['msg'], 'Key does not exist')
+        self.assertEqual(d['msg'], 'Error')
         self.assertEqual(d['isExist'], 'false')
 
     def test_g_search_existing_key(self):
         res = requests.get(
             self.__class__.nodes_address[2] + '/keyValue-store/search/subject')
         d = res.json()
-        self.assertEqual(d['msg'], 'Key does exist')
+        self.assertEqual(d['msg'], 'Success')
         self.assertEqual(d['isExist'], 'true')
 
     def test_h_del_nonexistent_key(self):
@@ -140,7 +140,7 @@ class TestHW2(unittest.TestCase):
         d = res.json()
         self.assertEqual(res.status_code, 201)
         self.assertEqual(d['replaced'], 0)
-        self.assertEqual(d['msg'], 'Added successfully')
+        self.assertEqual(d['msg'], 'Added Successfully')
 
     def test_l_put_nonexistent_key(self):
         res = requests.put(self.__class__.nodes_address[1] + '/keyValue-store/' + self.__class__.key1,
@@ -148,11 +148,11 @@ class TestHW2(unittest.TestCase):
         d = res.json()
         self.assertEqual(res.status_code, 201)
         self.assertEqual(d['replaced'], 0)
-        self.assertEqual(d['msg'], 'Success')
+        self.assertEqual(d['msg'], 'Added Successfully')
 
     def test_m_put_existing_key(self):
-        res = requests.put(self.__class__.nodes_address[0] + '/keyValue-store/subject' + self.__class__.key1,
-                           data={'val': self.__class__.val2})
+        res = requests.put(
+            self.__class__.nodes_address[0] + '/keyValue-store/subject', data={'val': self.__class__.val2})
         d = res.json()
         self.assertEqual(d['replaced'], 1)
         self.assertEqual(d['msg'], 'Success')

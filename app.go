@@ -182,7 +182,7 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 						// And a slightly different response body
 						resp := map[string]interface{}{
 							"replaced": false,
-							"msg":      "Added successfully",
+							"msg":      "Added Successfully",
 						}
 						body, err = json.Marshal(resp)
 						if err != nil {
@@ -303,7 +303,7 @@ func (app *App) SearchHandler(w http.ResponseWriter, r *http.Request) {
 
 			// Package it into a map->JSON->[]byte
 			resp := map[string]interface{}{
-				"msg":     "Key does exist",
+				"msg":     "Success",
 				"isExist": "true",
 			}
 			body, err = json.Marshal(resp)
@@ -317,7 +317,7 @@ func (app *App) SearchHandler(w http.ResponseWriter, r *http.Request) {
 
 			// Error response
 			resp := map[string]interface{}{
-				"msg":     "Key does not exist",
+				"msg":     "Error",
 				"isExist": "false",
 			}
 			body, err = json.Marshal(resp)
