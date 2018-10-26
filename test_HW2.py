@@ -201,6 +201,15 @@ class TestHW2(unittest.TestCase):
         self.assertEqual(d['msg'], 'Error')
         self.assertEqual(d['error'], 'Value is missing')
 
+    def test_z_taking_down_primary_instance(self):
+        self.__class__.all_tests_done = True
+        shell_command = "docker stop " + str(self.__class__.node_ids[0])
+        subprocess.check_output(shell_command, shell=True)
+        res = requests.get(
+            self.__class__.nodes_address[2]+'/keyValue-store/' + self.__class__.key1)
+        d = res.json()
+        self.assertEqual(res.status_code, 501)
+
     def tearDown(self):
         if self.__class__.all_tests_done:
             print("\nKilling all alive nodes.")
