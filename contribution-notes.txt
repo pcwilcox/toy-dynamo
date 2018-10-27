@@ -1,4 +1,7 @@
 Contributions
-Lawrence Lawson - I organized the the team structure and meetings and set up Bitbucket Team.
-Alfredo Vicuna - Joined team after work was completed.
-Pete Wilcox - Everything.
+Lawrence Lawson - Add a hashmap key-value store, implemented unit testing for internal key-value store
+Pete Wilcox - Create endpoint to allow for service checks, Implement functional guarantee for service with forwarding
+,Implement REST API key-value store functions, Create integration test script for single-site key-value store, add mutex locks to the handlers
+
+
+
