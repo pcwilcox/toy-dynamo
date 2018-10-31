@@ -22,11 +22,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-const (
-	keyNotExists = "KEY_NOT_EXISTS"
-	valNotExists = "VAL_NOT_EXISTS"
-)
-
 type testRest struct {
 	server     *httptest.Server
 	key        string
@@ -39,17 +34,17 @@ type testRest struct {
 func (t *testRest) Initialize() {
 
 	// We make a local listener and hook a server up to it
-	l, err := net.Listen("tcp", "127.0.0.1:8080")
+	l, err := net.Listen("tcp", listenAddress)
 	if err != nil {
 		panic(err)
 	}
 
 	// Create a router
 	r := mux.NewRouter()
-	r.HandleFunc(rootURL+"/{subject}", t.PutHandler).Methods("PUT")
-	r.HandleFunc(rootURL+"/{subject}", t.GetHandler).Methods("GET")
-	r.HandleFunc(rootURL+"/{subject}", t.DeleteHandler).Methods("DELETE")
-	r.HandleFunc("/alive", t.AliveHandler).Methods("GET")
+	r.HandleFunc(rootURL+keySuffix, t.PutHandler).Methods(http.MethodPut)
+	r.HandleFunc(rootURL+keySuffix, t.GetHandler).Methods(http.MethodGet)
+	r.HandleFunc(rootURL+keySuffix, t.DeleteHandler).Methods(http.MethodDelete)
+	r.HandleFunc(alive, t.AliveHandler).Methods(http.MethodGet)
 
 	// Stub the server
 	t.server = httptest.NewUnstartedServer(r)
@@ -83,7 +78,7 @@ func (t *testRest) GetHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK) // code 200
 		resp := map[string]interface{}{
 			"result": "Success",
-			"value":  valExists["val"],
+			"value":  valExists,
 		}
 		body, err := json.Marshal(resp)
 		if err != nil {
@@ -191,7 +186,7 @@ func TestForwarderPutKeyExistsReturnsTrue(t *testing.T) {
 
 	// Use the key that's in the db
 	s.key = keyExists
-	s.val = valExists["val"]
+	s.val = valExists
 
 	// Here's the actual test
 	assert(t, f.Put(s.key, s.val), "Put() keyExists returned false")
@@ -212,7 +207,7 @@ func TestForwarderPutKeyNotExistsReturnsFalse(t *testing.T) {
 
 	// Use the key that's in the db
 	s.key = keyNotExists
-	s.val = valExists["val"]
+	s.val = valExists
 
 	// Here's the actual test
 	assert(t, !f.Put(s.key, s.val), "Put() keyNotExists returned true")
@@ -233,7 +228,7 @@ func TestForwarderPutKeyInvalidReturnsFalse(t *testing.T) {
 
 	// Use the key that's in the db
 	s.key = "a"
-	s.val = valExists["val"]
+	s.val = valExists
 
 	for i := 1; i < 202; i = i * 2 {
 		s.key = s.key + s.key
@@ -286,7 +281,7 @@ func TestForwarderPutServiceDownReturnsFalse(t *testing.T) {
 
 	// Use the key that's in the db
 	s.key = keyExists
-	s.val = valExists["val"]
+	s.val = valExists
 
 	// Here's the actual test
 	assert(t, !f.Put(s.key, s.val), "Put() returned true when the service was down")
@@ -370,7 +365,7 @@ func TestForwarderGetKeyExistsReturnsVal(t *testing.T) {
 
 	// Use the key that's not in the db
 	s.key = keyExists
-	s.val = valExists["val"]
+	s.val = valExists
 
 	// Here's the actual test
 	assert(t, strings.Compare(f.Get(s.key), s.val) == 0, "Get() did not return matching string valExists")

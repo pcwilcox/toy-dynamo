@@ -34,7 +34,7 @@ func NewKVS() *KVS {
 
 // Contains returns true if the dbAccess object contains an object with key equal to the input
 func (k *KVS) Contains(key string) bool {
-	log.Println("Checking to see if db contains key " + key)
+	log.Println("Checking to see if db contains key ")
 	// Grab a read lock
 	k.mutex.RLock()
 	defer k.mutex.RUnlock()
@@ -52,14 +52,14 @@ func (k *KVS) contains(key string) bool {
 
 // Get returns the value associated with a particular key. If the key does not exist it returns ""
 func (k *KVS) Get(key string) string {
-	log.Println("Getting value associated with key " + key)
+	log.Println("Getting value associated with key ")
 	// Grab a read lock
 	k.mutex.RLock()
 	defer k.mutex.RUnlock()
 
 	// Call the non-locking contains() method
 	if k.contains(key) {
-		log.Println("Value found: " + k.db[key])
+		log.Println("Value found")
 		return k.db[key]
 	}
 	log.Println("Value not found")
@@ -68,7 +68,7 @@ func (k *KVS) Get(key string) string {
 
 // Delete removes a key-value pair from the object. If the key does not exist it returns false.
 func (k *KVS) Delete(key string) bool {
-	log.Println("Attempting to delete key " + key)
+	log.Println("Attempting to delete key ")
 	// Grab a write lock
 	k.mutex.Lock()
 	defer k.mutex.Unlock()
@@ -91,7 +91,7 @@ func (k *KVS) Put(key string, val string) bool {
 	keyLen := len(key)
 	valLen := len(val)
 
-	log.Println("Attempting to insert key " + key + " with value " + val)
+	log.Println("Attempting to insert key-value pair")
 
 	if keyLen <= maxKey && valLen <= maxVal {
 		log.Println("Key and value OK, inserting to DB")

@@ -20,7 +20,7 @@ DFLAGS    = -t ${EXEC} .
 EXEC      = cs128-hw2
 
 # Add source files to this list
-SOURCES   = main.go dbAccess.go app.go kvs.go restful.go forward.go
+SOURCES   = main.go dbAccess.go app.go kvs.go restful.go forward.go values.go
 
 # Everything executes the build
 all : ${EXEC}

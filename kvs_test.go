@@ -6,20 +6,6 @@ import (
 	"testing"
 )
 
-const (
-	keyone     = "Key One"
-	valone     = "Value One"
-	keyNotHere = "Key Not Here"
-	valtwo     = "Value Two"
-	deletekey  = "I DONT EXIST"
-	invalidKey = `Lorem ipsum dolor sit amet, 
-			consectetuer adipiscing elit. Aenean commodo 
-			ligula eget dolor. Aenean massa. Cum sociis natoque 
-			penatibus et magnis dis parturient montes, 
-			nascetur ridiculus mus. Donec qu`
-	invalidVal = ""
-)
-
 func TestKVSContainsCheckIfDoesntExist(t *testing.T) {
 	db := map[string]string{
 		keyone: valone,

@@ -30,17 +30,6 @@ type App struct {
 	db dbAccess
 }
 
-// rootURL is the path prefix for the kvs as in: http://localhost:8080/ROOT_URL/foo
-const (
-	rootURL = "/keyValue-store"
-	port    = ":8080"
-)
-
-// submission struct holds put request values
-type submission struct {
-	Value string `json:"val"`
-}
-
 // Initialize fires up the router and such
 func (app *App) Initialize() {
 
@@ -48,18 +37,18 @@ func (app *App) Initialize() {
 	r := mux.NewRouter()
 
 	// This responds to let forwarders know the server is alive
-	r.HandleFunc("/alive", app.AliveHandler).Methods("GET")
+	r.HandleFunc(alive, app.AliveHandler).Methods(http.MethodGet)
 
 	// Since all endpoints use the rootURL we just use a subrouter here
 	s := r.PathPrefix(rootURL).Subrouter()
 
 	// This is the search handler, which has a different prefix
-	s.HandleFunc("/search/{subject}", app.SearchHandler).Methods("GET")
+	s.HandleFunc(search+keySuffix, app.SearchHandler).Methods(http.MethodGet)
 
 	// Each of the request types gets a handler
-	s.HandleFunc("/{subject}", app.PutHandler).Methods("PUT")
-	s.HandleFunc("/{subject}", app.GetHandler).Methods("GET")
-	s.HandleFunc("/{subject}", app.DeleteHandler).Methods("DELETE")
+	s.HandleFunc(keySuffix, app.PutHandler).Methods(http.MethodPut)
+	s.HandleFunc(keySuffix, app.GetHandler).Methods(http.MethodGet)
+	s.HandleFunc(keySuffix, app.DeleteHandler).Methods(http.MethodDelete)
 
 	log.Println("App initialized")
 	// Load up the server through a logger interface
@@ -98,7 +87,6 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 		if r.Body != nil {
 			// Parse the form so we can read values
 			r.ParseForm()
-			log.Println(r.Form)
 
 			if len(r.Form) > 0 {
 				value = r.Form["val"][0]
@@ -111,8 +99,6 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 				vars := mux.Vars(r)
 				key := vars["subject"]
 
-				log.Println("KEY: " + key)
-				log.Println("VAL: " + value)
 
 				// Check for valid input
 				if len(value) > maxVal {
@@ -157,10 +143,10 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 					// Check to see if the db already contains the key
 					if app.db.Contains(key) {
 						// It does so we'll update it
-						log.Println("KEY: " + key + " already exists in DB, overwriting...")
+						log.Println("Key already exists in DB, overwriting...")
 						app.db.Put(key, value)
 
-						log.Printf("Inserted KEY: %s with VALUE: %s\n", key, value)
+						log.Printf("Inserted key-value pair")
 						// Set status
 						status = http.StatusOK // code 200
 
@@ -174,8 +160,8 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 							log.Fatalln("FATAL ERROR: Failed to marshal JSON response")
 						}
 					} else {
-						log.Println("KEY: " + key + " does not exist in DB, inserting...")
-						log.Printf("Inserted KEY: %s with VALUE: %s\n", key, value)
+						log.Println("Key does not exist in DB, inserting...")
+						log.Printf("Inserted key-value pair")
 						// It's a new entry so it gets a different status code
 						status = http.StatusCreated // code 201
 						app.db.Put(key, value)
@@ -243,8 +229,7 @@ func (app *App) GetHandler(w http.ResponseWriter, r *http.Request) {
 
 			// Get the key out of the db
 			val := app.db.Get(key)
-			log.Println("KEY: " + key + " found in DB")
-			log.Println("VAL: " + val)
+			log.Println("Key found in DB")
 
 			// Package it into a map->JSON->[]byte
 			resp := map[string]interface{}{
@@ -256,7 +241,7 @@ func (app *App) GetHandler(w http.ResponseWriter, r *http.Request) {
 				log.Fatalln("FATAL ERROR: Failed to marshal JSON response")
 			}
 		} else {
-			log.Println("KEY: " + key + " not found in DB")
+			log.Println("Key not found in DB")
 			// The key doesn't exist in the db
 			w.WriteHeader(http.StatusNotFound) // code 404
 
@@ -287,7 +272,6 @@ func (app *App) SearchHandler(w http.ResponseWriter, r *http.Request) {
 		// Read the key from the URL
 		vars := mux.Vars(r)
 		key := vars["subject"]
-		log.Println("KEY: " + key)
 
 		// Declare some vars
 		var body []byte
@@ -343,8 +327,6 @@ func (app *App) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		// Get the key from the URL
 		vars := mux.Vars(r)
 		key := vars["subject"]
-
-		log.Println("KEY: " + key)
 
 		// Declare here, define below
 		var err error
