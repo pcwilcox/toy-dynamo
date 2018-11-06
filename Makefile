@@ -9,7 +9,7 @@
 
 # Predefined stuff
 BUILD     = go build
-TEST      = go test
+TEST      = go test -v
 BENCH     = ${TEST} -bench=.
 COVER     = ${TEST} -coverprofile ${COVERFILE}
 DOCKER    = docker build
@@ -58,16 +58,18 @@ again :
 	${MAKE} spotless all
 
 # This runs the Docker build command
-docker :
+docker : network
 	${DOCKER} ${DFLAGS}
 
 # This builds the subnet in Docker
 network :
-	sudo docker network create --subnet=10.0.0.0/16 mynet
+ifeq (, $(shell docker network ls | grep mynet))
+	- sudo docker network create --subnet=10.0.0.0/16 mynet
+endif
 
-leader :
+leader : docker
 	docker run -p 8083:8080 --net=mynet --ip=10.0.0.20 -d ${EXEC}
 
-follower :
+follower : docker
 	docker run -p 8084:8080 --net=mynet -e MAINIP=10.0.0.20:8080 -d ${EXEC}
 

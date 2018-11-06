@@ -1,0 +1,78 @@
+# config.yml
+#
+# CMPS 128 Fall 2018
+# 
+# Annie Shen            ashen7
+# Lawrence Lawson       lelawson
+# Pete Wilcox           pcwilcox
+#
+# This file provides configuration for the CircleCI continuous integration
+# system. It defines the Docker images and commands to be used, how to run
+# the integration test scripts and unit tests, and what reporting
+# mechanisms to use when builds are completed. 
+
+version: 2.1        # idk lets use this one
+jobs:               # these are like stages
+  build:
+    machine: true
+    environment:
+      TEST_RESULTS: /tmp/test-results
+      GODIST: go1.11.1.linux-amd64.tar.gz
+    steps:
+      - restore_cache:  # This step restores cached dependency files
+          keys:         # It uses the branch and revision as keys
+            - source-v1-{{ .Branch }}-{{ .Revision }}
+            - source-v1-{{ .Branch }}
+            - source-v1-
+      - checkout                          # Pull the code
+      - run: mkdir -p $TEST_RESULTS
+      - run:
+          name: "Update Go version"       # Default version is 1.9, we need 1.11
+          command: |
+            mkdir -p download 
+            test -e download/$GODIST || curl -o download/$GODIST https://storage.googleapis.com/golang/$GODIST
+            sudo rm -rf /usr/local/go
+            sudo tar -C /usr/local -xzf download/$GODIST # Hopefully this gets cached
+      - run:          
+          name: "Pull dependencies"       # Get packages we need
+          command: |
+            go get github.com/jstemmer/go-junit-report
+            go get github.com/gorilla/mux
+            go get github.com/gorilla/handlers
+      - save_cache:
+          key: source-v1-{{ .Branch }}-{{ .Revision }}
+          paths:                          # Save the dependencies, these shouldn't change
+            - ".git"
+            - "download/"
+            - "/go/pkg"
+      - run:
+          name: "Run unit tests"          # This executes the tests as defined in the makefile
+          command: |                      # Should output test report to an xml
+            trap "go-junit-report <${TEST_RESULTS}/go-test.out > ${TEST_RESULTS}/go-test-report.xml" EXIT
+            make test | tee ${TEST_RESULTS}/go-test.out 
+      - run:
+          name: "Build the container"
+          command: make docker            # Reuse the same commands as much as we can
+      - run:
+          name: "Build the network"       # Don't think we can cache this part
+          command: make network
+      - restore_cache: # restore the python deps
+          keys:
+            - python-v1-{{ .Branch }}-{{ .Revision }}
+            - python-v1-{{ .Branch }}
+            - python-v1-
+      - run:
+          name: "Integration testing"     # Just redoing the same tests here
+          command: |
+            sudo pip install pipenv       # This is like virtualenv
+            pipenv install                # Install requests
+            pipenv run python test_HW2.py # Run the integration step
+      - save_cache:
+          key: python-v1-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - "/home/circleci/.local/share/virtualenvs"
+      - store_artifacts:
+          path: /tmp/test-results
+          destination: raw-test-output
+      - store_test_results:
+          path: /tmp/test-results

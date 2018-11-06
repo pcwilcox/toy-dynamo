@@ -413,7 +413,6 @@ func TestGetRequestServiceDown(t *testing.T) {
 	ok(t, err)
 
 	var gotBody map[string]interface{}
-
 	err = json.Unmarshal(body, &gotBody)
 	ok(t, err)
 	expectedBody := map[string]interface{}{
@@ -542,7 +541,6 @@ func TestDeleteKeyExists(t *testing.T) {
 	ok(t, err)
 
 	var gotBody map[string]interface{}
-
 	err = json.Unmarshal(body, &gotBody)
 	ok(t, err)
 	expectedBody := map[string]interface{}{

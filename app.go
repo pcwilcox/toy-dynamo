@@ -99,7 +99,6 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 				vars := mux.Vars(r)
 				key := vars["subject"]
 
-
 				// Check for valid input
 				if len(value) > maxVal {
 					// The value is > 1MB so error out
