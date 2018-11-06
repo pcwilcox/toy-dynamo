@@ -24,6 +24,11 @@ import (
 	"os"
 )
 
+// Versioning info defined via linker flags at compile time
+var branch string
+var hash string
+var build string
+
 // MultiLogOutput controls logging output to stdout and to a log file
 var MultiLogOutput io.Writer
 
@@ -36,6 +41,10 @@ func main() {
 	// Set up the logging output to stdout
 	log.SetFlags(log.Ltime | log.Lshortfile)
 	log.SetOutput(MultiLogOutput)
+
+	// Print version info to the log
+	version := branch + "." + hash + "." + build
+	log.Println("Running version " + version)
 
 	// We'll be using a dbAccess object to interface to the back end
 	var k dbAccess

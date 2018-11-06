@@ -9,12 +9,21 @@
 
 # Predefined stuff
 BUILD     = go build
-TEST      = go test
+TEST      = go test -v
 BENCH     = ${TEST} -bench=.
 COVER     = ${TEST} -coverprofile ${COVERFILE}
 DOCKER    = docker build
 COVERFILE = out
 DFLAGS    = -t ${EXEC} . 
+
+# Grabs the name of the current branch
+BRANCH   := $(shell git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/')
+
+# Grabs the total number of commits
+BUILDNUM := $(shell git rev-list --count HEAD) 
+
+# Grabs the last chunk of the current commit ID
+HASH     := $(shell git rev-parse --short HEAD 2> /dev/null)
 
 # Change this to the application name
 EXEC      = cs128-hw2
@@ -22,12 +31,16 @@ EXEC      = cs128-hw2
 # Add source files to this list
 SOURCES   = main.go dbAccess.go app.go kvs.go restful.go forward.go values.go
 
+# Flags passed to the linker which define version strings in main.go
+LDFLAGS   = '-X "main.branch=${BRANCH}" -X "main.hash=${HASH}" -X "main.build=${BUILDNUM}"'
+LD        = -ldflags ${LDFLAGS}
+
 # Everything executes the build
 all : ${EXEC}
 
 # This runs 'go build ...'
 ${EXEC} :
-	${BUILD} -o ${EXEC} ${SOURCES}
+	${BUILD} -o ${EXEC} ${LD} ${SOURCES} 
 
 # This runs 'go test ...'
 test :
@@ -58,16 +71,18 @@ again :
 	${MAKE} spotless all
 
 # This runs the Docker build command
-docker :
+docker : network
 	${DOCKER} ${DFLAGS}
 
 # This builds the subnet in Docker
 network :
-	sudo docker network create --subnet=10.0.0.0/16 mynet
+ifeq (, $(shell docker network ls | grep mynet))
+	- sudo docker network create --subnet=10.0.0.0/16 mynet
+endif
 
-leader :
+leader : docker
 	docker run -p 8083:8080 --net=mynet --ip=10.0.0.20 -d ${EXEC}
 
-follower :
+follower : docker
 	docker run -p 8084:8080 --net=mynet -e MAINIP=10.0.0.20:8080 -d ${EXEC}
 
