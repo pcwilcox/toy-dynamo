@@ -32,9 +32,8 @@ var testRouter http.Handler
 
 // This struct is a stub for the dbAccess object required by the app
 type TestKVS struct {
-	dbKey     string
-	dbVal     string
-	dbService bool
+	dbKey string
+	dbVal string
 }
 
 // This stub returns true for the key which exists and false for the one which doesn't
@@ -61,19 +60,14 @@ func (t *TestKVS) Delete(key string) bool {
 	return false
 }
 
-// Returns the value of the service bool
-func (t *TestKVS) ServiceUp() bool {
-	return t.dbService
-}
-
 // idk lets try this
 func (t *TestKVS) Put(key, valExists string) bool {
 	return true
 }
 
 // Trying to reduce code repetition
-func setup(key string, val string, service bool) (string, *mux.Router) {
-	k := TestKVS{dbKey: key, dbVal: val, dbService: service}
+func setup(key string, val string) (string, *mux.Router) {
+	k := TestKVS{dbKey: key, dbVal: val}
 
 	// Stub the app
 	app := App{&k}
@@ -90,7 +84,6 @@ func setup(key string, val string, service bool) (string, *mux.Router) {
 	testRouter.HandleFunc(rootURL+keySuffix, app.GetHandler).Methods(http.MethodGet)
 	testRouter.HandleFunc(rootURL+keySuffix, app.DeleteHandler).Methods(http.MethodDelete)
 	testRouter.HandleFunc(rootURL+search+keySuffix, app.SearchHandler).Methods(http.MethodGet)
-	testRouter.HandleFunc(rootURL+alive, app.AliveHandler).Methods(http.MethodGet)
 
 	// Stub the server
 	testServer := httptest.NewUnstartedServer(testRouter)
@@ -109,7 +102,7 @@ func teardown() {
 // TestPutRequestKeyExists verifies the response given when updating a key
 func TestPutRequestKeyExists(t *testing.T) {
 	// Setup the test
-	serverURL, router := setup(keyExists, valExists, true)
+	serverURL, router := setup(keyExists, valExists)
 
 	// Use a httptest recorder to observe responses
 	recorder := httptest.NewRecorder()
@@ -154,7 +147,7 @@ func TestPutRequestKeyExists(t *testing.T) {
 // TestPutRequestKeyDoesntExist verifies the response given when adding a new key
 func TestPutRequestKeyDoesntExist(t *testing.T) {
 	// Setup the test
-	serverURL, router := setup(keyExists, valExists, true)
+	serverURL, router := setup(keyExists, valExists)
 
 	// Use a httptest recorder to observe responses
 	recorder := httptest.NewRecorder()
@@ -199,7 +192,7 @@ func TestPutRequestKeyDoesntExist(t *testing.T) {
 // TestPutRequestInvalidKey makes a key with length == 201 and verifies that it fails
 func TestPutRequestInvalidKey(t *testing.T) {
 	// Setup the test
-	serverURL, router := setup(keyExists, valExists, true)
+	serverURL, router := setup(keyExists, valExists)
 
 	// Use a httptest recorder to observe responses
 	recorder := httptest.NewRecorder()
@@ -249,7 +242,7 @@ func TestPutRequestInvalidKey(t *testing.T) {
 // TestPutRequestInvalidValue tests for values that are too large
 func TestPutRequestInvalidValue(t *testing.T) {
 	// Setup the test
-	serverURL, router := setup(keyExists, valExists, true)
+	serverURL, router := setup(keyExists, valExists)
 
 	// Use a httptest recorder to observe responses
 	recorder := httptest.NewRecorder()
@@ -296,55 +289,10 @@ func TestPutRequestInvalidValue(t *testing.T) {
 	teardown()
 }
 
-// TestPutRequestServiceDown should return that the service is down
-func TestPutRequestServiceDown(t *testing.T) {
-	// Setup the test
-	serverURL, router := setup(keyExists, valExists, false)
-
-	// Use a httptest recorder to observe responses
-	recorder := httptest.NewRecorder()
-
-	// This subject exists in the store already
-	subject := keyNotExists
-
-	// Set up the URL
-	url := serverURL + rootURL + "/" + subject
-
-	// Stub a request
-	method := http.MethodPut
-	reqBody := strings.NewReader("val=" + valNotExists)
-	req, err := http.NewRequest(method, url, reqBody)
-	ok(t, err)
-
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	// Finally, make the request to the function being tested.
-	router.ServeHTTP(recorder, req)
-
-	expectedStatus := http.StatusNotImplemented // code 501
-	gotStatus := recorder.Code
-	equals(t, expectedStatus, gotStatus)
-	body, err := ioutil.ReadAll(recorder.Body)
-	ok(t, err)
-
-	var gotBody map[string]interface{}
-
-	err = json.Unmarshal(body, &gotBody)
-	ok(t, err)
-	expectedBody := map[string]interface{}{
-		"result": "Error",
-		"msg":    "Server unavailable",
-	}
-
-	equals(t, expectedBody, gotBody)
-
-	teardown()
-}
-
 // TestGetRequestKeyExists should return success with the "VAL_EXISTS" string
 func TestGetRequestKeyExists(t *testing.T) {
 	// Setup the test
-	serverURL, router := setup(keyExists, valExists, true)
+	serverURL, router := setup(keyExists, valExists)
 
 	// Use a httptest recorder to observe responses
 	recorder := httptest.NewRecorder()
@@ -384,52 +332,10 @@ func TestGetRequestKeyExists(t *testing.T) {
 
 }
 
-// TestGetRequestServiceDown should return server unavailable
-func TestGetRequestServiceDown(t *testing.T) {
-	// Setup the test
-	serverURL, router := setup(keyExists, valExists, false)
-
-	// Use a httptest recorder to observe responses
-	recorder := httptest.NewRecorder()
-
-	// This subject exists in the store already
-	subject := keyExists
-
-	// Set up the URL
-	url := serverURL + rootURL + "/" + subject
-
-	// Stub a request
-	method := http.MethodGet
-	req, err := http.NewRequest(method, url, nil)
-	ok(t, err)
-
-	// Finally, make the request to the function being tested.
-	router.ServeHTTP(recorder, req)
-
-	expectedStatus := http.StatusNotImplemented // code 501
-	gotStatus := recorder.Code
-	equals(t, expectedStatus, gotStatus)
-	body, err := ioutil.ReadAll(recorder.Body)
-	ok(t, err)
-
-	var gotBody map[string]interface{}
-	err = json.Unmarshal(body, &gotBody)
-	ok(t, err)
-	expectedBody := map[string]interface{}{
-		"result": "Error",
-		"msg":    "Server unavailable",
-	}
-
-	equals(t, expectedBody, gotBody)
-
-	teardown()
-
-}
-
 // TestGetRequestKeyNotExists should return that the key has been replaced/updated successfully
 func TestGetRequestKeyNotExists(t *testing.T) {
 	// Setup the test
-	serverURL, router := setup(keyExists, valExists, true)
+	serverURL, router := setup(keyExists, valExists)
 
 	// Use a httptest recorder to observe responses
 	recorder := httptest.NewRecorder()
@@ -469,53 +375,10 @@ func TestGetRequestKeyNotExists(t *testing.T) {
 
 }
 
-// TestDeleteServerDown should return server unavailable
-func TestDeleteServerDown(t *testing.T) {
-	// Setup the test
-	serverURL, router := setup(keyExists, valExists, false)
-
-	// Use a httptest recorder to observe responses
-	recorder := httptest.NewRecorder()
-
-	// This subject exists in the store already
-	subject := keyNotExists
-
-	// Set up the URL
-	url := serverURL + rootURL + "/" + subject
-
-	// Stub a request
-	method := http.MethodDelete
-	req, err := http.NewRequest(method, url, nil)
-	ok(t, err)
-
-	// Finally, make the request to the function being tested.
-	router.ServeHTTP(recorder, req)
-
-	expectedStatus := http.StatusNotImplemented // code 501
-	gotStatus := recorder.Code
-	equals(t, expectedStatus, gotStatus)
-	body, err := ioutil.ReadAll(recorder.Body)
-	ok(t, err)
-
-	var gotBody map[string]interface{}
-
-	err = json.Unmarshal(body, &gotBody)
-	ok(t, err)
-	expectedBody := map[string]interface{}{
-		"msg":    "Server unavailable",
-		"result": "Error",
-	}
-
-	equals(t, expectedBody, gotBody)
-
-	teardown()
-
-}
-
 // TestDeleteKeyExists should return success
 func TestDeleteKeyExists(t *testing.T) {
 	// Setup the test
-	serverURL, router := setup(keyExists, valExists, true)
+	serverURL, router := setup(keyExists, valExists)
 
 	// Use a httptest recorder to observe responses
 	recorder := httptest.NewRecorder()
@@ -556,7 +419,7 @@ func TestDeleteKeyExists(t *testing.T) {
 // TestDeleteKeyNotExists should not return success
 func TestDeleteKeyNotExists(t *testing.T) {
 	// Setup the test
-	serverURL, router := setup(keyExists, valExists, true)
+	serverURL, router := setup(keyExists, valExists)
 
 	// Use a httptest recorder to observe responses
 	recorder := httptest.NewRecorder()
@@ -599,7 +462,7 @@ func TestDeleteKeyNotExists(t *testing.T) {
 // TestSearchRequestKeyExists verifies the response given when updating a key
 func TestSearchRequestKeyExists(t *testing.T) {
 	// Setup the test
-	serverURL, router := setup(keyExists, valExists, true)
+	serverURL, router := setup(keyExists, valExists)
 
 	// Use a httptest recorder to observe responses
 	recorder := httptest.NewRecorder()
@@ -642,7 +505,7 @@ func TestSearchRequestKeyExists(t *testing.T) {
 // TestSearchRequestKeyDoesntExist verifies the response given when adding a new key
 func TestSearchRequestKeyDoesntExist(t *testing.T) {
 	// Setup the test
-	serverURL, router := setup(keyExists, valExists, true)
+	serverURL, router := setup(keyExists, valExists)
 
 	// Use a httptest recorder to observe responses
 	recorder := httptest.NewRecorder()
@@ -685,7 +548,7 @@ func TestSearchRequestKeyDoesntExist(t *testing.T) {
 // TestSearchRequestInvalidKey makes a key with length == 201 and verifies that it fails
 func TestSearchRequestInvalidKey(t *testing.T) {
 	// Setup the test
-	serverURL, router := setup(keyExists, valExists, true)
+	serverURL, router := setup(keyExists, valExists)
 
 	// Use a httptest recorder to observe responses
 	recorder := httptest.NewRecorder()
@@ -722,49 +585,6 @@ func TestSearchRequestInvalidKey(t *testing.T) {
 	expectedBody := map[string]interface{}{
 		"isExist": "false",
 		"msg":     "Error",
-	}
-
-	equals(t, expectedBody, gotBody)
-
-	teardown()
-
-}
-
-// TestSearchRequestServiceDown should return that the service is down
-func TestSearchRequestServiceDown(t *testing.T) {
-	// Setup the test
-	serverURL, router := setup(keyExists, valExists, false)
-
-	// Use a httptest recorder to observe responses
-	recorder := httptest.NewRecorder()
-
-	// This subject exists in the store already
-	subject := keyExists
-
-	// Set up the URL
-	url := serverURL + rootURL + search + "/" + subject
-
-	// Stub a request
-	method := http.MethodGet
-	req, err := http.NewRequest(method, url, nil)
-	ok(t, err)
-
-	// Finally, make the request to the function being tested.
-	router.ServeHTTP(recorder, req)
-
-	expectedStatus := http.StatusNotImplemented // code 501
-	gotStatus := recorder.Code
-	equals(t, expectedStatus, gotStatus)
-	body, err := ioutil.ReadAll(recorder.Body)
-	ok(t, err)
-
-	var gotBody map[string]interface{}
-
-	err = json.Unmarshal(body, &gotBody)
-	ok(t, err)
-	expectedBody := map[string]interface{}{
-		"msg":    "Server unavailable",
-		"result": "Error",
 	}
 
 	equals(t, expectedBody, gotBody)

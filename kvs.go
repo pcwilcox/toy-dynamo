@@ -110,8 +110,3 @@ func (k *KVS) Put(key string, val string) bool {
 	log.Println("Invalid entry for key or value")
 	return false
 }
-
-// ServiceUp returns true if the interface is able to communicate with the DB
-func (k *KVS) ServiceUp() bool {
-	return true
-}

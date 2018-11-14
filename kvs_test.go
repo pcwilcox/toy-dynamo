@@ -95,13 +95,6 @@ func TestKVSPutInvalidVal(t *testing.T) {
 	assert(t, !k.Put(keyone, invalidVal), "Invalid value added")
 }
 
-func TestKVSServiceUp(t *testing.T) {
-	k := NewKVS()
-	if k.ServiceUp() != true {
-		t.Fatalf("WTF")
-	}
-}
-
 // These functions were taken from Ben Johnson's post here: https://medium.com/@benbjohnson/structuring-tests-in-go-46ddee7a25c
 
 // // assert fails the test if the condition is false.

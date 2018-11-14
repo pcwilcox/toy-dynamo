@@ -66,7 +66,7 @@ jobs:               # these are like stages
           command: |
             sudo pip install pipenv       # This is like virtualenv
             pipenv install                # Install requests
-            pipenv run python test_HW2.py # Run the integration step
+            #pipenv run python test_HW2.py # Run the integration step
       - save_cache:
           key: python-v1-{{ .Branch }}-{{ .Revision }}
           paths:

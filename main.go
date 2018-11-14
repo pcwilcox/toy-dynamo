@@ -46,25 +46,7 @@ func main() {
 	version := branch + "." + hash + "." + build
 	log.Println("Running version " + version)
 
-	// We'll be using a dbAccess object to interface to the back end
-	var k dbAccess
-
-	// Check to see if ${MAINIP} is defined in the environment. If it is, we're a follower.
-	envMainIP := os.Getenv("MAINIP")
-	log.Println("MAINIP: " + envMainIP)
-
-	if envMainIP == "" {
-		// We're the leader, so we need a local key-value store as our dbAccess
-		k = NewKVS()
-		log.Println("Using local key-value store")
-	} else {
-		// We're a follower, so we need to set up a forwarder as our dbAccess
-		prefix := "http://"
-		URL := prefix + envMainIP
-
-		log.Println("Implementing forwarder to address " + URL)
-		k = &Forwarder{mainIP: URL}
-	}
+	k := NewKVS()
 
 	// The App object is the front end
 	a := App{db: k}

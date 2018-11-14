@@ -24,7 +24,4 @@ type dbAccess interface {
 
 	// Put adds a key-value pair to the data store. If the key already exists, then it overwrites the existing value. If the key does not exist then it is added.
 	Put(string, string) bool
-
-	// ServiceUp returns true if the interface is able to communicate with the DB
-	ServiceUp() bool
 }
