@@ -53,7 +53,7 @@ type KeyEntry interface {
 // Entry is the thing in the KVS and implements all the methods
 type Entry struct {
 	version   int            // Monotonically increasing version numbers starting at 1
-	timestamp time.Time      // this is constant
+	timestamp time.Time      // this is set on writes
 	clock     map[string]int // This is captured from the client payload on write
 	value     string         // This is the actual value
 	tombstone bool           // Tombstone value showing that it was deleted
@@ -91,22 +91,39 @@ func NewEntry(time time.Time, clock map[string]int, val string) *Entry {
 
 // GetVersion just returns the version
 func (e *Entry) GetVersion() int {
-	return e.version
+	if e != nil {
+		return e.version
+	}
+	// The version of a key which doesn't exist is -1
+	return 0
 }
 
 // GetTimestamp returns the timestamp from the entry
 func (e *Entry) GetTimestamp() time.Time {
-	return e.timestamp
+	if e != nil {
+		return e.timestamp
+	}
+	// The timestamp of a key which doesn't exist is the empty struct Time{} which evaluates to a ton of 0's
+	return time.Time{}
 }
 
 // GetClock returns the map representing the causal history
 func (e *Entry) GetClock() map[string]int {
-	return e.clock
+	if e != nil {
+		return e.clock
+	}
+	// The clock of a non-existing key is an empty map
+	empty := make(map[string]int)
+	return empty
 }
 
 // GetValue returns the string stored in the entry
 func (e *Entry) GetValue() string {
-	return e.value
+	if e != nil {
+		return e.value
+	}
+	// The value of a non-existing key is an empty string
+	return ""
 }
 
 // Update writes a new value for the entry and updates the clock and version info

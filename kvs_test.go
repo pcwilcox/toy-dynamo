@@ -43,7 +43,7 @@ func (e *testEntry) Delete(time time.Time) {
 	// goes nowhere does nothing
 }
 
-// This tests for a key that does not exist in the db, the KVS should return version -1
+// This tests for a key that does not exist in the db, the KVS should return version -1 and alive == false
 func TestKVSContainsCheckIfDoesntExist(t *testing.T) {
 	db := map[string]KeyEntry{}
 	var m sync.RWMutex
@@ -54,6 +54,8 @@ func TestKVSContainsCheckIfDoesntExist(t *testing.T) {
 	assert(t, version == -1, "Key found that does not exist.")
 	assert(t, !alive, "Contains returned alive for nonexistent key.")
 }
+
+// If the key does exist, the KVS should return alive == true and its version
 func TestKVSContainsCheckIfDoesExist(t *testing.T) {
 	entryExists := testEntry{
 		time:    time.Now(),
@@ -72,6 +74,7 @@ func TestKVSContainsCheckIfDoesExist(t *testing.T) {
 
 }
 
+// Get() on an existing key/value pair should return the value for the key
 func TestKVSGetExistingVal(t *testing.T) {
 	entryExists := testEntry{
 		time:    time.Now(),
@@ -89,6 +92,7 @@ func TestKVSGetExistingVal(t *testing.T) {
 	equals(t, valExists, returned)
 }
 
+// Get on a non-existing key should return an empty string
 func TestKVSGetValDoesntExist(t *testing.T) {
 	db := map[string]KeyEntry{}
 	var m sync.RWMutex
@@ -97,6 +101,7 @@ func TestKVSGetValDoesntExist(t *testing.T) {
 	equals(t, "", returned)
 }
 
+// Delete on an existing key/value pair should return true and further Gets() should fail
 func TestKVSDeleteExistingKeyValPair(t *testing.T) {
 	entryExists := testEntry{
 		time:    time.Now(),
@@ -113,6 +118,7 @@ func TestKVSDeleteExistingKeyValPair(t *testing.T) {
 	assert(t, k.Delete(keyExists, time.Now()), "Did not delete Key Val Pair")
 }
 
+// Delete on a key that doesn't exist should return false
 func TestKVSDeleteKeyDoesntExist(t *testing.T) {
 	db := map[string]KeyEntry{}
 	var m sync.RWMutex
@@ -120,11 +126,15 @@ func TestKVSDeleteKeyDoesntExist(t *testing.T) {
 	assert(t, !k.Delete(keyNotHere, time.Now()), "Deleted a keyvalue pair not in data store prior")
 }
 
+// Put() with a new key should return true
 func TestKVSPutNewKeyNewVal(t *testing.T) {
-	k := NewKVS()
+	db := map[string]KeyEntry{}
+	var m sync.RWMutex
+	k := KVS{db: db, mutex: &m}
 	assert(t, k.Put(keyone, valone, time.Now(), nil), "New key and value were not added")
 }
 
+// Overwriting a value should return true
 func TestKVSPutExistKeyOverwriteVal(t *testing.T) {
 	entryExists := testEntry{
 		time:    time.Now(),
@@ -141,12 +151,15 @@ func TestKVSPutExistKeyOverwriteVal(t *testing.T) {
 
 }
 
+// Put() with an invalid key should return failure
 func TestKVSPutInvalidkey(t *testing.T) {
-	k := NewKVS()
+	db := map[string]KeyEntry{}
+	var m sync.RWMutex
+	k := KVS{db: db, mutex: &m}
 	assert(t, !k.Put(invalidKey, valtwo, time.Now(), nil), "Invalid key added")
-
 }
 
+// Put() with an invalid value should fail
 func TestKVSPutInvalidVal(t *testing.T) {
 	k := NewKVS()
 	var b strings.Builder
@@ -156,6 +169,158 @@ func TestKVSPutInvalidVal(t *testing.T) {
 	}
 	invalidVal := b.String()
 	assert(t, !k.Put(keyone, invalidVal, time.Now(), nil), "Invalid value added")
+}
+
+// GetVersion() should return the version
+func TestEntryGetVersion(t *testing.T) {
+	e := Entry{
+		version:   1,
+		timestamp: time.Now(),
+		clock: map[string]int{
+			keyExists: 1,
+		},
+		value:     valExists,
+		tombstone: false,
+	}
+
+	assert(t, e.GetVersion() == 1, "GetVersion() returned wrong value")
+}
+
+// GetVersion of an existing entry should return the version
+func TestEntryGetVersionKeyExists(t *testing.T) {
+	e := Entry{
+		version:   1,
+		timestamp: time.Now(),
+		clock: map[string]int{
+			keyExists: 1,
+		},
+		value:     valExists,
+		tombstone: false,
+	}
+
+	assert(t, e.GetVersion() == 1, "GetVersion() returned wrong value")
+}
+
+// GetVersion of a non-existing key should return 0
+func TestEntryGetVersionKeyNotExists(t *testing.T) {
+	var e Entry
+	assert(t, e.GetVersion() == 0, "GetVersion() returned wrong value")
+}
+
+// GetTimestamp should return the timestamp of the key if it exists
+func TestEntryGetTimestampKeyExists(t *testing.T) {
+	timestamp := time.Now()
+	e := Entry{
+		version:   1,
+		timestamp: timestamp,
+		clock: map[string]int{
+			keyExists: 1,
+		},
+		value:     valExists,
+		tombstone: false,
+	}
+	assert(t, e.GetTimestamp() == timestamp, "GetTimestamp() returned wrong value")
+}
+
+// GetTimestamp should return the zero-value timestamp if the key doesn't exist
+func TestEntryGetTimestampKeyNotExists(t *testing.T) {
+	var e Entry
+	assert(t, e.GetTimestamp() == time.Time{}, "GetTimestamp() returned wrong value")
+}
+
+// GetClock should return the key's clock map if it exists
+func TestEntryGetClockKeyExists(t *testing.T) {
+	expectedClock := map[string]int{
+		keyExists: 1,
+	}
+	e := Entry{
+		version:   1,
+		timestamp: time.Now(),
+		clock:     expectedClock,
+		value:     valExists,
+		tombstone: false,
+	}
+	equals(t, e.GetClock(), expectedClock)
+
+}
+
+// GetClock should return an empty map for a key which doesn't exist
+func TestEntryGetClockKeyNotExists(t *testing.T) {
+	e := Entry{}
+	assert(t, len(e.GetClock()) == 0, "GetClock() returned non-empty map for nonexisting key")
+}
+
+// GetValue should return the value for a key which exists
+func TestEntryGetValueKeyExists(t *testing.T) {
+	e := Entry{
+		version:   1,
+		timestamp: time.Now(),
+		clock:     map[string]int{keyExists: 1},
+		value:     valExists,
+		tombstone: false,
+	}
+	equals(t, e.GetValue(), valExists)
+}
+
+// GetValue should return an empty string for a key which doesn't exist
+func TestEntryGetValueKeyNotExists(t *testing.T) {
+	e := Entry{}
+	equals(t, e.GetValue(), "")
+}
+
+// Update should change the timestamp
+func TestUpdateChangesTimestamp(t *testing.T) {
+	start := time.Now()
+	time.Sleep(1)
+	finish := time.Now()
+
+	e := Entry{
+		version:   1,
+		timestamp: start,
+		clock:     map[string]int{keyExists: 1},
+		value:     valExists,
+		tombstone: false,
+	}
+
+	e.Update(finish, map[string]int{}, valExists)
+	equals(t, e.GetTimestamp(), finish)
+}
+
+// Update should increment the version
+func TestUpdateIncrementsVersion(t *testing.T) {
+	start := time.Now()
+	time.Sleep(1)
+	finish := time.Now()
+
+	e := Entry{
+		version:   1,
+		timestamp: start,
+		clock:     map[string]int{keyExists: 1},
+		value:     valExists,
+		tombstone: false,
+	}
+
+	e.Update(finish, map[string]int{}, valExists)
+	equals(t, e.GetVersion(), 2)
+}
+
+// Update should reset the tombstone
+func TestUpdateClearsTomstone(t *testing.T) {
+	start := time.Now()
+	time.Sleep(1)
+	finish := time.Now()
+
+	e := Entry{
+		version:   1,
+		timestamp: start,
+		clock:     map[string]int{keyExists: 1},
+		value:     valExists,
+		tombstone: true,
+	}
+
+	e.Update(finish, map[string]int{}, valExists)
+	equals(t, e.Alive(), true)
+
 }
 
 // These functions were taken from Ben Johnson's post here: https://medium.com/@benbjohnson/structuring-tests-in-go-46ddee7a25c
