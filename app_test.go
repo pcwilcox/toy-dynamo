@@ -22,6 +22,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gorilla/mux"
 )
@@ -32,28 +33,29 @@ var testRouter http.Handler
 
 // This struct is a stub for the dbAccess object required by the app
 type TestKVS struct {
-	dbKey string
-	dbVal string
+	dbKey   string
+	dbVal   string
+	dbClock map[string]int
 }
 
 // This stub returns true for the key which exists and false for the one which doesn't
-func (t *TestKVS) Contains(key string) bool {
+func (t *TestKVS) Contains(key string) (bool, int) {
 	if key == t.dbKey {
-		return true
+		return true, 1
 	}
-	return false
+	return false, 0
 }
 
 // This stub returns the valExistsue associated with the key which exists, and returns nil for the key which doesn't //
-func (t *TestKVS) Get(key string) string {
+func (t *TestKVS) Get(key string, clock map[string]int) (string, map[string]int) {
 	if key == t.dbKey {
-		return t.dbVal
+		return t.dbVal, t.dbClock
 	}
-	return ""
+	return "", nil
 }
 
 // This stub returns true for the key which exists and false for the one which doesn't
-func (t *TestKVS) Delete(key string) bool {
+func (t *TestKVS) Delete(key string, timestamp time.Time) bool {
 	if key == t.dbKey {
 		return true
 	}
@@ -61,13 +63,14 @@ func (t *TestKVS) Delete(key string) bool {
 }
 
 // idk lets try this
-func (t *TestKVS) Put(key, valExists string) bool {
+func (t *TestKVS) Put(key, valExists string, time time.Time, clock map[string]int) bool {
 	return true
 }
 
 // Trying to reduce code repetition
 func setup(key string, val string) (string, *mux.Router) {
-	k := TestKVS{dbKey: key, dbVal: val}
+	clock := make(map[string]int)
+	k := TestKVS{dbKey: key, dbVal: val, dbClock: clock}
 
 	// Stub the app
 	app := App{&k}
@@ -137,6 +140,7 @@ func TestPutRequestKeyExists(t *testing.T) {
 	expectedBody := map[string]interface{}{
 		"msg":      "Updated successfully",
 		"replaced": true,
+		"payload":  map[string]interface{}{},
 	}
 
 	equals(t, expectedBody, gotBody)
@@ -182,6 +186,7 @@ func TestPutRequestKeyDoesntExist(t *testing.T) {
 	expectedBody := map[string]interface{}{
 		"msg":      "Added successfully",
 		"replaced": false,
+		"payload":  map[string]interface{}{},
 	}
 
 	equals(t, expectedBody, gotBody)
@@ -230,8 +235,9 @@ func TestPutRequestInvalidKey(t *testing.T) {
 	err = json.Unmarshal(body, &gotBody)
 	ok(t, err)
 	expectedBody := map[string]interface{}{
-		"msg":   "Error",
-		"error": "Key not valid",
+		"msg":     "Error",
+		"error":   "Key not valid",
+		"payload": map[string]interface{}{},
 	}
 
 	equals(t, expectedBody, gotBody)
@@ -280,8 +286,9 @@ func TestPutRequestInvalidValue(t *testing.T) {
 	err = json.Unmarshal(body, &gotBody)
 	ok(t, err)
 	expectedBody := map[string]interface{}{
-		"result": "Error",
-		"msg":    "Object too large. Size limit is 1MB",
+		"result":  "Error",
+		"msg":     "Object too large. Size limit is 1MB",
+		"payload": map[string]interface{}{},
 	}
 
 	equals(t, expectedBody, gotBody)
@@ -322,8 +329,9 @@ func TestGetRequestKeyExists(t *testing.T) {
 	err = json.Unmarshal(body, &gotBody)
 	ok(t, err)
 	expectedBody := map[string]interface{}{
-		"value": valExists,
-		"msg":   "Success",
+		"value":   valExists,
+		"msg":     "Success",
+		"payload": map[string]interface{}{},
 	}
 
 	equals(t, expectedBody, gotBody)
@@ -365,8 +373,9 @@ func TestGetRequestKeyNotExists(t *testing.T) {
 	err = json.Unmarshal(body, &gotBody)
 	ok(t, err)
 	expectedBody := map[string]interface{}{
-		"error": "Key does not exist",
-		"msg":   "Error",
+		"error":   "Key does not exist",
+		"msg":     "Error",
+		"payload": map[string]interface{}{},
 	}
 
 	equals(t, expectedBody, gotBody)
@@ -407,7 +416,8 @@ func TestDeleteKeyExists(t *testing.T) {
 	err = json.Unmarshal(body, &gotBody)
 	ok(t, err)
 	expectedBody := map[string]interface{}{
-		"msg": "Success",
+		"msg":     "Success",
+		"payload": map[string]interface{}{},
 	}
 
 	equals(t, expectedBody, gotBody)
@@ -449,8 +459,9 @@ func TestDeleteKeyNotExists(t *testing.T) {
 	err = json.Unmarshal(body, &gotBody)
 	ok(t, err)
 	expectedBody := map[string]interface{}{
-		"msg":   "Error",
-		"error": "Key does not exist",
+		"msg":     "Error",
+		"error":   "Key does not exist",
+		"payload": map[string]interface{}{},
 	}
 
 	equals(t, expectedBody, gotBody)
@@ -494,6 +505,7 @@ func TestSearchRequestKeyExists(t *testing.T) {
 	expectedBody := map[string]interface{}{
 		"isExist": "true",
 		"msg":     "Success",
+		"payload": map[string]interface{}{},
 	}
 
 	equals(t, expectedBody, gotBody)
@@ -537,6 +549,7 @@ func TestSearchRequestKeyDoesntExist(t *testing.T) {
 	expectedBody := map[string]interface{}{
 		"isExist": "false",
 		"msg":     "Error",
+		"payload": map[string]interface{}{},
 	}
 
 	equals(t, expectedBody, gotBody)
@@ -585,6 +598,7 @@ func TestSearchRequestInvalidKey(t *testing.T) {
 	expectedBody := map[string]interface{}{
 		"isExist": "false",
 		"msg":     "Error",
+		"payload": map[string]interface{}{},
 	}
 
 	equals(t, expectedBody, gotBody)

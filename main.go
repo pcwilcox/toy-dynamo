@@ -46,6 +46,7 @@ func main() {
 	version := branch + "." + hash + "." + build
 	log.Println("Running version " + version)
 
+	// Make a KVS to use as the db
 	k := NewKVS()
 
 	// The App object is the front end

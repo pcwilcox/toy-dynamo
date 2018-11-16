@@ -4,6 +4,7 @@
 //
 // Lawrence Lawson     lelawson
 // Pete Wilcox         pcwilcox
+// Annie Shen          ashen7
 //
 // This is the source file defining the front end of the RESTful API.
 //
@@ -14,6 +15,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -62,125 +64,152 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 	// Predefine these so they can be used further down
 	var err error
 	var value string
-
-	// These get written below
-	var body []byte
+	var payloadString string
+	var payloadInt map[string]int
+	var payloadMap map[string]interface{}
 	var status int
-
-	// Same content type for everything
-	w.Header().Set("Content-Type", "application/json")
+	var body []byte
 
 	// Safety check - the system will panic trying to read a nil body
 	if r.Body != nil {
 		// Parse the form so we can read values
 		r.ParseForm()
 
+		// Create an intermediate map to parse the payload into
+		payloadMap = make(map[string]interface{})
+
 		if len(r.Form) > 0 {
+			// Read the values from the request body
 			value = r.Form["val"][0]
+			if r.Form["payload"] != nil {
+				payloadString = r.Form["payload"][0]
 
-			// Maximum input restrictions
-			maxVal := 1048576 // 1 megabyte
-			maxKey := 200     // 200 characters
-
-			// This pulls the {subject} out of the URL, that forms the key
-			vars := mux.Vars(r)
-			key := vars["subject"]
-
-			// Check for valid input
-			if len(value) > maxVal {
-				// The value is > 1MB so error out
-				log.Println("ERROR: Value length too long")
-
-				// Set the status code
-				status = http.StatusUnprocessableEntity // code 422
-
-				// Form the response into something that JSON can handle
-				resp := map[string]interface{}{
-					"result": "Error",
-					"msg":    "Object too large. Size limit is 1MB",
+				if payloadString != "" {
+					// Read the payload into the intermediate map
+					err = json.Unmarshal([]byte(payloadString), &payloadMap)
+					if err != nil {
+						log.Fatalln(err)
+					}
 				}
+			}
+		}
 
-				// Convert it from a map into a []byte
-				body, err = json.Marshal(resp)
-				if err != nil {
-					// Could try and make this a recoverable error maybe
-					log.Fatalln("FATAL ERROR: Failed to marshal JSON response")
-				}
-			} else if len(key) > maxKey {
-				// The key is more than 200 characters so error out
-				log.Println("ERROR: Key length too long")
+		// Convert the intermediate map into map[string]int as needed by KVS
+		payloadInt = make(map[string]int)
+		for k, v := range payloadMap {
+			payloadInt[k] = v.(int)
+		}
 
-				// Set the status code
-				status = http.StatusUnprocessableEntity // code 422
+		// Maximum input restrictions
+		maxVal := 1048576 // 1 megabyte
+		maxKey := 200     // 200 characters
 
-				// Build the response and shove it into a JSON-[]byte
+		// This pulls the {subject} out of the URL, that forms the key
+		vars := mux.Vars(r)
+		key := vars["subject"]
+
+		// Check for valid input
+		if len(value) > maxVal {
+			// The value is > 1MB so error out
+			log.Println("ERROR: Value length too long")
+
+			// Set the status code
+			status = http.StatusUnprocessableEntity // code 422
+
+			// Form the response into something that JSON can handle
+			resp := map[string]interface{}{
+				"result":  "Error",
+				"msg":     "Object too large. Size limit is 1MB",
+				"payload": payloadInt,
+			}
+
+			// Convert it from a map into a []byte
+			body, err = json.Marshal(resp)
+			if err != nil {
+				// Could try and make this a recoverable error maybe
+				log.Fatalln("FATAL ERROR: Failed to marshal JSON response")
+			}
+		} else if len(key) > maxKey {
+			// The key is more than 200 characters so error out
+			log.Println("ERROR: Key length too long")
+
+			// Set the status code
+			status = http.StatusUnprocessableEntity // code 422
+
+			// Build the response and shove it into a JSON-[]byte
+			resp := map[string]interface{}{
+				"msg":     "Error",
+				"error":   "Key not valid",
+				"payload": payloadInt,
+			}
+			body, err = json.Marshal(resp)
+			if err != nil {
+				log.Fatalln("FATAL ERROR: Failed to marshal JSON response")
+			}
+		} else {
+			// key/val are valid inputs, let's insert into the db
+			log.Println("Key and value lengths ok")
+
+			// Check to see if the db already contains the key
+			alive, version := app.db.Contains(key)
+			if alive && payloadInt[key] <= version {
+				// It does so we'll update it
+				log.Println("Key already exists in DB, overwriting...")
+				time := time.Now()
+				app.db.Put(key, value, time, payloadInt)
+
+				log.Printf("Inserted key-value pair")
+				// Set status
+				status = http.StatusOK // code 200
+
+				// Build the response body
 				resp := map[string]interface{}{
-					"msg":   "Error",
-					"error": "Key not valid",
+					"replaced": true,
+					"msg":      "Updated successfully",
+					"payload":  payloadInt,
 				}
 				body, err = json.Marshal(resp)
 				if err != nil {
 					log.Fatalln("FATAL ERROR: Failed to marshal JSON response")
 				}
 			} else {
-				// key/val are valid inputs, let's insert into the db
-				log.Println("Key and value lengths ok")
+				log.Println("Key does not exist in DB, inserting...")
+				log.Printf("Inserted key-value pair")
+				// It's a new entry so it gets a different status code
+				status = http.StatusCreated // code 201
+				time := time.Now()
+				app.db.Put(key, value, time, payloadInt)
 
-				// Check to see if the db already contains the key
-				if app.db.Contains(key) {
-					// It does so we'll update it
-					log.Println("Key already exists in DB, overwriting...")
-					app.db.Put(key, value)
-
-					log.Printf("Inserted key-value pair")
-					// Set status
-					status = http.StatusOK // code 200
-
-					// Build the response body
-					resp := map[string]interface{}{
-						"replaced": true,
-						"msg":      "Updated successfully",
-					}
-					body, err = json.Marshal(resp)
-					if err != nil {
-						log.Fatalln("FATAL ERROR: Failed to marshal JSON response")
-					}
-				} else {
-					log.Println("Key does not exist in DB, inserting...")
-					log.Printf("Inserted key-value pair")
-					// It's a new entry so it gets a different status code
-					status = http.StatusCreated // code 201
-					app.db.Put(key, value)
-
-					// And a slightly different response body
-					resp := map[string]interface{}{
-						"replaced": false,
-						"msg":      "Added successfully",
-					}
-					body, err = json.Marshal(resp)
-					if err != nil {
-						log.Fatalln("FATAL ERROR: Failed to marshal JSON response")
-					}
+				// And a slightly different response body
+				resp := map[string]interface{}{
+					"replaced": false,
+					"msg":      "Added successfully",
+					"payload":  payloadInt,
+				}
+				body, err = json.Marshal(resp)
+				if err != nil {
+					log.Fatalln("FATAL ERROR: Failed to marshal JSON response")
 				}
 			}
+		}
 
-		} else {
-			log.Println("ERROR: No data sent with request")
+	} else {
+		log.Println("ERROR: No data sent with request")
 
-			// There's no body in the request
-			status = http.StatusNotFound // code 404
+		// There's no body in the request
+		status = http.StatusNotFound // code 404
 
-			// And a slightly different response body
-			resp := map[string]interface{}{
-				"msg":   "Error",
-				"error": "Value is missing",
-			}
-			body, err = json.Marshal(resp)
-			if err != nil {
-				log.Fatalln("FATAL ERROR: Failed to marshal JSON response")
-			}
+		// And a slightly different response body
+		resp := map[string]interface{}{
+			"msg":   "Error",
+			"error": "Value is missing",
+		}
+		body, err = json.Marshal(resp)
+		if err != nil {
+			log.Fatalln("FATAL ERROR: Failed to marshal JSON response")
 		}
 	}
+
 	// We assigned status code and body above, write them here
 	w.WriteHeader(status)
 	w.Write(body)
@@ -194,26 +223,57 @@ func (app *App) GetHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	key := vars["subject"]
 
+	// Read the payload out of the message body
+	r.ParseForm()
+
+	var payloadString string
+	var err error
+
+	// Create an intermediate map to parse the payload into
+	payloadMap := make(map[string]interface{})
+
+	if len(r.Form) > 0 {
+		// Read the values from the request body
+		if r.Form["payload"] != nil {
+			payloadString = r.Form["payload"][0]
+
+			if payloadString != "" {
+				// Read the payload into the intermediate map
+				err = json.Unmarshal([]byte(payloadString), &payloadMap)
+				if err != nil {
+					log.Fatalln(err)
+				}
+			}
+		}
+	}
+
+	// Convert the intermediate map into map[string]int as needed by KVS
+	payloadInt := make(map[string]int)
+	for k, v := range payloadMap {
+		payloadInt[k] = v.(int)
+	}
+
 	// Declare some vars
 	var body []byte
-	var err error
 
 	// Same content type for everything
 	w.Header().Set("Content-Type", "application/json")
 
 	// See if the key exists in the db
-	if app.db.Contains(key) {
+	alive, version := app.db.Contains(key)
+	if alive && payloadInt[key] <= version {
 		// It does
 		w.WriteHeader(http.StatusOK) // code 200
 
 		// Get the key out of the db
-		val := app.db.Get(key)
+		val, payload := app.db.Get(key, payloadInt)
 		log.Println("Key found in DB")
 
 		// Package it into a map->JSON->[]byte
 		resp := map[string]interface{}{
-			"msg":   "Success",
-			"value": val,
+			"msg":     "Success",
+			"value":   val,
+			"payload": payload,
 		}
 		body, err = json.Marshal(resp)
 		if err != nil {
@@ -226,8 +286,9 @@ func (app *App) GetHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Error response
 		resp := map[string]interface{}{
-			"msg":   "Error",
-			"error": "Key does not exist",
+			"msg":     "Error",
+			"error":   "Key does not exist",
+			"payload": payloadInt,
 		}
 		body, err = json.Marshal(resp)
 		if err != nil {
@@ -252,8 +313,39 @@ func (app *App) SearchHandler(w http.ResponseWriter, r *http.Request) {
 	// Same content type for everything
 	w.Header().Set("Content-Type", "application/json")
 
+	// Read the payload out of the message body
+	r.ParseForm()
+
+	var payloadString string
+
+	// Create an intermediate map to parse the payload into
+	payloadMap := make(map[string]interface{})
+
+	if len(r.Form) > 0 {
+		// Read the values from the request body
+		if r.Form["payload"] != nil {
+			payloadString = r.Form["payload"][0]
+
+			if payloadString != "" {
+				// Read the payload into the intermediate map
+				err = json.Unmarshal([]byte(payloadString), &payloadMap)
+				if err != nil {
+					log.Fatalln(err)
+				}
+			}
+		}
+	}
+
+	// Convert the intermediate map into map[string]int as needed by KVS
+	payloadInt := make(map[string]int)
+	for k, v := range payloadMap {
+		payloadInt[k] = v.(int)
+	}
+
 	// See if the key exists in the db
-	if app.db.Contains(key) {
+	alive, version := app.db.Contains(key)
+	if alive && payloadInt[key] <= version {
+
 		log.Println("Key found in DB")
 		// It does
 		w.WriteHeader(http.StatusOK) // code 200
@@ -262,6 +354,7 @@ func (app *App) SearchHandler(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]interface{}{
 			"msg":     "Success",
 			"isExist": "true",
+			"payload": payloadInt,
 		}
 		body, err = json.Marshal(resp)
 		if err != nil {
@@ -276,14 +369,15 @@ func (app *App) SearchHandler(w http.ResponseWriter, r *http.Request) {
 		resp := map[string]interface{}{
 			"msg":     "Error",
 			"isExist": "false",
+			"payload": payloadInt,
 		}
 		body, err = json.Marshal(resp)
 		if err != nil {
 			log.Fatalln("FATAL ERROR: Failed to marshal JSON response")
 		}
 	}
-	w.Write(body)
 
+	w.Write(body)
 }
 
 // DeleteHandler deletes k:v pairs from the db
@@ -300,18 +394,50 @@ func (app *App) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
+	// Read the payload out of the message body
+	r.ParseForm()
+
+	var payloadString string
+
+	// Create an intermediate map to parse the payload into
+	payloadMap := make(map[string]interface{})
+
+	if len(r.Form) > 0 {
+		// Read the values from the request body
+		if r.Form["payload"] != nil {
+			payloadString = r.Form["payload"][0]
+
+			if payloadString != "" {
+				// Read the payload into the intermediate map
+				err = json.Unmarshal([]byte(payloadString), &payloadMap)
+				if err != nil {
+					log.Fatalln(err)
+				}
+			}
+		}
+	}
+
+	// Convert the intermediate map into map[string]int as needed by KVS
+	payloadInt := make(map[string]int)
+	for k, v := range payloadMap {
+		payloadInt[k] = v.(int)
+	}
+
 	// Check to see if we've got the key
-	if app.db.Contains(key) {
+	alive, version := app.db.Contains(key)
+	if alive && payloadInt[key] <= version {
 		log.Println("Key found in DB")
 		// We do
 		w.WriteHeader(http.StatusOK) // code 200
 
 		// Delete it
-		app.db.Delete(key)
+		time := time.Now()
+		app.db.Delete(key, time)
 
 		// Successful response
 		resp := map[string]interface{}{
-			"msg": "Success",
+			"msg":     "Success",
+			"payload": payloadInt,
 		}
 		body, err = json.Marshal(resp)
 		if err != nil {
@@ -325,14 +451,15 @@ func (app *App) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Error response
 		resp := map[string]interface{}{
-			"error": "Key does not exist",
-			"msg":   "Error",
+			"error":   "Key does not exist",
+			"msg":     "Error",
+			"payload": payloadInt,
 		}
 		body, err = json.Marshal(resp)
 		if err != nil {
 			log.Fatalln("FATAL ERROR: Failed to marshal JSON response")
 		}
 	}
-	w.Write(body)
 
+	w.Write(body)
 }

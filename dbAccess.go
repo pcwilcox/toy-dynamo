@@ -10,18 +10,20 @@
 
 package main
 
+import "time"
+
 // dbAccess interface defines methods for interactions between the REST API front end and the key-value store
 type dbAccess interface {
 
 	// Contains returns true if the data store contains an object with key equal to the input
-	Contains(string) bool
+	Contains(string) (bool, int)
 
 	// Get returns the value associated with a particular key. If the key does not exist it returns ""
-	Get(string) string
+	Get(string, map[string]int) (string, map[string]int)
 
 	// Delete removes a key-value pair from the object. If the key does not exist it returns false.
-	Delete(string) bool
+	Delete(string, time.Time) bool
 
 	// Put adds a key-value pair to the data store. If the key already exists, then it overwrites the existing value. If the key does not exist then it is added.
-	Put(string, string) bool
+	Put(string, string, time.Time, map[string]int) bool
 }
