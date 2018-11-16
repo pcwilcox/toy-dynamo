@@ -26,7 +26,7 @@ BUILDNUM := $(shell git rev-list --count HEAD)
 HASH     := $(shell git rev-parse --short HEAD 2> /dev/null)
 
 # Change this to the application name
-EXEC      = cs128-hw2
+EXEC      = cs128-hw3
 
 # Add source files to this list
 SOURCES   = main.go dbAccess.go app.go kvs.go restful.go values.go
