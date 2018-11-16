@@ -139,7 +139,7 @@ func (e *Entry) Update(newTime time.Time, newClock map[string]int, newVal string
 func (e *Entry) Delete(newTime time.Time) {
 	e.timestamp = newTime
 	e.value = ""
-	e.clock = nil
+	e.clock = map[string]int{}
 	e.tombstone = true
 	e.version++
 }

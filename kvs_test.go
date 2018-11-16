@@ -171,21 +171,6 @@ func TestKVSPutInvalidVal(t *testing.T) {
 	assert(t, !k.Put(keyone, invalidVal, time.Now(), nil), "Invalid value added")
 }
 
-// GetVersion() should return the version
-func TestEntryGetVersion(t *testing.T) {
-	e := Entry{
-		version:   1,
-		timestamp: time.Now(),
-		clock: map[string]int{
-			keyExists: 1,
-		},
-		value:     valExists,
-		tombstone: false,
-	}
-
-	assert(t, e.GetVersion() == 1, "GetVersion() returned wrong value")
-}
-
 // GetVersion of an existing entry should return the version
 func TestEntryGetVersionKeyExists(t *testing.T) {
 	e := Entry{
@@ -203,7 +188,8 @@ func TestEntryGetVersionKeyExists(t *testing.T) {
 
 // GetVersion of a non-existing key should return 0
 func TestEntryGetVersionKeyNotExists(t *testing.T) {
-	var e Entry
+	// Setting e to be an uninitialized pointer means the struct is nil
+	var e *Entry
 	assert(t, e.GetVersion() == 0, "GetVersion() returned wrong value")
 }
 
@@ -224,7 +210,7 @@ func TestEntryGetTimestampKeyExists(t *testing.T) {
 
 // GetTimestamp should return the zero-value timestamp if the key doesn't exist
 func TestEntryGetTimestampKeyNotExists(t *testing.T) {
-	var e Entry
+	var e *Entry
 	assert(t, e.GetTimestamp() == time.Time{}, "GetTimestamp() returned wrong value")
 }
 
@@ -246,7 +232,7 @@ func TestEntryGetClockKeyExists(t *testing.T) {
 
 // GetClock should return an empty map for a key which doesn't exist
 func TestEntryGetClockKeyNotExists(t *testing.T) {
-	e := Entry{}
+	var e *Entry
 	assert(t, len(e.GetClock()) == 0, "GetClock() returned non-empty map for nonexisting key")
 }
 
@@ -264,7 +250,7 @@ func TestEntryGetValueKeyExists(t *testing.T) {
 
 // GetValue should return an empty string for a key which doesn't exist
 func TestEntryGetValueKeyNotExists(t *testing.T) {
-	e := Entry{}
+	var e *Entry
 	equals(t, e.GetValue(), "")
 }
 
@@ -305,7 +291,7 @@ func TestUpdateIncrementsVersion(t *testing.T) {
 }
 
 // Update should reset the tombstone
-func TestUpdateClearsTomstone(t *testing.T) {
+func TestUpdateClearsTombstone(t *testing.T) {
 	start := time.Now()
 	time.Sleep(1)
 	finish := time.Now()
@@ -320,7 +306,161 @@ func TestUpdateClearsTomstone(t *testing.T) {
 
 	e.Update(finish, map[string]int{}, valExists)
 	equals(t, e.Alive(), true)
+}
 
+// Update should change the value
+func TestUpdateChangesValue(t *testing.T) {
+	start := time.Now()
+	time.Sleep(1)
+	finish := time.Now()
+
+	e := Entry{
+		version:   1,
+		timestamp: start,
+		clock:     map[string]int{keyExists: 1},
+		value:     valone,
+		tombstone: true,
+	}
+
+	e.Update(finish, map[string]int{}, valtwo)
+	equals(t, valtwo, e.GetValue())
+}
+
+// Alive should return true for existing keys
+func TestAliveKeyExistsReturnsTrue(t *testing.T) {
+	e := Entry{
+		version:   1,
+		timestamp: time.Now(),
+		clock:     map[string]int{keyExists: 1},
+		value:     valone,
+		tombstone: false,
+	}
+
+	equals(t, true, e.Alive())
+}
+
+// Alive should return false for non-existing keys
+func TestAliveKeyNotExistsReturnsFalse(t *testing.T) {
+	var e *Entry
+	equals(t, false, e.Alive())
+}
+
+// Delete should set a new timestamp
+func TestDeleteSetsNewTimestamp(t *testing.T) {
+	start := time.Now()
+	time.Sleep(1)
+	finish := time.Now()
+
+	e := Entry{
+		version:   1,
+		timestamp: start,
+		clock:     map[string]int{keyExists: 1},
+		value:     valone,
+		tombstone: false,
+	}
+
+	e.Delete(finish)
+	equals(t, finish, e.GetTimestamp())
+}
+
+// Delete should update the version
+func TestDeleteUpdatesVersion(t *testing.T) {
+	start := time.Now()
+	time.Sleep(1)
+	finish := time.Now()
+
+	e := Entry{
+		version:   1,
+		timestamp: start,
+		clock:     map[string]int{keyExists: 1},
+		value:     valone,
+		tombstone: false,
+	}
+
+	e.Delete(finish)
+	equals(t, 2, e.GetVersion())
+}
+
+// Delete should set the tombstone
+func TestDeleteSetsTombstone(t *testing.T) {
+	start := time.Now()
+	time.Sleep(1)
+	finish := time.Now()
+
+	e := Entry{
+		version:   1,
+		timestamp: start,
+		clock:     map[string]int{keyExists: 1},
+		value:     valone,
+		tombstone: false,
+	}
+
+	e.Delete(finish)
+	equals(t, false, e.Alive())
+}
+
+// Delete should clear the value
+func TestDeleteClearsValue(t *testing.T) {
+	start := time.Now()
+	time.Sleep(1)
+	finish := time.Now()
+
+	e := Entry{
+		version:   1,
+		timestamp: start,
+		clock:     map[string]int{keyExists: 1},
+		value:     valone,
+		tombstone: false,
+	}
+
+	e.Delete(finish)
+	equals(t, "", e.GetValue())
+}
+
+// Delete should clear the clock
+func TestDeleteClearsClock(t *testing.T) {
+	start := time.Now()
+	time.Sleep(1)
+	finish := time.Now()
+
+	e := Entry{
+		version:   1,
+		timestamp: start,
+		clock:     map[string]int{keyExists: 1},
+		value:     valone,
+		tombstone: false,
+	}
+
+	e.Delete(finish)
+	equals(t, map[string]int{}, e.GetClock())
+}
+
+// Update should set the clock to include the key you've updated
+func TestUpdateSetsInitialClock(t *testing.T) {
+	e := Entry{
+		version:   1,
+		timestamp: time.Now(),
+		clock:     map[string]int{},
+		value:     valone,
+		tombstone: false,
+	}
+	initialClock := map[string]int{
+		keyExists: 2,
+	}
+	e.Update(time.Now(), initialClock, valtwo)
+	equals(t, initialClock, e.GetClock())
+}
+
+// NewEntry should set an initial clock value
+func TestNewEntrySetsInitialClock(t *testing.T) {
+	initialClock := map[string]int{
+		keyExists:        1,
+		keyNotExists:     2,
+		"some other key": 1,
+	}
+	e := NewEntry(time.Now(), initialClock, valExists)
+
+	equals(t, initialClock, e.GetClock())
 }
 
 // These functions were taken from Ben Johnson's post here: https://medium.com/@benbjohnson/structuring-tests-in-go-46ddee7a25c
