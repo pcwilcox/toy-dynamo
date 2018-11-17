@@ -179,7 +179,7 @@ func (k *KVS) contains(key string) (bool, int) {
 	if t != nil {
 		return t.Alive(), t.GetVersion()
 	}
-	return false, -1
+	return false, 0
 }
 
 // Get returns the value associated with a particular key. If the key does not exist it returns ""
@@ -192,7 +192,7 @@ func (k *KVS) Get(key string, payload map[string]int) (val string, clock map[str
 	_, version := k.contains(key)
 
 	// Call the non-locking contains() method, use the version from above with default value 0
-	if version != -1 {
+	if version != 0 {
 		log.Println("Value found")
 
 		// Get the key and clock from the db

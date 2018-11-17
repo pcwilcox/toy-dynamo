@@ -13,8 +13,10 @@ package main
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/handlers"
@@ -29,7 +31,8 @@ import (
 
 // App is a struct representing the externally-accessible state of the data store
 type App struct {
-	db dbAccess
+	db   dbAccess
+	view viewList
 }
 
 // Initialize fires up the router and such
@@ -43,6 +46,11 @@ func (app *App) Initialize() {
 
 	// This is the search handler, which has a different prefix
 	s.HandleFunc(search+keySuffix, app.SearchHandler).Methods(http.MethodGet)
+
+	// This is the view handler, has its own GET, PUT and DELETE
+	s.HandleFunc(view, app.ViewPutHandler).Methods(http.MethodPut)
+	s.HandleFunc(view, app.ViewGetHandler).Methods(http.MethodGet)
+	s.HandleFunc(view, app.ViewDeleteHandler).Methods(http.MethodDelete)
 
 	// Each of the request types gets a handler
 	s.HandleFunc(keySuffix, app.PutHandler).Methods(http.MethodPut)
@@ -97,7 +105,7 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 		// Convert the intermediate map into map[string]int as needed by KVS
 		payloadInt = make(map[string]int)
 		for k, v := range payloadMap {
-			payloadInt[k] = v.(int)
+			payloadInt[k] = int(v.(float64))
 		}
 
 		// Maximum input restrictions
@@ -156,6 +164,11 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 				// It does so we'll update it
 				log.Println("Key already exists in DB, overwriting...")
 				time := time.Now()
+
+				// Add this key/version to its payload
+				payloadInt[key] = version + 1
+
+				// Put it in the db
 				app.db.Put(key, value, time, payloadInt)
 
 				log.Printf("Inserted key-value pair")
@@ -174,10 +187,12 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 				}
 			} else {
 				log.Println("Key does not exist in DB, inserting...")
-				log.Printf("Inserted key-value pair")
 				// It's a new entry so it gets a different status code
 				status = http.StatusCreated // code 201
 				time := time.Now()
+
+				// Add this key to its own payload, since the key might be dead we just increment the version number
+				payloadInt[key] = version + 1
 				app.db.Put(key, value, time, payloadInt)
 
 				// And a slightly different response body
@@ -454,6 +469,151 @@ func (app *App) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 			"error":   "Key does not exist",
 			"msg":     "Error",
 			"payload": payloadInt,
+		}
+		body, err = json.Marshal(resp)
+		if err != nil {
+			log.Fatalln("FATAL ERROR: Failed to marshal JSON response")
+		}
+	}
+
+	w.Write(body)
+}
+
+// ViewPutHandler inititate a view change.
+// All containers in the system should add to their view
+func (app *App) ViewPutHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("Handling /view PUT request")
+
+	// Read the payload out of the message body
+	r.ParseForm()
+
+	// Declare some vars
+	var body []byte
+	var err error
+	var newPort string
+
+	if len(r.Form) > 0 {
+		// Read the values from the request body
+		if r.Form["ip_port"] != nil {
+			newPort = r.Form["ip_port"][0]
+		}
+	}
+
+	// Same content type for everything
+	w.Header().Set("Content-Type", "application/json")
+
+	// Check if the port you want to add new to our view
+	if !app.view.Contains(newPort) {
+		log.Println("Port to be added is brand new to view: " + newPort)
+
+		// We do
+		w.WriteHeader(http.StatusOK) // code 200
+
+		// Add it
+		app.view.Add(newPort)
+
+		// Successful response
+		resp := map[string]interface{}{
+			"result": "Success",
+			"msg":    "Successfully added " + newPort + " to view",
+		}
+		body, err = json.Marshal(resp)
+		if err != nil {
+			log.Fatalln("FATAL ERROR: Failed to marshal JSON response")
+		}
+
+	} else {
+		log.Println("Port to be added is already in view")
+
+		// We already have the port
+		w.WriteHeader(http.StatusNotFound) // code 404
+
+		// Error response
+		resp := map[string]interface{}{
+			"result": "Error",
+			"msg":    newPort + " is already in view",
+		}
+		body, err = json.Marshal(resp)
+		if err != nil {
+			log.Fatalln("FATAL ERROR: Failed to marshal JSON response")
+		}
+	}
+	w.Write(body)
+}
+
+// ViewGetHandler returns the view slice of the system
+func (app *App) ViewGetHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("Handling /view GET request")
+
+	// Declare some vars
+	var body []byte
+	var err error
+	var str string
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK) // code 200
+
+	// Turn envView into string for JSON response
+	str = app.view.String()
+
+	// Package it into a map->JSON->[]byte
+	resp := map[string]interface{}{
+		"view": str,
+	}
+	body, err = json.Marshal(resp)
+	if err != nil {
+		log.Fatalln("FATAL ERROR: Failed to marshal JSON response")
+	}
+	w.Write(body)
+
+}
+
+// ViewDeleteHandler inititate a view change. All containers' system view should change.
+func (app *App) ViewDeleteHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("Handling /view DELETE request")
+
+	// Declare some vars
+	var body []byte
+	var err error
+
+	// Read the message body
+	s, _ := ioutil.ReadAll(r.Body)
+	log.Println(string(s))
+	deletePort := strings.Split(string(s[:]), "=")[1]
+
+	// Same content type for everything
+	w.Header().Set("Content-Type", "application/json")
+
+	// Check if the port you want to delete is in view
+	if app.view.Contains(deletePort) {
+		log.Println("Port to be deleted found in view")
+
+		// We do
+		w.WriteHeader(http.StatusOK) // code 200
+
+		// Delete it
+		app.view.Remove(deletePort)
+
+		// Successful response
+		resp := map[string]interface{}{
+			"result": "Success",
+			"msg":    "Successfully removed " + deletePort + " from view",
+		}
+		body, err = json.Marshal(resp)
+		if err != nil {
+			log.Fatalln("FATAL ERROR: Failed to marshal JSON response")
+		}
+
+	} else {
+		log.Println("Port to be deleted not found in view")
+
+		// We don't have the port
+		w.WriteHeader(http.StatusNotFound) // code 404
+
+		// Error response
+		resp := map[string]interface{}{
+			"result": "Error",
+			"msg":    deletePort + " is not in current view",
 		}
 		body, err = json.Marshal(resp)
 		if err != nil {

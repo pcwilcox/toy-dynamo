@@ -29,7 +29,7 @@ HASH     := $(shell git rev-parse --short HEAD 2> /dev/null)
 EXEC      = cs128-hw3
 
 # Add source files to this list
-SOURCES   = main.go dbAccess.go app.go kvs.go restful.go values.go
+SOURCES   = main.go dbAccess.go app.go kvs.go restful.go values.go view.go
 
 # Flags passed to the linker which define version strings in main.go
 LDFLAGS   = '-X "main.branch=${BRANCH}" -X "main.hash=${HASH}" -X "main.build=${BUILDNUM}"'

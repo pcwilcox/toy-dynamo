@@ -23,15 +23,24 @@ const (
 	keySuffix     = "/{subject}"
 	alive         = "/alive"
 	search        = "/search"
+	view          = "/view"
+	viewTest1     = "176.32.164.10:8082"
+	viewTest2     = "176.32.164.10:1234"
 	keyone        = "Key One"
 	valone        = "Value One"
 	keyNotHere    = "Key Not Here"
 	valtwo        = "Value Two"
 	deletekey     = "I DONT EXIST"
+	invalidVal    = ""
+	testView      = "176.32.164.10:8082,176.32.164.10:8083,176.32.164.10:8084"
+	testMain      = "176.32.164.10:8082"
+	viewExist     = "176.32.164.10:8083"
+	viewNotExist  = "176.32.164.10:8085"
 	invalidKey    = `Lorem ipsum dolor sit amet, 
 			consectetuer adipiscing elit. Aenean commodo 
 			ligula eget dolor. Aenean massa. Cum sociis natoque 
 			penatibus et magnis dis parturient montes, 
 			nascetur ridiculus mus. Donec qu`
-	invalidVal = ""
 )
+
+var myIP string

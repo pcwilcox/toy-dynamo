@@ -39,6 +39,7 @@ jobs:               # these are like stages
             go get github.com/jstemmer/go-junit-report
             go get github.com/gorilla/mux
             go get github.com/gorilla/handlers
+            go get github.com/go-test/deep
       - save_cache:
           key: source-v1-{{ .Branch }}-{{ .Revision }}
           paths:                          # Save the dependencies, these shouldn't change

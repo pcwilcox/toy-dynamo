@@ -46,11 +46,24 @@ func main() {
 	version := branch + "." + hash + "." + build
 	log.Println("Running version " + version)
 
+	// Get my port from Env
+	myIP = os.Getenv("IP_PORT")
+
+	log.Println("My IP is " + myIP)
+
+	// Save the view from string to slice to map, due to map being easier to access
+	str := os.Getenv("VIEW")
+
+	log.Println("My view is: " + str)
+
+	// Create a viewlist and load the view into it
+	MyView := NewView(myIP, str)
+
 	// Make a KVS to use as the db
 	k := NewKVS()
 
 	// The App object is the front end
-	a := App{db: k}
+	a := App{db: k, view: *MyView}
 
 	log.Println("Starting server...")
 	// Initialize starts the server

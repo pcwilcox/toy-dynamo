@@ -51,7 +51,7 @@ func TestKVSContainsCheckIfDoesntExist(t *testing.T) {
 
 	alive, version := k.Contains(keyNotHere)
 
-	assert(t, version == -1, "Key found that does not exist.")
+	assert(t, version == 0, "Key found that does not exist.")
 	assert(t, !alive, "Contains returned alive for nonexistent key.")
 }
 
