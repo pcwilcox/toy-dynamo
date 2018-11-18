@@ -79,7 +79,7 @@ func (kvs *TestKVS) Put(key, valExists string, time time.Time, payload map[strin
 
 // Trying to reduce code repetition
 func setup(key string, val string) (string, *mux.Router) {
-	clock := map[string]int{keyExists: 1}
+	clock := map[string]int{key: 1}
 	testKVS = TestKVS{dbKey: key, dbVal: val, dbClock: clock}
 
 	// This should probably be converted to a mock instance
@@ -968,6 +968,62 @@ func TestPutHandlerStoresPayload(t *testing.T) {
 	ok(t, err)
 
 	equals(t, testPayload, testKVS.dbClock)
+
+	teardown()
+}
+
+func TestGetHandlerStalePayload(t *testing.T) {
+
+	// Setup the test
+	serverURL, router := setup(keyExists, valExists)
+
+	// Use a httptest recorder to observe responses
+	recorder := httptest.NewRecorder()
+
+	// This subject exists in the store already
+	subject := keyExists
+
+	// Set up the URL
+	url := serverURL + rootURL + "/" + subject
+
+	testPayload := map[string]int{keyExists: 2}
+	testPayloadByte, err := json.Marshal(testPayload)
+	ok(t, err)
+	testPayloadString := string(testPayloadByte[:])
+
+	testBody := "payload=" + testPayloadString
+
+	// Convert it to a []byte
+	reqBody := strings.NewReader(testBody)
+	// Stub a request
+	method := http.MethodGet
+	req, err := http.NewRequest(method, url, reqBody)
+	ok(t, err)
+
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	// Finally, make the request to the function being tested.
+	router.ServeHTTP(recorder, req)
+
+	expectedStatus := http.StatusBadRequest // code 200
+	gotStatus := recorder.Code
+	equals(t, expectedStatus, gotStatus)
+	body, err := ioutil.ReadAll(recorder.Body)
+	ok(t, err)
+
+	var gotBody map[string]interface{}
+	expectedPayload := map[string]interface{}{keyExists: float64(2)}
+
+	err = json.Unmarshal(body, &gotBody)
+	ok(t, err)
+	expectedBody := map[string]interface{}{
+		"result":  "Error",
+		"msg":     "Payload out of date",
+		"payload": expectedPayload,
+	}
+	if diff := deep.Equal(expectedBody, gotBody); diff != nil {
+		t.Error(diff)
+	}
+	equals(t, expectedBody, gotBody)
 
 	teardown()
 }

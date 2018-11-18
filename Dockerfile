@@ -18,4 +18,4 @@ RUN make
 EXPOSE 8080
 
 # Run the sucker
-CMD ["/app/cs128-hw2"]
+CMD ["/app/cs128-hw3"]

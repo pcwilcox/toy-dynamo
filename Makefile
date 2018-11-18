@@ -9,7 +9,7 @@
 
 # Predefined stuff
 BUILD     = go build
-TEST      = go test -v
+TEST      = go test
 BENCH     = ${TEST} -bench=.
 COVER     = ${TEST} -coverprofile ${COVERFILE}
 DOCKER    = docker build
@@ -42,8 +42,8 @@ all : ${EXEC}
 ${EXEC} :
 	${BUILD} -o ${EXEC} ${LD} ${SOURCES} 
 
-# This runs 'go test ...'
-test :
+# This runs the integration test script
+test : docker
 	${TEST}
 
 # This runs Go benchmarks (need to be written)

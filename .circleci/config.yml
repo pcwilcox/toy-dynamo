@@ -40,12 +40,18 @@ jobs:               # these are like stages
             go get github.com/gorilla/mux
             go get github.com/gorilla/handlers
             go get github.com/go-test/deep
+      - run:
+          name: "Use the right Python version"
+          command: |
+            pyenv install 3.7.0a1
+            pyenv global 3.7.0a1
       - save_cache:
           key: source-v1-{{ .Branch }}-{{ .Revision }}
           paths:                          # Save the dependencies, these shouldn't change
             - ".git"
             - "download/"
             - "/go/pkg"
+            - "/opt/circleci/.pyenv/versions/"
       - run:
           name: "Run unit tests"          # This executes the tests as defined in the makefile
           command: |                      # Should output test report to an xml

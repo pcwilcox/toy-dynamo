@@ -238,36 +238,34 @@ func (app *App) GetHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	key := vars["subject"]
 
-	// Read the payload out of the message body
-	r.ParseForm()
-
 	var payloadString string
+
 	var err error
+
+	if r.Body != nil {
+		// Read the message body
+		s, _ := ioutil.ReadAll(r.Body)
+		log.Println(string(s))
+		payloadString = strings.Split(string(s[:]), "=")[1]
+	}
 
 	// Create an intermediate map to parse the payload into
 	payloadMap := make(map[string]interface{})
 
-	if len(r.Form) > 0 {
-		// Read the values from the request body
-		if r.Form["payload"] != nil {
-			payloadString = r.Form["payload"][0]
-
-			if payloadString != "" {
-				// Read the payload into the intermediate map
-				err = json.Unmarshal([]byte(payloadString), &payloadMap)
-				if err != nil {
-					log.Fatalln(err)
-				}
-			}
+	if payloadString != "" {
+		// Read the payload into the intermediate map
+		err = json.Unmarshal([]byte(payloadString), &payloadMap)
+		if err != nil {
+			log.Fatalln(err)
 		}
 	}
 
 	// Convert the intermediate map into map[string]int as needed by KVS
 	payloadInt := make(map[string]int)
 	for k, v := range payloadMap {
-		payloadInt[k] = v.(int)
+		payloadInt[k] = int(v.(float64))
 	}
-
+	log.Println(payloadInt)
 	// Declare some vars
 	var body []byte
 
@@ -276,7 +274,26 @@ func (app *App) GetHandler(w http.ResponseWriter, r *http.Request) {
 
 	// See if the key exists in the db
 	alive, version := app.db.Contains(key)
-	if alive && payloadInt[key] <= version {
+	log.Println("Alive: ", alive)
+	log.Println("Version: ", version)
+	log.Println("Client version: ", payloadInt[key])
+
+	// Check to see if payload of the key is old
+	if version < payloadInt[key] {
+		w.WriteHeader(http.StatusBadRequest) // Code 400
+
+		log.Println("Key requested is out of date")
+
+		resp := map[string]interface{}{
+			"result":  "Error",
+			"msg":     "Payload out of date",
+			"payload": payloadInt,
+		}
+		body, err = json.Marshal(resp)
+		if err != nil {
+			log.Fatalln("FATAL Error: Failed to marshal JSON response")
+		}
+	} else if alive {
 		// It does
 		w.WriteHeader(http.StatusOK) // code 200
 
