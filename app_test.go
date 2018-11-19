@@ -50,6 +50,13 @@ func (kvs *TestKVS) Contains(key string) (bool, int) {
 	return false, 0
 }
 
+func (kvs *TestKVS) GetClock(key string) map[string]int {
+	if key == kvs.dbKey {
+		return kvs.dbClock
+	}
+	return map[string]int{}
+}
+
 // This stub returns the valExistsue associated with the key which exists, and returns nil for the key which doesn't //
 func (kvs *TestKVS) Get(key string, clock map[string]int) (string, map[string]int) {
 	if key == kvs.dbKey {

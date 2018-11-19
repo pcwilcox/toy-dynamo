@@ -280,3 +280,12 @@ func mergeClocks(client map[string]int, server map[string]int) map[string]int {
 
 	return client
 }
+
+// GetClock returns the clock associated with a key, it'll return an empty map for one that doesn't exist
+func (k *KVS) GetClock(key string) map[string]int {
+	// Check to see if we have the key
+	if _, ok := k.db[key]; ok {
+		return k.db[key].GetClock()
+	}
+	return map[string]int{}
+}

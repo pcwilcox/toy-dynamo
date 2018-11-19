@@ -463,6 +463,20 @@ func TestNewEntrySetsInitialClock(t *testing.T) {
 	equals(t, initialClock, e.GetClock())
 }
 
+func TestGetClockReturnsClock(t *testing.T) {
+	initialClock := map[string]int{
+		keyExists:        1,
+		keyNotExists:     2,
+		"some other key": 1,
+	}
+	var m sync.RWMutex
+	e := NewEntry(time.Now(), initialClock, valExists)
+	d := map[string]KeyEntry{keyExists: e}
+	k := KVS{db: d, mutex: &m}
+
+	equals(t, initialClock, k.GetClock(keyExists))
+}
+
 // These functions were taken from Ben Johnson's post here: https://medium.com/@benbjohnson/structuring-tests-in-go-46ddee7a25c
 
 // // assert fails the test if the condition is false.
