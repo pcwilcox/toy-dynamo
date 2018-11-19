@@ -43,7 +43,7 @@ jobs:               # these are like stages
       - run:
           name: "Use the right Python version"
           command: |
-            pyenv install 3.7.0a1
+            pyenv install 3.7.0a1 -s
             pyenv global 3.7.0a1
       - save_cache:
           key: source-v1-{{ .Branch }}-{{ .Revision }}
