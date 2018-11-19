@@ -244,10 +244,14 @@ func (app *App) GetHandler(w http.ResponseWriter, r *http.Request) {
 	var err error
 
 	if r.Body != nil {
+		log.Println("Body not nil")
 		// Read the message body
 		s, _ := ioutil.ReadAll(r.Body)
 		log.Println(string(s))
-		payloadString = strings.Split(string(s[:]), "=")[1]
+		if len(s) > 0 {
+			payloadString = strings.Split(string(s[:]), "=")[1]
+			log.Println(payloadString)
+		}
 	}
 
 	// Create an intermediate map to parse the payload into
