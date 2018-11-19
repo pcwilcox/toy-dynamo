@@ -478,7 +478,7 @@ func TestGetClockKeyExistsReturnsClock(t *testing.T) {
 }
 
 func TestGetClockKeyNotExistsReturnsEmpty(t *testing.T) {
-	k := KVS{}
+	k := NewKVS()
 	equals(t, map[string]int{}, k.GetClock(keyExists))
 }
 func TestGetTimestampReturnsTimestamp(t *testing.T) {
@@ -497,7 +497,7 @@ func TestGetTimestampReturnsTimestamp(t *testing.T) {
 }
 
 func TestGetTimestampKeyNotExistsReturnsEmpty(t *testing.T) {
-	k := KVS{}
+	k := NewKVS()
 	equals(t, time.Time{}, k.GetTimestamp(keyExists))
 }
 

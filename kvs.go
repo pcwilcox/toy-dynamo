@@ -283,6 +283,8 @@ func mergeClocks(client map[string]int, server map[string]int) map[string]int {
 
 // GetClock returns the clock associated with a key, it'll return an empty map for one that doesn't exist
 func (k *KVS) GetClock(key string) map[string]int {
+	k.mutex.RLock()
+	defer k.mutex.RUnlock()
 	// Check to see if we have the key
 	if _, ok := k.db[key]; ok {
 		return k.db[key].GetClock()
@@ -292,6 +294,8 @@ func (k *KVS) GetClock(key string) map[string]int {
 
 // GetTimestamp returns the timestamp associated witha  key, otherwise an empty struct
 func (k *KVS) GetTimestamp(key string) time.Time {
+	k.mutex.RLock()
+	defer k.mutex.RUnlock()
 	// Check to see if we have the key
 	if _, ok := k.db[key]; ok {
 		return k.db[key].GetTimestamp()
@@ -302,6 +306,8 @@ func (k *KVS) GetTimestamp(key string) time.Time {
 // OverwriteEntry overwrites the entry associated with the given key using the given entry
 func (k *KVS) OverwriteEntry(key string, entry KeyEntry) {
 	if entry != nil {
+		k.mutex.Lock()
+		defer k.mutex.Unlock()
 		k.db[key] = entry
 	}
 }
