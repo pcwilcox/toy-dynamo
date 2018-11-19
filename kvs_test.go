@@ -463,7 +463,7 @@ func TestNewEntrySetsInitialClock(t *testing.T) {
 	equals(t, initialClock, e.GetClock())
 }
 
-func TestGetClockReturnsClock(t *testing.T) {
+func TestGetClockKeyExistsReturnsClock(t *testing.T) {
 	initialClock := map[string]int{
 		keyExists:        1,
 		keyNotExists:     2,
@@ -475,6 +475,30 @@ func TestGetClockReturnsClock(t *testing.T) {
 	k := KVS{db: d, mutex: &m}
 
 	equals(t, initialClock, k.GetClock(keyExists))
+}
+
+func TestGetClockKeyNotExistsReturnsEmpty(t *testing.T) {
+	k := KVS{}
+	equals(t, map[string]int{}, k.GetClock(keyExists))
+}
+func TestGetTimestampReturnsTimestamp(t *testing.T) {
+	time := time.Now()
+	initialClock := map[string]int{
+		keyExists:        1,
+		keyNotExists:     2,
+		"some other key": 1,
+	}
+	var m sync.RWMutex
+	e := NewEntry(time, initialClock, valExists)
+	d := map[string]KeyEntry{keyExists: e}
+	k := KVS{db: d, mutex: &m}
+
+	equals(t, time, k.GetTimestamp(keyExists))
+}
+
+func TestGetTimestampKeyNotExistsReturnsEmpty(t *testing.T) {
+	k := KVS{}
+	equals(t, time.Time{}, k.GetTimestamp(keyExists))
 }
 
 // These functions were taken from Ben Johnson's post here: https://medium.com/@benbjohnson/structuring-tests-in-go-46ddee7a25c

@@ -40,6 +40,14 @@ type TestKVS struct {
 	dbKey   string
 	dbVal   string
 	dbClock map[string]int
+	dbTime  time.Time
+}
+
+func (kvs *TestKVS) GetTimestamp(key string) time.Time {
+	if key == kvs.dbKey {
+		return kvs.dbTime
+	}
+	return time.Time{}
 }
 
 // This stub returns true for the key which exists and false for the one which doesn't

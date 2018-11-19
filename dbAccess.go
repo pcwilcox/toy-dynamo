@@ -29,4 +29,7 @@ type dbAccess interface {
 
 	// Returns an entry's vector clock
 	GetClock(string) map[string]int
+
+	// Returns an entry's timestamp
+	GetTimestamp(string) time.Time
 }

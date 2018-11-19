@@ -289,3 +289,12 @@ func (k *KVS) GetClock(key string) map[string]int {
 	}
 	return map[string]int{}
 }
+
+// GetTimestamp returns the timestamp associated witha  key, otherwise an empty struct
+func (k *KVS) GetTimestamp(key string) time.Time {
+	// Check to see if we have the key
+	if _, ok := k.db[key]; ok {
+		return k.db[key].GetTimestamp()
+	}
+	return time.Time{}
+}
