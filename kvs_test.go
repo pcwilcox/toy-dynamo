@@ -501,6 +501,74 @@ func TestGetTimestampKeyNotExistsReturnsEmpty(t *testing.T) {
 	equals(t, time.Time{}, k.GetTimestamp(keyExists))
 }
 
+func TestOverwriteKeyExists(t *testing.T) {
+	// Define a starter entry
+	firstTime := time.Now()
+	firstClock := map[string]int{}
+	firstVal := valExists
+	firstVersion := 1
+
+	first := Entry{
+		value:     firstVal,
+		clock:     firstClock,
+		timestamp: firstTime,
+		tombstone: false,
+		version:   firstVersion,
+	}
+
+	// Define a second entry to overwrite the first
+	secondTime := time.Now()
+	secondVal := valNotExists
+	secondClock := map[string]int{keyExists: 2}
+	secondVersion := 3
+	second := Entry{
+		value:     secondVal,
+		clock:     secondClock,
+		timestamp: secondTime,
+		tombstone: false,
+		version:   secondVersion,
+	}
+
+	// Make a KVS
+	var m sync.RWMutex
+	k := KVS{
+		db: map[string]KeyEntry{
+			keyExists: &first,
+		},
+		mutex: &m,
+	}
+
+	// Overwrite the entry and verify result
+	k.OverwriteEntry(keyExists, &second)
+	equals(t, &second, k.db[keyExists])
+}
+
+func TestOverwriteEntryNotExists(t *testing.T) {
+	// Define a second entry to overwrite the first
+	secondTime := time.Now()
+	secondVal := valNotExists
+	secondClock := map[string]int{keyExists: 2}
+	secondVersion := 3
+	second := Entry{
+		value:     secondVal,
+		clock:     secondClock,
+		timestamp: secondTime,
+		tombstone: false,
+		version:   secondVersion,
+	}
+
+	// Make a KVS
+	var m sync.RWMutex
+	k := KVS{
+		db:    map[string]KeyEntry{},
+		mutex: &m,
+	}
+
+	// Overwrite the entry and verify result
+	k.OverwriteEntry(keyExists, &second)
+	equals(t, &second, k.db[keyExists])
+}
+
 // These functions were taken from Ben Johnson's post here: https://medium.com/@benbjohnson/structuring-tests-in-go-46ddee7a25c
 
 // // assert fails the test if the condition is false.

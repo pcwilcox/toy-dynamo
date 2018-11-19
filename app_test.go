@@ -92,6 +92,10 @@ func (kvs *TestKVS) Put(key, valExists string, time time.Time, payload map[strin
 	return true
 }
 
+func (kvs *TestKVS) OverwriteEntry(key string, entry KeyEntry) {
+	// goes nowhere does nothing
+}
+
 // Trying to reduce code repetition
 func setup(key string, val string) (string, *mux.Router) {
 	clock := map[string]int{key: 1}

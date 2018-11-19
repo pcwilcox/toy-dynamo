@@ -32,4 +32,7 @@ type dbAccess interface {
 
 	// Returns an entry's timestamp
 	GetTimestamp(string) time.Time
+
+	// Overwrite the existing entry for this key with the one provided
+	OverwriteEntry(string, KeyEntry)
 }

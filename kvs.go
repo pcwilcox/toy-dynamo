@@ -298,3 +298,10 @@ func (k *KVS) GetTimestamp(key string) time.Time {
 	}
 	return time.Time{}
 }
+
+// OverwriteEntry overwrites the entry associated with the given key using the given entry
+func (k *KVS) OverwriteEntry(key string, entry KeyEntry) {
+	if entry != nil {
+		k.db[key] = entry
+	}
+}
