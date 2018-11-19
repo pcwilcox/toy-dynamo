@@ -5,6 +5,7 @@
 // Lawrence Lawson     lelawson
 // Pete Wilcox         pcwilcox
 // Annie Shen          ashen7
+// Victoria Tran       vilatran
 //
 // This is the source file defining the front end of the RESTful API.
 //
@@ -48,9 +49,9 @@ func (app *App) Initialize() {
 	s.HandleFunc(search+keySuffix, app.SearchHandler).Methods(http.MethodGet)
 
 	// This is the view handler, has its own GET, PUT and DELETE
-	s.HandleFunc(view, app.ViewPutHandler).Methods(http.MethodPut)
-	s.HandleFunc(view, app.ViewGetHandler).Methods(http.MethodGet)
-	s.HandleFunc(view, app.ViewDeleteHandler).Methods(http.MethodDelete)
+	r.HandleFunc(view, app.ViewPutHandler).Methods(http.MethodPut)
+	r.HandleFunc(view, app.ViewGetHandler).Methods(http.MethodGet)
+	r.HandleFunc(view, app.ViewDeleteHandler).Methods(http.MethodDelete)
 
 	// Each of the request types gets a handler
 	s.HandleFunc(keySuffix, app.PutHandler).Methods(http.MethodPut)

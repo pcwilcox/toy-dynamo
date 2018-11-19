@@ -40,6 +40,7 @@ jobs:               # these are like stages
             go get github.com/gorilla/mux
             go get github.com/gorilla/handlers
             go get github.com/go-test/deep
+            go get github.com/pkg/errors
       - run:
           name: "Use the right Python version"
           command: |
@@ -73,7 +74,7 @@ jobs:               # these are like stages
           command: |
             sudo pip install pipenv       # This is like virtualenv
             pipenv install                # Install requests
-            # pipenv run python hw3_test.py # Run the integration step
+            pipenv run python hw3_test.py # Run the integration step
       - save_cache:
           key: python-v1-{{ .Branch }}-{{ .Revision }}
           paths:

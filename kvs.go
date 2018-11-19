@@ -5,6 +5,7 @@
 // Lawrence Lawson            lelawson
 // Pete Wilcox                pcwilcox
 // Annie Shen                 ashen7
+// Victoria Tran              vilatran
 //
 // This source file defines the KVS object used for a local data store. The struct
 // implements a map to store key-value pairs, and implements the dbAccess interface
@@ -133,6 +134,8 @@ func (e *Entry) Update(newTime time.Time, newClock map[string]int, newVal string
 	e.clock = newClock
 	e.tombstone = false
 	e.version++
+
+	wakeGossip = true
 }
 
 // Delete sets a tombstone that the key has been tombstone
@@ -142,6 +145,8 @@ func (e *Entry) Delete(newTime time.Time) {
 	e.clock = map[string]int{}
 	e.tombstone = true
 	e.version++
+
+	wakeGossip = true
 }
 
 // Alive returns true if the key exists and doesn't have a tombstone set
@@ -224,6 +229,9 @@ func (k *KVS) Delete(key string, time time.Time) bool {
 	if doesExist {
 		log.Println("Key found, deleting key-value pair")
 		k.db[key].Delete(time)
+
+		// Initiate Gossip
+		wakeGossip = true
 		return true
 	}
 	log.Println("Key not found")
@@ -252,11 +260,15 @@ func (k *KVS) Put(key string, val string, time time.Time, payload map[string]int
 			// Update it
 			k.db[key].Update(time, payload, val)
 			log.Println("Overwriting existing key")
+			// Initiate Gossip
+			wakeGossip = true
 			return true
 		}
 		log.Println("Inserting new key")
 		// Use the constructor
 		k.db[key] = NewEntry(time, payload, val)
+		// Initiate Gossip
+		wakeGossip = true
 		return true
 	}
 	log.Println("Invalid entry for key or value")
@@ -310,4 +322,37 @@ func (k *KVS) OverwriteEntry(key string, entry KeyEntry) {
 		defer k.mutex.Unlock()
 		k.db[key] = entry
 	}
+}
+
+// GetTimeGlob returns a struct containing a map of keys to their timestamps
+func (k *KVS) GetTimeGlob() timeGlob {
+	if k != nil {
+		k.mutex.RLock()
+		defer k.mutex.RUnlock()
+		m := make(map[string]time.Time)
+		if k.db != nil {
+			for key, v := range k.db {
+				m[key] = v.GetTimestamp()
+			}
+		}
+		g := timeGlob{List: m}
+
+		return g
+	}
+	return timeGlob{}
+}
+
+// GetEntryGlob returns a struct containing a map of keys to their entries
+func (k *KVS) GetEntryGlob(tg timeGlob) entryGlob {
+	if k != nil {
+		k.mutex.RLock()
+		defer k.mutex.RUnlock()
+		entries := make(map[string]KeyEntry)
+		eg := entryGlob{Keys: entries}
+		for n := range tg.List {
+			eg.Keys[n] = k.db[n]
+		}
+		return eg
+	}
+	return entryGlob{Keys: map[string]KeyEntry{}}
 }

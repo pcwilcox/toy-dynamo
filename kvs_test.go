@@ -568,6 +568,59 @@ func TestOverwriteEntryNotExists(t *testing.T) {
 	k.OverwriteEntry(keyExists, &second)
 	equals(t, &second, k.db[keyExists])
 }
+func TestGetTimeGlobKeyExists(t *testing.T) {
+	timestamp := time.Now()
+	initialClock := map[string]int{
+		keyExists:        1,
+		keyNotExists:     2,
+		"some other key": 1,
+	}
+	var m sync.RWMutex
+	e := NewEntry(timestamp, initialClock, valExists)
+	d := map[string]KeyEntry{keyExists: e}
+	k := KVS{db: d, mutex: &m}
+
+	g := k.GetTimeGlob()
+	h := make(map[string]time.Time)
+	h[keyExists] = timestamp
+	j := timeGlob{List: h}
+	equals(t, j, g)
+}
+
+func TestGetTimeGlobKeyNotExists(t *testing.T) {
+	k := NewKVS()
+	h := make(map[string]time.Time)
+	j := timeGlob{List: h}
+	equals(t, j, k.GetTimeGlob())
+}
+
+func TestGetEntryGlobEmptyTimeGlob(t *testing.T) {
+	k := NewKVS()
+	g := timeGlob{}
+	h := k.GetEntryGlob(g)
+	j := entryGlob{Keys: map[string]KeyEntry{}}
+	equals(t, j, h)
+}
+
+func TestGetEntryGlobKeyExist(t *testing.T) {
+	timestamp := time.Now()
+	initialClock := map[string]int{
+		keyExists:        1,
+		keyNotExists:     2,
+		"some other key": 1,
+	}
+	var m sync.RWMutex
+	e := NewEntry(timestamp, initialClock, valExists)
+	d := map[string]KeyEntry{keyExists: e}
+	k := KVS{db: d, mutex: &m}
+
+	g := k.GetTimeGlob()
+	h := k.GetEntryGlob(g)
+	j := make(map[string]KeyEntry)
+	j[keyExists] = k.db[keyExists]
+	l := entryGlob{Keys: j}
+	equals(t, l, h)
+}
 
 // These functions were taken from Ben Johnson's post here: https://medium.com/@benbjohnson/structuring-tests-in-go-46ddee7a25c
 

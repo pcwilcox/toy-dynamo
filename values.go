@@ -4,6 +4,8 @@
 //
 // Lawrence Lawson         lelawson
 // Pete Wilcox             pcwilcox
+// Annie Shen              ashen7
+// Victoria Tran           vilatran
 //
 // Contains constant values used elsewhere in the program
 //
@@ -24,8 +26,6 @@ const (
 	alive         = "/alive"
 	search        = "/search"
 	view          = "/view"
-	viewTest1     = "176.32.164.10:8082"
-	viewTest2     = "176.32.164.10:1234"
 	keyone        = "Key One"
 	valone        = "Value One"
 	keyNotHere    = "Key Not Here"
@@ -44,3 +44,4 @@ const (
 )
 
 var myIP string
+var wakeGossip bool

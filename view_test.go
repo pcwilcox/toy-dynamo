@@ -5,7 +5,7 @@
 // Lawrence Lawson   lelawson
 // Pete Wilcox       pcwilcox
 // Annie Shen        ashen7
-// Victoria Tran
+// Victoria Tran     vilatran
 //
 // Unit tests for the viewlist struct
 

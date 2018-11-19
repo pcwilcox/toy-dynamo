@@ -5,6 +5,8 @@
 //
 // Lawrence Lawson          lelawson
 // Pete Wilcox              pcwilcox
+// Annie Shen				ashen7
+// Victoria Tran            vilatran
 //
 // This is the main source file for HW2. It sets up some initialization variables by
 // reading the environment, then sets up the two interfaces the application uses. If
@@ -64,6 +66,14 @@ func main() {
 
 	// The App object is the front end
 	a := App{db: k, view: *MyView}
+
+	// Set flag to false and ring up Gossip to start the forever loop
+	wakeGossip = false
+	gossip := GossipVals{
+		view: MyView,
+		kvs:  k,
+	}
+	go gossip.GossipHeartbeat() // goroutines
 
 	log.Println("Starting server...")
 	// Initialize starts the server

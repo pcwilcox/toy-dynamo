@@ -96,6 +96,27 @@ func (kvs *TestKVS) OverwriteEntry(key string, entry KeyEntry) {
 	// goes nowhere does nothing
 }
 
+func (kvs *TestKVS) GetTimeGlob() timeGlob {
+	m := make(map[string]time.Time)
+	m[kvs.dbKey] = kvs.dbTime
+	g := timeGlob{List: m}
+	return g
+}
+
+func (kvs *TestKVS) GetEntryGlob(g timeGlob) entryGlob {
+	m := make(map[string]KeyEntry)
+	e := Entry{
+		version:   1,
+		clock:     kvs.dbClock,
+		timestamp: kvs.dbTime,
+		value:     kvs.dbVal,
+		tombstone: false,
+	}
+	m[kvs.dbKey] = &e
+	j := entryGlob{Keys: m}
+	return j
+}
+
 // Trying to reduce code repetition
 func setup(key string, val string) (string, *mux.Router) {
 	clock := map[string]int{key: 1}
