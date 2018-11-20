@@ -2,8 +2,10 @@
 # 
 # CMPS 128, Fall 2018
 #
-# Lawrence Lawson    lelawson
-# Pete Wilcox        pcwilcox
+# Lawrence Lawson     lelawson
+# Pete Wilcox         pcwilcox
+# Annie Shen          ashen7
+# Victoria Tran       vilatran
 #
 # Incorporates compile-time variables into the build
 

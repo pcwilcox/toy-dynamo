@@ -4,6 +4,8 @@
 //
 // Lawrence Lawson     lelawson
 // Pete Wilcox         pcwilcox
+// Annie Shen          ashen7
+// Victoria Tran       vilatran
 //
 // Defines a data store access interface which is used to interact between the REST API front end and the KVS back end.
 //

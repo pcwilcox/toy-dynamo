@@ -2,10 +2,10 @@
 //
 // CMPS 128 Fall 2018
 //
-// Lawrence Lawson         lelawson
-// Pete Wilcox             pcwilcox
-// Annie Shen              ashen7
-// Victoria Tran           ???
+// Lawrence Lawson     lelawson
+// Pete Wilcox         pcwilcox
+// Annie Shen          ashen7
+// Victoria Tran       vilatran
 //
 // Defines a module for communicating between replicas by setting up TCP connections and using
 // them to send KVS entries as messages.
@@ -285,66 +285,7 @@ func server() error {
 	return endpoint.Listen()
 }
 
-/*
-## Main
-
-Main starts either a client or a server, depending on whether the `connect`
-flag is set. Without the flag, the process starts as a server, listening
-for incoming requests. With the flag the process starts as a client and connects
-to the host specified by the flag value.
-
-Try "localhost" or "127.0.0.1" when running both processes on the same machine.
-
-*/
-
-// main
-/*
-func main() {
-	connect := flag.String("connect", "", "IP address of process to join. If empty, go into listen mode.")
-	flag.Parse()
-
-	// If the connect flag is set, go into client mode.
-	if *connect != "" {
-		err := client(*connect)
-		if err != nil {
-			log.Println("Error:", errors.WithStack(err))
-		}
-		log.Println("Client done.")
-		return
-	}
-
-	// Else go into server mode.
-	err := server()
-	if err != nil {
-		log.Println("Error:", errors.WithStack(err))
-	}
-
-	log.Println("Server done.")
-}
-*/
 // The Lshortfile flag includes file name and line number in log messages.
 func init() {
 	log.SetFlags(log.Lshortfile)
 }
-
-/*
-## How to get and run the code
-
-Step 1: `go get` the code. Note the `-d` flag that prevents auto-installing
-the binary into `$GOPATH/bin`.
-
-    go get -d github.com/appliedgo/networking
-
-Step 2: `cd` to the source code directory.
-
-    cd $GOPATH/src/github.com/appliedgo/networking
-
-Step 3. Run the server.
-
-    go run networking.go
-
-Step 4. Open another shell, `cd` to the source code (see Step 2), and
-run the client.
-
-    go run networking.go -connect localhost
-*/

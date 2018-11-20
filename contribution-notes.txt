@@ -1,7 +1,10 @@
 Contributions
-Lawrence Lawson - Add a hashmap key-value store, implemented unit testing for internal key-value store
-Pete Wilcox - Create endpoint to allow for service checks, Implement functional guarantee for service with forwarding
-,Implement REST API key-value store functions, Create integration test script for single-site key-value store, add mutex locks to the handlers
+Annie Shen - Gossip Module, Ability to implement a view change, Refactor integration tests, Pruning entry clocks
 
+Lawrence Lawson - TCP connection manager, Context-dependent read acceptance
 
+Pete Wilcox - Refactor KVS, Refactor integration tests, gobbing funtionality, Context-dependent read acceptance
 
+Victoria Tran - Ability to compare vector clocks, unit tests for ConflictResolution
+----------------------------------------------------------------------------------------------------------------
+You can take a look at our issues board to get a better breakdown on team member contributions.
