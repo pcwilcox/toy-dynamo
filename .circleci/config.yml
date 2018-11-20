@@ -58,7 +58,7 @@ jobs:               # these are like stages
           name: "Run unit tests"          # This executes the tests as defined in the makefile
           command: |                      # Should output test report to an xml
             trap "go-junit-report <${TEST_RESULTS}/go-test.out > ${TEST_RESULTS}/go-test-report.xml" EXIT
-            make test | tee ${TEST_RESULTS}/go-test.out 
+            make unit | tee ${TEST_RESULTS}/go-test.out 
       - run:
           name: "Build the container"
           command: make docker            # Reuse the same commands as much as we can
@@ -73,11 +73,11 @@ jobs:               # these are like stages
       - run:
           name: "Integration testing"     # Just redoing the same tests here
           command: |
-            pyenv global 3.7.0a1
+            pyenv global 3.7.0a1          # For some reason it forgets
             sudo pip install pipenv       # This is like virtualenv
-            pipenv --rm
-            pipenv install --python 3.7                # Install requests
-            pipenv run python3 hw3_test.py # Run the integration step
+            pipenv --rm                   # We have to reinstall
+            pipenv install --python 3.7   # Install everything
+            make test                     # Run the integration step
       - save_cache:
           key: python-v1-{{ .Branch }}-{{ .Revision }}
           paths:
