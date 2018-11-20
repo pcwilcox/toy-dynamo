@@ -74,7 +74,7 @@ func (kvs *TestKVS) Get(key string, clock map[string]int) (string, map[string]in
 }
 
 // This stub returns true for the key which exists and false for the one which doesn't
-func (kvs *TestKVS) Delete(key string, timestamp time.Time) bool {
+func (kvs *TestKVS) Delete(key string, timestamp time.Time, payload map[string]int) bool {
 	if key == kvs.dbKey {
 		return true
 	}
@@ -104,15 +104,15 @@ func (kvs *TestKVS) GetTimeGlob() timeGlob {
 }
 
 func (kvs *TestKVS) GetEntryGlob(g timeGlob) entryGlob {
-	m := make(map[string]KeyEntry)
+	m := make(map[string]Entry)
 	e := Entry{
-		version:   1,
-		clock:     kvs.dbClock,
-		timestamp: kvs.dbTime,
-		value:     kvs.dbVal,
-		tombstone: false,
+		Version:   1,
+		Clock:     kvs.dbClock,
+		Timestamp: kvs.dbTime,
+		Value:     kvs.dbVal,
+		Tombstone: false,
 	}
-	m[kvs.dbKey] = &e
+	m[kvs.dbKey] = e
 	j := entryGlob{Keys: m}
 	return j
 }
@@ -183,7 +183,7 @@ func TestPutRequestKeyExists(t *testing.T) {
 	// Finally, make the request to the function being tested.
 	router.ServeHTTP(recorder, req)
 
-	expectedStatus := http.StatusOK // code 200
+	expectedStatus := http.StatusCreated // code 201
 	gotStatus := recorder.Code
 	equals(t, expectedStatus, gotStatus)
 	body, err := ioutil.ReadAll(recorder.Body)
@@ -230,7 +230,7 @@ func TestPutRequestKeyDoesntExist(t *testing.T) {
 	// Finally, make the request to the function being tested.
 	router.ServeHTTP(recorder, req)
 
-	expectedStatus := http.StatusCreated // code 201
+	expectedStatus := http.StatusOK // code 200
 	gotStatus := recorder.Code
 	equals(t, expectedStatus, gotStatus)
 	body, err := ioutil.ReadAll(recorder.Body)
@@ -438,7 +438,7 @@ func TestGetRequestKeyExists(t *testing.T) {
 	ok(t, err)
 	expectedBody := map[string]interface{}{
 		"value":   valExists,
-		"msg":     "Success",
+		"result":  "Success",
 		"payload": expectedPayload,
 	}
 
@@ -482,7 +482,7 @@ func TestGetRequestKeyNotExists(t *testing.T) {
 	ok(t, err)
 	expectedBody := map[string]interface{}{
 		"error":   "Key does not exist",
-		"msg":     "Error",
+		"result":  "Error",
 		"payload": map[string]interface{}{},
 	}
 
@@ -528,7 +528,7 @@ func TestGetRequestReturnsPayload(t *testing.T) {
 	ok(t, err)
 	expectedBody := map[string]interface{}{
 		"value":   valExists,
-		"msg":     "Success",
+		"result":  "Success",
 		"payload": expectedPayload,
 	}
 
@@ -569,7 +569,8 @@ func TestDeleteKeyExists(t *testing.T) {
 	err = json.Unmarshal(body, &gotBody)
 	ok(t, err)
 	expectedBody := map[string]interface{}{
-		"msg":     "Success",
+		"msg":     "Key deleted",
+		"result":  "Success",
 		"payload": map[string]interface{}{},
 	}
 
@@ -612,8 +613,8 @@ func TestDeleteKeyNotExists(t *testing.T) {
 	err = json.Unmarshal(body, &gotBody)
 	ok(t, err)
 	expectedBody := map[string]interface{}{
-		"msg":     "Error",
-		"error":   "Key does not exist",
+		"result":  "Error",
+		"msg":     "Key does not exist",
 		"payload": map[string]interface{}{},
 	}
 
@@ -656,9 +657,9 @@ func TestSearchRequestKeyExists(t *testing.T) {
 	err = json.Unmarshal(body, &gotBody)
 	ok(t, err)
 	expectedBody := map[string]interface{}{
-		"isExist": "true",
-		"msg":     "Success",
-		"payload": map[string]interface{}{},
+		"isExists": true,
+		"result":   "Success",
+		"payload":  map[string]interface{}{},
 	}
 
 	equals(t, expectedBody, gotBody)
@@ -689,7 +690,7 @@ func TestSearchRequestKeyDoesntExist(t *testing.T) {
 	// Finally, make the request to the function being tested.
 	router.ServeHTTP(recorder, req)
 
-	expectedStatus := http.StatusNotFound // code 404
+	expectedStatus := http.StatusOK // code 200
 	gotStatus := recorder.Code
 	equals(t, expectedStatus, gotStatus)
 	body, err := ioutil.ReadAll(recorder.Body)
@@ -700,9 +701,9 @@ func TestSearchRequestKeyDoesntExist(t *testing.T) {
 	err = json.Unmarshal(body, &gotBody)
 	ok(t, err)
 	expectedBody := map[string]interface{}{
-		"isExist": "false",
-		"msg":     "Error",
-		"payload": map[string]interface{}{},
+		"isExists": false,
+		"result":   "Success",
+		"payload":  map[string]interface{}{},
 	}
 
 	equals(t, expectedBody, gotBody)
@@ -738,7 +739,7 @@ func TestSearchRequestInvalidKey(t *testing.T) {
 	// Finally, make the request to the function being tested.
 	router.ServeHTTP(recorder, req)
 
-	expectedStatus := http.StatusNotFound // code 404
+	expectedStatus := http.StatusOK // code 200
 	gotStatus := recorder.Code
 	equals(t, expectedStatus, gotStatus)
 	body, err := ioutil.ReadAll(recorder.Body)
@@ -749,9 +750,9 @@ func TestSearchRequestInvalidKey(t *testing.T) {
 	err = json.Unmarshal(body, &gotBody)
 	ok(t, err)
 	expectedBody := map[string]interface{}{
-		"isExist": "false",
-		"msg":     "Error",
-		"payload": map[string]interface{}{},
+		"isExists": false,
+		"result":   "Success",
+		"payload":  map[string]interface{}{},
 	}
 
 	equals(t, expectedBody, gotBody)
@@ -1001,7 +1002,7 @@ func TestPutHandlerStoresPayload(t *testing.T) {
 	router.ServeHTTP(recorder, req)
 	testPayload[keyExists] = 2
 
-	expectedStatus := http.StatusOK // code 200
+	expectedStatus := http.StatusCreated // code 201
 	gotStatus := recorder.Code
 	equals(t, expectedStatus, gotStatus)
 	_, err = ioutil.ReadAll(recorder.Body)
@@ -1074,7 +1075,7 @@ func TestGetHandlerStalePayload(t *testing.T) {
 func assert(tb testing.TB, condition bool, msg string, v ...interface{}) {
 	if !condition {
 		_, file, line, _ := runtime.Caller(1)
-		fmt.Printf("\033[31m%s:%d: "+msg+"\033\n\n", append([]interface{}{filepath.Base(file), line}, v...)...)
+		fmt.Printf("\033%s:%d: "+msg+"\033\n\n", append([]interface{}{filepath.Base(file), line}, v...)...)
 		tb.FailNow()
 	}
 }
@@ -1083,7 +1084,7 @@ func assert(tb testing.TB, condition bool, msg string, v ...interface{}) {
 func ok(tb testing.TB, err error) {
 	if err != nil {
 		_, file, line, _ := runtime.Caller(1)
-		fmt.Printf("\033[31m%s:%d: unexpected error: %s\033\n\n", filepath.Base(file), line, err.Error())
+		fmt.Printf("\033%s:%d: unexpected error: %s\033\n\n", filepath.Base(file), line, err.Error())
 		tb.FailNow()
 	}
 }
@@ -1092,7 +1093,7 @@ func ok(tb testing.TB, err error) {
 func equals(tb testing.TB, exp, act interface{}) {
 	if !reflect.DeepEqual(exp, act) {
 		_, file, line, _ := runtime.Caller(1)
-		fmt.Printf("\033[31m%s:%d:\n\n\texp: %#v\n\n\tgot: %#v\033\n\n", filepath.Base(file), line, exp, act)
+		fmt.Printf("\033%s:%d:\n\n\texp: %#v\n\n\tgot: %#v\033\n\n", filepath.Base(file), line, exp, act)
 		tb.FailNow()
 	}
 }

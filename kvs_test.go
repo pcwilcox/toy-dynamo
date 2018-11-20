@@ -14,6 +14,10 @@ type testEntry struct {
 	version int
 }
 
+func (e *testEntry) SetVersion(v int) {
+	e.version = v
+}
+
 func (e *testEntry) GetVersion() int {
 	return e.version
 }
@@ -30,7 +34,7 @@ func (e *testEntry) GetClock() map[string]int {
 	return e.clock
 }
 
-func (e *testEntry) Update(time time.Time, clock map[string]int, val string) {
+func (e *testEntry) Update(key string, time time.Time, clock map[string]int, val string) {
 	// goes nowhere does nothing
 }
 
@@ -39,7 +43,7 @@ func (e *testEntry) Alive() bool {
 	return true
 }
 
-func (e *testEntry) Delete(time time.Time) {
+func (e *testEntry) Delete(key string, time time.Time, payload map[string]int) {
 	// goes nowhere does nothing
 }
 
@@ -115,7 +119,7 @@ func TestKVSDeleteExistingKeyValPair(t *testing.T) {
 
 	var m sync.RWMutex
 	k := KVS{db: db, mutex: &m}
-	assert(t, k.Delete(keyExists, time.Now()), "Did not delete Key Val Pair")
+	assert(t, k.Delete(keyExists, time.Now(), map[string]int{}), "Did not delete Key Val Pair")
 }
 
 // Delete on a key that doesn't exist should return false
@@ -123,7 +127,7 @@ func TestKVSDeleteKeyDoesntExist(t *testing.T) {
 	db := map[string]KeyEntry{}
 	var m sync.RWMutex
 	k := KVS{db: db, mutex: &m}
-	assert(t, !k.Delete(keyNotHere, time.Now()), "Deleted a keyvalue pair not in data store prior")
+	assert(t, !k.Delete(keyNotHere, time.Now(), map[string]int{}), "Deleted a keyvalue pair not in data store prior")
 }
 
 // Put() with a new key should return true
@@ -174,13 +178,13 @@ func TestKVSPutInvalidVal(t *testing.T) {
 // GetVersion of an existing entry should return the version
 func TestEntryGetVersionKeyExists(t *testing.T) {
 	e := Entry{
-		version:   1,
-		timestamp: time.Now(),
-		clock: map[string]int{
+		Version:   1,
+		Timestamp: time.Now(),
+		Clock: map[string]int{
 			keyExists: 1,
 		},
-		value:     valExists,
-		tombstone: false,
+		Value:     valExists,
+		Tombstone: false,
 	}
 
 	assert(t, e.GetVersion() == 1, "GetVersion() returned wrong value")
@@ -197,13 +201,13 @@ func TestEntryGetVersionKeyNotExists(t *testing.T) {
 func TestEntryGetTimestampKeyExists(t *testing.T) {
 	timestamp := time.Now()
 	e := Entry{
-		version:   1,
-		timestamp: timestamp,
-		clock: map[string]int{
+		Version:   1,
+		Timestamp: timestamp,
+		Clock: map[string]int{
 			keyExists: 1,
 		},
-		value:     valExists,
-		tombstone: false,
+		Value:     valExists,
+		Tombstone: false,
 	}
 	assert(t, e.GetTimestamp() == timestamp, "GetTimestamp() returned wrong value")
 }
@@ -220,11 +224,11 @@ func TestEntryGetClockKeyExists(t *testing.T) {
 		keyExists: 1,
 	}
 	e := Entry{
-		version:   1,
-		timestamp: time.Now(),
-		clock:     expectedClock,
-		value:     valExists,
-		tombstone: false,
+		Version:   1,
+		Timestamp: time.Now(),
+		Clock:     expectedClock,
+		Value:     valExists,
+		Tombstone: false,
 	}
 	equals(t, e.GetClock(), expectedClock)
 
@@ -239,11 +243,11 @@ func TestEntryGetClockKeyNotExists(t *testing.T) {
 // GetValue should return the value for a key which exists
 func TestEntryGetValueKeyExists(t *testing.T) {
 	e := Entry{
-		version:   1,
-		timestamp: time.Now(),
-		clock:     map[string]int{keyExists: 1},
-		value:     valExists,
-		tombstone: false,
+		Version:   1,
+		Timestamp: time.Now(),
+		Clock:     map[string]int{keyExists: 1},
+		Value:     valExists,
+		Tombstone: false,
 	}
 	equals(t, e.GetValue(), valExists)
 }
@@ -261,14 +265,14 @@ func TestUpdateChangesTimestamp(t *testing.T) {
 	finish := time.Now()
 
 	e := Entry{
-		version:   1,
-		timestamp: start,
-		clock:     map[string]int{keyExists: 1},
-		value:     valExists,
-		tombstone: false,
+		Version:   1,
+		Timestamp: start,
+		Clock:     map[string]int{keyExists: 1},
+		Value:     valExists,
+		Tombstone: false,
 	}
 
-	e.Update(finish, map[string]int{}, valExists)
+	e.Update(keyExists, finish, map[string]int{}, valExists)
 	equals(t, e.GetTimestamp(), finish)
 }
 
@@ -279,14 +283,14 @@ func TestUpdateIncrementsVersion(t *testing.T) {
 	finish := time.Now()
 
 	e := Entry{
-		version:   1,
-		timestamp: start,
-		clock:     map[string]int{keyExists: 1},
-		value:     valExists,
-		tombstone: false,
+		Version:   1,
+		Timestamp: start,
+		Clock:     map[string]int{keyExists: 1},
+		Value:     valExists,
+		Tombstone: false,
 	}
 
-	e.Update(finish, map[string]int{}, valExists)
+	e.Update(keyExists, finish, map[string]int{}, valExists)
 	equals(t, e.GetVersion(), 2)
 }
 
@@ -297,14 +301,14 @@ func TestUpdateClearsTombstone(t *testing.T) {
 	finish := time.Now()
 
 	e := Entry{
-		version:   1,
-		timestamp: start,
-		clock:     map[string]int{keyExists: 1},
-		value:     valExists,
-		tombstone: true,
+		Version:   1,
+		Timestamp: start,
+		Clock:     map[string]int{keyExists: 1},
+		Value:     valExists,
+		Tombstone: true,
 	}
 
-	e.Update(finish, map[string]int{}, valExists)
+	e.Update(keyExists, finish, map[string]int{}, valExists)
 	equals(t, e.Alive(), true)
 }
 
@@ -315,25 +319,25 @@ func TestUpdateChangesValue(t *testing.T) {
 	finish := time.Now()
 
 	e := Entry{
-		version:   1,
-		timestamp: start,
-		clock:     map[string]int{keyExists: 1},
-		value:     valone,
-		tombstone: true,
+		Version:   1,
+		Timestamp: start,
+		Clock:     map[string]int{keyExists: 1},
+		Value:     valone,
+		Tombstone: true,
 	}
 
-	e.Update(finish, map[string]int{}, valtwo)
+	e.Update(keyExists, finish, map[string]int{}, valtwo)
 	equals(t, valtwo, e.GetValue())
 }
 
 // Alive should return true for existing keys
 func TestAliveKeyExistsReturnsTrue(t *testing.T) {
 	e := Entry{
-		version:   1,
-		timestamp: time.Now(),
-		clock:     map[string]int{keyExists: 1},
-		value:     valone,
-		tombstone: false,
+		Version:   1,
+		Timestamp: time.Now(),
+		Clock:     map[string]int{keyExists: 1},
+		Value:     valone,
+		Tombstone: false,
 	}
 
 	equals(t, true, e.Alive())
@@ -352,14 +356,14 @@ func TestDeleteSetsNewTimestamp(t *testing.T) {
 	finish := time.Now()
 
 	e := Entry{
-		version:   1,
-		timestamp: start,
-		clock:     map[string]int{keyExists: 1},
-		value:     valone,
-		tombstone: false,
+		Version:   1,
+		Timestamp: start,
+		Clock:     map[string]int{keyExists: 1},
+		Value:     valone,
+		Tombstone: false,
 	}
 
-	e.Delete(finish)
+	e.Delete(keyExists, finish, map[string]int{})
 	equals(t, finish, e.GetTimestamp())
 }
 
@@ -370,14 +374,14 @@ func TestDeleteUpdatesVersion(t *testing.T) {
 	finish := time.Now()
 
 	e := Entry{
-		version:   1,
-		timestamp: start,
-		clock:     map[string]int{keyExists: 1},
-		value:     valone,
-		tombstone: false,
+		Version:   1,
+		Timestamp: start,
+		Clock:     map[string]int{keyExists: 1},
+		Value:     valone,
+		Tombstone: false,
 	}
 
-	e.Delete(finish)
+	e.Delete(keyExists, finish, map[string]int{})
 	equals(t, 2, e.GetVersion())
 }
 
@@ -388,14 +392,14 @@ func TestDeleteSetsTombstone(t *testing.T) {
 	finish := time.Now()
 
 	e := Entry{
-		version:   1,
-		timestamp: start,
-		clock:     map[string]int{keyExists: 1},
-		value:     valone,
-		tombstone: false,
+		Version:   1,
+		Timestamp: start,
+		Clock:     map[string]int{keyExists: 1},
+		Value:     valone,
+		Tombstone: false,
 	}
 
-	e.Delete(finish)
+	e.Delete(keyExists, finish, map[string]int{})
 	equals(t, false, e.Alive())
 }
 
@@ -406,48 +410,48 @@ func TestDeleteClearsValue(t *testing.T) {
 	finish := time.Now()
 
 	e := Entry{
-		version:   1,
-		timestamp: start,
-		clock:     map[string]int{keyExists: 1},
-		value:     valone,
-		tombstone: false,
+		Version:   1,
+		Timestamp: start,
+		Clock:     map[string]int{keyExists: 1},
+		Value:     valone,
+		Tombstone: false,
 	}
 
-	e.Delete(finish)
+	e.Delete(keyExists, finish, map[string]int{})
 	equals(t, "", e.GetValue())
 }
 
-// Delete should clear the clock
-func TestDeleteClearsClock(t *testing.T) {
+// Delete should set clock to the new version
+func TestDeleteUpdatesClock(t *testing.T) {
 	start := time.Now()
 	time.Sleep(1)
 	finish := time.Now()
 
 	e := Entry{
-		version:   1,
-		timestamp: start,
-		clock:     map[string]int{keyExists: 1},
-		value:     valone,
-		tombstone: false,
+		Version:   1,
+		Timestamp: start,
+		Clock:     map[string]int{keyExists: 1},
+		Value:     valone,
+		Tombstone: false,
 	}
 
-	e.Delete(finish)
-	equals(t, map[string]int{}, e.GetClock())
+	e.Delete(keyExists, finish, map[string]int{})
+	equals(t, map[string]int{keyExists: 2}, e.GetClock())
 }
 
 // Update should set the clock to include the key you've updated
 func TestUpdateSetsInitialClock(t *testing.T) {
 	e := Entry{
-		version:   1,
-		timestamp: time.Now(),
-		clock:     map[string]int{},
-		value:     valone,
-		tombstone: false,
+		Version:   1,
+		Timestamp: time.Now(),
+		Clock:     map[string]int{},
+		Value:     valone,
+		Tombstone: false,
 	}
 	initialClock := map[string]int{
 		keyExists: 2,
 	}
-	e.Update(time.Now(), initialClock, valtwo)
+	e.Update(keyExists, time.Now(), initialClock, valtwo)
 	equals(t, initialClock, e.GetClock())
 }
 
@@ -458,7 +462,7 @@ func TestNewEntrySetsInitialClock(t *testing.T) {
 		keyNotExists:     2,
 		"some other key": 1,
 	}
-	e := NewEntry(time.Now(), initialClock, valExists)
+	e := NewEntry(time.Now(), initialClock, valExists, 1)
 
 	equals(t, initialClock, e.GetClock())
 }
@@ -470,7 +474,7 @@ func TestGetClockKeyExistsReturnsClock(t *testing.T) {
 		"some other key": 1,
 	}
 	var m sync.RWMutex
-	e := NewEntry(time.Now(), initialClock, valExists)
+	e := NewEntry(time.Now(), initialClock, valExists, 1)
 	d := map[string]KeyEntry{keyExists: e}
 	k := KVS{db: d, mutex: &m}
 
@@ -489,7 +493,7 @@ func TestGetTimestampReturnsTimestamp(t *testing.T) {
 		"some other key": 1,
 	}
 	var m sync.RWMutex
-	e := NewEntry(time, initialClock, valExists)
+	e := NewEntry(time, initialClock, valExists, 1)
 	d := map[string]KeyEntry{keyExists: e}
 	k := KVS{db: d, mutex: &m}
 
@@ -509,11 +513,11 @@ func TestOverwriteKeyExists(t *testing.T) {
 	firstVersion := 1
 
 	first := Entry{
-		value:     firstVal,
-		clock:     firstClock,
-		timestamp: firstTime,
-		tombstone: false,
-		version:   firstVersion,
+		Value:     firstVal,
+		Clock:     firstClock,
+		Timestamp: firstTime,
+		Tombstone: false,
+		Version:   firstVersion,
 	}
 
 	// Define a second entry to overwrite the first
@@ -522,11 +526,11 @@ func TestOverwriteKeyExists(t *testing.T) {
 	secondClock := map[string]int{keyExists: 2}
 	secondVersion := 3
 	second := Entry{
-		value:     secondVal,
-		clock:     secondClock,
-		timestamp: secondTime,
-		tombstone: false,
-		version:   secondVersion,
+		Value:     secondVal,
+		Clock:     secondClock,
+		Timestamp: secondTime,
+		Tombstone: false,
+		Version:   secondVersion,
 	}
 
 	// Make a KVS
@@ -550,11 +554,11 @@ func TestOverwriteEntryNotExists(t *testing.T) {
 	secondClock := map[string]int{keyExists: 2}
 	secondVersion := 3
 	second := Entry{
-		value:     secondVal,
-		clock:     secondClock,
-		timestamp: secondTime,
-		tombstone: false,
-		version:   secondVersion,
+		Value:     secondVal,
+		Clock:     secondClock,
+		Timestamp: secondTime,
+		Tombstone: false,
+		Version:   secondVersion,
 	}
 
 	// Make a KVS
@@ -576,7 +580,7 @@ func TestGetTimeGlobKeyExists(t *testing.T) {
 		"some other key": 1,
 	}
 	var m sync.RWMutex
-	e := NewEntry(timestamp, initialClock, valExists)
+	e := NewEntry(timestamp, initialClock, valExists, 1)
 	d := map[string]KeyEntry{keyExists: e}
 	k := KVS{db: d, mutex: &m}
 
@@ -598,7 +602,7 @@ func TestGetEntryGlobEmptyTimeGlob(t *testing.T) {
 	k := NewKVS()
 	g := timeGlob{}
 	h := k.GetEntryGlob(g)
-	j := entryGlob{Keys: map[string]KeyEntry{}}
+	j := entryGlob{Keys: map[string]Entry{}}
 	equals(t, j, h)
 }
 
@@ -610,14 +614,14 @@ func TestGetEntryGlobKeyExist(t *testing.T) {
 		"some other key": 1,
 	}
 	var m sync.RWMutex
-	e := NewEntry(timestamp, initialClock, valExists)
+	e := NewEntry(timestamp, initialClock, valExists, 1)
 	d := map[string]KeyEntry{keyExists: e}
 	k := KVS{db: d, mutex: &m}
 
 	g := k.GetTimeGlob()
 	h := k.GetEntryGlob(g)
-	j := make(map[string]KeyEntry)
-	j[keyExists] = k.db[keyExists]
+	j := make(map[string]Entry)
+	j[keyExists] = *e
 	l := entryGlob{Keys: j}
 	equals(t, l, h)
 }
