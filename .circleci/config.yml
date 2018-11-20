@@ -75,7 +75,8 @@ jobs:               # these are like stages
           command: |
             pyenv global 3.7.0a1
             sudo pip install pipenv       # This is like virtualenv
-            pipenv install                # Install requests
+            pipenv --rm
+            pipenv install --python 3.7                # Install requests
             pipenv run python3 hw3_test.py # Run the integration step
       - save_cache:
           key: python-v1-{{ .Branch }}-{{ .Revision }}
