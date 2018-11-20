@@ -73,8 +73,8 @@ jobs:               # these are like stages
       - run:
           name: "Integration testing"     # Just redoing the same tests here
           command: |
-            which python
-            sudo pip3 install pipenv       # This is like virtualenv
+            pyenv global 3.7.0a1
+            sudo pip install pipenv       # This is like virtualenv
             pipenv install                # Install requests
             pipenv run python3 hw3_test.py # Run the integration step
       - save_cache:
