@@ -42,49 +42,57 @@ type KeyEntry interface {
 	GetValue() string
 
 	// Write a new value - this needs to update the version and overwrite the clock
-	Update(time.Time, map[string]int, string)
+	Update(string, time.Time, map[string]int, string)
 
 	// Write tombstone
-	Delete(time.Time)
+	Delete(string, time.Time, map[string]int)
 
 	// Returns true if it hasn't been tombstone
 	Alive() bool
+
+	// Set the version
+	SetVersion(int)
 }
 
 // Entry is the thing in the KVS and implements all the methods
 type Entry struct {
-	version   int            // Monotonically increasing version numbers starting at 1
-	timestamp time.Time      // this is set on writes
-	clock     map[string]int // This is captured from the client payload on write
-	value     string         // This is the actual value
-	tombstone bool           // Tombstone value showing that it was deleted
+	Version   int            // Monotonically increasing version numbers starting at 1
+	Timestamp time.Time      // this is set on writes
+	Clock     map[string]int // This is captured from the client payload on write
+	Value     string         // This is the actual value
+	Tombstone bool           // Tombstone value showing that it was deleted
+}
+
+// Set the version
+func (e *Entry) SetVersion(v int) {
+	e.Version = v
 }
 
 // NewEntry creates a new entry
-func NewEntry(time time.Time, clock map[string]int, val string) *Entry {
+func NewEntry(time time.Time, clock map[string]int, val string, version int) *Entry {
 
 	// Make a new entry
 	var e Entry
 
 	// All keys start at version 1
-	e.version = 1
+	e.Version = version
 
 	// The timestamp is set at creation
-	e.timestamp = time
+	e.Timestamp = time
 
 	// There might be no causal history initially but we still need to create the map
-	e.clock = make(map[string]int)
+	e.Clock = make(map[string]int)
 	if clock != nil && len(clock) > 0 {
 		for k, v := range clock {
-			e.clock[k] = v
+			e.Clock[k] = v
 		}
 	}
 
 	// Tombstone obviously should be false
-	e.tombstone = false
+	e.Tombstone = false
 
 	// Finally, set the value
-	e.value = val
+	e.Value = val
 
 	// Return a pointer to the entry
 	return &e
@@ -93,7 +101,7 @@ func NewEntry(time time.Time, clock map[string]int, val string) *Entry {
 // GetVersion just returns the version
 func (e *Entry) GetVersion() int {
 	if e != nil {
-		return e.version
+		return e.Version
 	}
 	// The version of a key which doesn't exist is -1
 	return 0
@@ -102,7 +110,7 @@ func (e *Entry) GetVersion() int {
 // GetTimestamp returns the timestamp from the entry
 func (e *Entry) GetTimestamp() time.Time {
 	if e != nil {
-		return e.timestamp
+		return e.Timestamp
 	}
 	// The timestamp of a key which doesn't exist is the empty struct Time{} which evaluates to a ton of 0's
 	return time.Time{}
@@ -111,7 +119,7 @@ func (e *Entry) GetTimestamp() time.Time {
 // GetClock returns the map representing the causal history
 func (e *Entry) GetClock() map[string]int {
 	if e != nil {
-		return e.clock
+		return e.Clock
 	}
 	// The clock of a non-existing key is an empty map
 	empty := make(map[string]int)
@@ -121,37 +129,42 @@ func (e *Entry) GetClock() map[string]int {
 // GetValue returns the string stored in the entry
 func (e *Entry) GetValue() string {
 	if e != nil {
-		return e.value
+		return e.Value
 	}
 	// The value of a non-existing key is an empty string
 	return ""
 }
 
 // Update writes a new value for the entry and updates the clock and version info
-func (e *Entry) Update(newTime time.Time, newClock map[string]int, newVal string) {
-	e.timestamp = newTime
-	e.value = newVal
-	e.clock = newClock
-	e.tombstone = false
-	e.version++
+func (e *Entry) Update(key string, newTime time.Time, newClock map[string]int, newVal string) {
+	log.Println("Updating entry - old version: ", e)
+	e.Timestamp = newTime
+	e.Value = newVal
+	e.Clock = newClock
+	e.Tombstone = false
+	e.Version++
+	e.Clock[key] = e.Version
+	log.Println("Updated entry: ", e)
 
 	wakeGossip = true
 }
 
 // Delete sets a tombstone that the key has been tombstone
-func (e *Entry) Delete(newTime time.Time) {
-	e.timestamp = newTime
-	e.value = ""
-	e.clock = map[string]int{}
-	e.tombstone = true
-	e.version++
+func (e *Entry) Delete(key string, newTime time.Time, payload map[string]int) {
+	log.Println("Deleting entry: ", e)
+	e.Timestamp = newTime
+	e.Value = ""
+	e.Clock = payload
+	e.Tombstone = true
+	e.Version++
+	e.Clock[key] = e.Version
 
 	wakeGossip = true
 }
 
 // Alive returns true if the key exists and doesn't have a tombstone set
 func (e *Entry) Alive() bool {
-	if e != nil && e.tombstone != true {
+	if e != nil && e.Tombstone != true {
 		return true
 	}
 	return false
@@ -217,7 +230,7 @@ func (k *KVS) Get(key string, payload map[string]int) (val string, clock map[str
 }
 
 // Delete sets the tombstone associated with a particular key, updates its version and timestamp, so it appears dead
-func (k *KVS) Delete(key string, time time.Time) bool {
+func (k *KVS) Delete(key string, time time.Time, payload map[string]int) bool {
 	log.Println("Attempting to delete key ")
 	// Grab a write lock
 	k.mutex.Lock()
@@ -228,7 +241,7 @@ func (k *KVS) Delete(key string, time time.Time) bool {
 	// Call the nonlocking contains method
 	if doesExist {
 		log.Println("Key found, deleting key-value pair")
-		k.db[key].Delete(time)
+		k.db[key].Delete(key, time, payload)
 
 		// Initiate Gossip
 		wakeGossip = true
@@ -258,7 +271,7 @@ func (k *KVS) Put(key string, val string, time time.Time, payload map[string]int
 		// Check to see if the key exists
 		if doesExist {
 			// Update it
-			k.db[key].Update(time, payload, val)
+			k.db[key].Update(key, time, payload, val)
 			log.Println("Overwriting existing key")
 			// Initiate Gossip
 			wakeGossip = true
@@ -266,7 +279,7 @@ func (k *KVS) Put(key string, val string, time time.Time, payload map[string]int
 		}
 		log.Println("Inserting new key")
 		// Use the constructor
-		k.db[key] = NewEntry(time, payload, val)
+		k.db[key] = NewEntry(time, payload, val, 1)
 		// Initiate Gossip
 		wakeGossip = true
 		return true
@@ -318,9 +331,11 @@ func (k *KVS) GetTimestamp(key string) time.Time {
 // OverwriteEntry overwrites the entry associated with the given key using the given entry
 func (k *KVS) OverwriteEntry(key string, entry KeyEntry) {
 	if entry != nil {
+		log.Println("Overwriting entry: ", k.db[key])
 		k.mutex.Lock()
 		defer k.mutex.Unlock()
 		k.db[key] = entry
+		log.Println("New entry: ", entry)
 	}
 }
 
@@ -347,12 +362,25 @@ func (k *KVS) GetEntryGlob(tg timeGlob) entryGlob {
 	if k != nil {
 		k.mutex.RLock()
 		defer k.mutex.RUnlock()
-		entries := make(map[string]KeyEntry)
+		entries := make(map[string]Entry)
 		eg := entryGlob{Keys: entries}
 		for n := range tg.List {
-			eg.Keys[n] = k.db[n]
+			time := k.db[n].GetTimestamp()
+			clock := k.db[n].GetClock()
+			value := k.db[n].GetValue()
+			version := k.db[n].GetVersion()
+			tombstone := !k.db[n].Alive()
+			e := Entry{
+				Timestamp: time,
+				Clock:     clock,
+				Value:     value,
+				Version:   version,
+				Tombstone: tombstone,
+			}
+			eg.Keys[n] = e
 		}
+		log.Println("Built entryGlob: ", eg)
 		return eg
 	}
-	return entryGlob{Keys: map[string]KeyEntry{}}
+	return entryGlob{Keys: map[string]Entry{}}
 }

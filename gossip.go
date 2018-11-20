@@ -40,6 +40,7 @@ func setTime() {
 // timesUp purely checks if 5 seconds has past
 func timesUp() bool {
 	if time.Now() == goalTime {
+		needHelp = true
 		return true
 	}
 	return false
@@ -49,31 +50,42 @@ func timesUp() bool {
 func (g *GossipVals) GossipHeartbeat() {
 	log.Println("Gossip heart starts...")
 	setTime()
-	// Implement TCP for the server to listen for connection
-	go server()
 
 	for {
-		if wakeGossip == true || timesUp() == true {
+		if wakeGossip || viewChange || timesUp() {
 			log.Println("Gossip initiated. Ringing TCP")
 
 			gossipee := g.view.Random(2)
 
-			for _, bob := range gossipee {
-				// Get timeglob
-				t := g.kvs.GetTimeGlob()
-				//Send our timeglob to gossipee and return back their pruned timeglob
-				rt, err := sendTimeGlob(bob, t)
-				if err != nil {
-					log.Println("Error sending timeglob: ", err)
-					continue
+			if needHelp {
+				for _, bob := range gossipee {
+					askForHelp(bob)
 				}
-				// turn the pruned timeglob into and entry glob for gossipee
-				re := g.kvs.GetEntryGlob(*rt)
-				//send the entryglob needed to update gosipee kvs
-				err = sendEntryGlob(bob, re)
-				if err != nil {
-					log.Println("Error sending entryglob: ", err)
-					continue
+				needHelp = false
+			} else {
+				for _, bob := range gossipee {
+					// Get timeglob
+					t := g.kvs.GetTimeGlob()
+					//Send our timeglob to gossipee and return back their pruned timeglob
+					rt, err := sendTimeGlob(bob, t)
+					if err != nil {
+						log.Println("Error sending timeglob: ", err)
+						continue
+					}
+					// turn the pruned timeglob into and entry glob for gossipee
+					re := g.kvs.GetEntryGlob(*rt)
+					//send the entryglob needed to update gosipee kvs
+					err = sendEntryGlob(bob, re)
+					if err != nil {
+						log.Println("Error sending entryglob: ", err)
+						continue
+					}
+
+					if viewChange {
+						// Propagate views
+						v := g.view.List()
+						sendViewList(bob, v)
+					}
 				}
 			}
 			wakeGossip = false
@@ -89,7 +101,7 @@ func (g *GossipVals) ClockPrune(input timeGlob) timeGlob {
 	own := g.kvs.GetTimeGlob() // getTimeGlob() is in glob branch
 
 	// Find and delete duplicates between two maps
-	for k, _ := range own.List {
+	for k := range own.List {
 		// Prune key off of input timeGlob if input's k is as new as own's k
 		if input.List[k] == own.List[k] {
 			delete(input.List, k)
@@ -112,45 +124,57 @@ func (g *GossipVals) BuildEntryGlob(inglob timeGlob) entryGlob {
 func (g *GossipVals) UpdateKVS(inglob entryGlob) {
 	// Loop through all keys, check for conflicts, and update KVS when necessary.
 	for key, aliceEntry := range inglob.Keys {
-		if g.ConflictResolution(key, aliceEntry) {
-			g.kvs.OverwriteEntry(key, aliceEntry)
+		if g.ConflictResolution(key, &aliceEntry) {
+			g.kvs.OverwriteEntry(key, &aliceEntry)
 		}
 	}
 }
 
-// A timeGlob is a map of keys to timestamps and lets the gossip module figure out which ones need to be updated
+// ConflictResolution returns true if Bob should update with Alice's key
 func (g *GossipVals) ConflictResolution(key string, aliceEntry KeyEntry) bool {
 	log.Println("Resolving a conflict")
 	isSmaller := false
 	isLarger := false
 
+	log.Printf("Comparing Alice's version '%#v'\n", aliceEntry)
 	aMap := aliceEntry.GetClock()
 	bMap := g.kvs.GetClock(key)
+	log.Println("aMap: ", aMap)
+	log.Println("bMap: ", bMap)
 
 	// if bob does NOT have the key, we definitely update w/ Alice's stuff
 	if len(bMap) == 0 {
+		log.Println("Bob doesn't have the entry: ", key)
 		return true // Bob can't possibly beat Alice's key with no corresponding key of it's own
-	} else {
-		// else if Bob DOES have the key, we compare causal history & timestamps
-		for k, v := range bMap {
-			if aMap[k] < v {
-				isSmaller = true
-			} else if aMap[k] > v {
-				isLarger = true
-			}
+	}
+	// else if Bob DOES have the key, we compare causal history & timestamps
+	for k, v := range bMap {
+		if aMap[k] < v {
+			isSmaller = true
+		} else if aMap[k] > v {
+			isLarger = true
 		}
+	}
 
-		if (isSmaller && isLarger) || (!isSmaller && !isLarger) {
-			// incomparable or identical clocks, later timestamp wins
-			if aliceEntry.GetTimestamp().Sub(g.kvs.GetTimestamp(key)) > 0 {
-				return true // alice wins
-			} else {
-				return false // bob wins
-			}
-		} else if isSmaller == false && isLarger == true {
+	if (isSmaller && isLarger) || (!isSmaller && !isLarger) {
+		// incomparable or identical clocks, later timestamp wins
+		if aliceEntry.GetTimestamp().After(g.kvs.GetTimestamp(key)) {
+			log.Println("Alice wins with the later timestamp")
 			return true // alice wins
-		} else {
-			return false // bob wins
 		}
+		log.Println("Bob wins with a later timestamp")
+		return false // bob wins
+	} else if isSmaller == false && isLarger == true {
+		log.Println("Alice wins with a larger clock")
+		return true // alice wins
+	}
+	log.Println("Bob wins with a larger clock")
+	return false // bob wins
+}
+
+// UpdateViews overwrites our views
+func (g *GossipVals) UpdateViews(v []string) {
+	if len(v) > 0 {
+		g.view.Overwrite(v)
 	}
 }

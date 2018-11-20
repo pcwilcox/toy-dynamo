@@ -1,9 +1,6 @@
-# last update: 11/19 - cleaned up the last several tests to not try to delete the
-#                      addresses the host would use for comunication, but rather
-#                      an address they would use to communicate between each other.
-# past updates:
-# 11/17/18 - changed to use subnets, since Mac and Linux apparently really need them
-# 11/10/18 - fixed the expected result of GET view
+# last update:  11/17/18 - changed to use subnets, since Mac and Linux apparently really need them
+# past updates: 11/10/18 - fixed the expected result of GET view
+
 
 import os
 import sys
@@ -11,6 +8,7 @@ import requests
 import time
 import unittest
 import json
+import subprocess
 
 import docker_control
 
@@ -22,6 +20,7 @@ needSudo = False  # obviously if you need sudo, set this to True
 # contact me imediately if setting this to True breaks things
 # (I don't have a machine which needs sudo, so it has not been tested, although in theory it should be fine)
 
+# should be the first part of 8080 and the like, there should be no reason to change this
 port_prefix = "808"
 
 networkName = "mynet"  # the name of the network you created
@@ -70,7 +69,7 @@ def viewMatch(collectedView, expectedView):
     # KVS Functions
 def storeKeyValue(ipPort, key, value, payload):
     print('PUT: http://%s/keyValue-store/%s' % (str(ipPort), key))
-    return requests.put('http://%s/keyValue-store/%s' % (str(ipPort), key), data={'val': value, 'payload': json.dumps(payload)}, timeout=5)
+    return requests.put('http://%s/keyValue-store/%s' % (str(ipPort), key), data={'val': value, 'payload': json.dumps(payload)})
 
 
 def checkKey(ipPort, key, payload):
@@ -124,12 +123,14 @@ class TestHW3(unittest.TestCase):
 
     def getPayload(self, ipPort, key):
         response = checkKey(ipPort, key, {})
-        print(response)
+        # print(response)
         data = response.json()
         return data["payload"]
 
     def confirmAddKey(self, ipPort, key, value, expectedStatus, expectedMsg, expectedReplaced, payload={}):
         response = storeKeyValue(ipPort, key, value, payload)
+
+        # print(response)
 
         self.assertEqual(response.status_code, expectedStatus)
 
@@ -141,7 +142,7 @@ class TestHW3(unittest.TestCase):
 
     def confirmCheckKey(self, ipPort, key, expectedStatus, expectedResult, expectedIsExists, payload={}):
         response = checkKey(ipPort, key, payload)
-        print(response)
+        # print(response)
         self.assertEqual(response.status_code, expectedStatus)
 
         data = response.json()
@@ -152,7 +153,7 @@ class TestHW3(unittest.TestCase):
 
     def confirmGetKey(self, ipPort, key, expectedStatus, expectedResult, expectedValue=None, expectedMsg=None, payload={}):
         response = getKeyValue(ipPort, key, payload)
-        print(response)
+        # print(response)
         self.assertEqual(response.status_code, expectedStatus)
 
         data = response.json()
@@ -166,7 +167,7 @@ class TestHW3(unittest.TestCase):
 
     def confirmDeleteKey(self, ipPort, key, expectedStatus, expectedResult, expectedMsg, payload={}):
         response = deleteKey(ipPort, key, payload)
-        print(response)
+        # print(response)
 
         self.assertEqual(response.status_code, expectedStatus)
 
@@ -178,7 +179,7 @@ class TestHW3(unittest.TestCase):
 
     def confirmViewNetwork(self, ipPort, expectedStatus, expectedView):
         response = viewNetwork(ipPort)
-        print(response)
+        # print(response)
         self.assertEqual(response.status_code, expectedStatus)
 
         data = response.json()
@@ -189,7 +190,7 @@ class TestHW3(unittest.TestCase):
     def confirmAddNode(self, ipPort, newAddress, expectedStatus, expectedResult, expectedMsg):
         response = addNode(ipPort, newAddress)
 
-        print(response)
+        # print(response)
 
         self.assertEqual(response.status_code, expectedStatus)
 
@@ -199,7 +200,7 @@ class TestHW3(unittest.TestCase):
 
     def confirmDeleteNode(self, ipPort, removedAddress, expectedStatus, expectedResult, expectedMsg):
         response = removeNode(ipPort, removedAddress)
-        print(response)
+        # print(response)
         self.assertEqual(response.status_code, expectedStatus)
 
         data = response.json()
@@ -211,10 +212,12 @@ class TestHW3(unittest.TestCase):
 
 # Confirm Basic functionality:
 
-
     def test_a_add_key_value_one_node(self):
+
         ipPort = self.view[0]["testScriptAddress"]
         key = "addNewKey"
+        print(ipPort)
+
         payload = self.confirmAddKey(ipPort=ipPort,
                                      key=key,
                                      value="a simple value",
@@ -223,6 +226,7 @@ class TestHW3(unittest.TestCase):
                                      expectedReplaced=False)
 
         value = "aNewValue"
+
         payload = self.confirmAddKey(ipPort=ipPort,
                                      key=key,
                                      value=value,
@@ -407,11 +411,11 @@ class TestHW3(unittest.TestCase):
 #   However, if that is all you are doing, the following tests should fail
 
     def test_h_get_view(self):
-        viewString = getViewString(self.view)
+        viewSting = getViewString(self.view)
 
         self.confirmViewNetwork(ipPort=self.view[0]["testScriptAddress"],
                                 expectedStatus=200,
-                                expectedView=viewString)
+                                expectedView=viewSting)
 
     def test_i_add_node_to_network(self):
         ipPort = self.view[0]["testScriptAddress"]
@@ -419,11 +423,11 @@ class TestHW3(unittest.TestCase):
         newPort = "%s4" % port_prefix
         newView = "%s4:8080" % (networkIpPrefix)
 
-        viewString = getViewString(self.view)
-        viewString += ",%s" % newView
+        viewSting = getViewString(self.view)
+        viewSting += ",%s" % newView
 
         newNode = dc.spinUpDockerContainer(
-            dockerBuildTag, hostIp, networkIpPrefix+"4", newPort, viewString)
+            dockerBuildTag, hostIp, networkIpPrefix+"4", newPort, viewSting)
 
         self.view.append(newNode)
 
@@ -433,12 +437,10 @@ class TestHW3(unittest.TestCase):
                             expectedResult="Success",
                             expectedMsg="Successfully added %s to view" % newView)
 
-        time.sleep(propogationTime)
-
         for node in self.view:
             self.confirmViewNetwork(ipPort=node["testScriptAddress"],
                                     expectedStatus=200,
-                                    expectedView=viewString)
+                                    expectedView=viewSting)
 
     def test_j_remove_node_from_network(self):
         ipPort = self.view[0]["testScriptAddress"]
@@ -583,8 +585,6 @@ class TestHW3(unittest.TestCase):
                                expectedStatus=200,
                                expectedResult="Success",
                                expectedMsg="Successfully removed %s from view" % removedNode["networkIpPortAddress"])
-
-        time.sleep(propogationTime)
 
         payload = self.confirmCheckKey(ipPort=stationaryNode,
                                        key=key,

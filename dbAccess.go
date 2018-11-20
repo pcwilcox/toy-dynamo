@@ -24,7 +24,7 @@ type dbAccess interface {
 	Get(string, map[string]int) (string, map[string]int)
 
 	// Delete removes a key-value pair from the object. If the key does not exist it returns false.
-	Delete(string, time.Time) bool
+	Delete(string, time.Time, map[string]int) bool
 
 	// Put adds a key-value pair to the data store. If the key already exists, then it overwrites the existing value. If the key does not exist then it is added.
 	Put(string, string, time.Time, map[string]int) bool

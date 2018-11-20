@@ -18,3 +18,4 @@
 cover.html
 __pycache__/*
 *.pyc
+*.swp

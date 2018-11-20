@@ -26,16 +26,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/soheilhy/cmux"
 )
-
-//Dummy functions, will be removed when gossip is complete
-func ClockPrune(tg timeGlob) timeGlob {
-	return tg
-}
-
-//Dummy functions, will be removed when gossip is complete
-func UpdatingNewEntries(eg entryGlob) {
-}
 
 // A timeGlob is a map of keys to timestamps and lets the gossip module figure out which ones need to be updated
 type timeGlob struct {
@@ -44,15 +36,21 @@ type timeGlob struct {
 
 // An entryGlob is a map of keys to entries which allowes the gossip module to enter into conflict resolution and update the required keys
 type entryGlob struct {
-	Keys map[string]KeyEntry
+	Keys map[string]Entry
 }
 
 // Open connects to a TCP Address.
 // It returns a TCP connection armed with a timeout and wrapped into a buffered ReadWriter.
 func Open(addr string) (*bufio.ReadWriter, error) {
+	// Trim the address since we're only using the IP
+	s := strings.Split(addr, ":")[0]
+	s = s + port
 	// Dial the remote process.
-	log.Println("Dial " + addr)
-	conn, err := net.Dial("tcp", addr)
+	log.Println("Dial " + s)
+	//IP := strings.Split()
+	//outgoing := net.TCPAddr{Port: 8080}
+	//destination := net.TCPAddr{IP}
+	conn, err := net.Dial("tcp", s)
 	if err != nil {
 		return nil, errors.Wrap(err, "Dialing "+addr+" failed")
 	}
@@ -68,6 +66,7 @@ type HandleFunc func(*bufio.ReadWriter)
 type Endpoint struct {
 	listener net.Listener
 	handler  map[string]HandleFunc
+	gossip   GossipVals
 
 	// Maps are not threadsafe, so we need a mutex to control access.
 	m sync.RWMutex
@@ -93,11 +92,6 @@ func (e *Endpoint) AddHandleFunc(name string, f HandleFunc) {
 // At least one handler function must have been added
 // through AddHandleFunc() before.
 func (e *Endpoint) Listen() error {
-	var err error
-	e.listener, err = net.Listen("tcp", port)
-	if err != nil {
-		return errors.Wrapf(err, "Unable to listen on port %s\n", port)
-	}
 	log.Println("Listen on", e.listener.Addr().String())
 	for {
 		log.Println("Accept a connection request.")
@@ -121,7 +115,6 @@ func (e *Endpoint) handleMessages(conn net.Conn) {
 	// Read from the connection until EOF. Expect a command name as the
 	// next input. Call the handler that is registered for this command.
 	for {
-		log.Print("Receive command '")
 		cmd, err := rw.ReadString('\n')
 		switch {
 		case err == io.EOF:
@@ -133,7 +126,7 @@ func (e *Endpoint) handleMessages(conn net.Conn) {
 		}
 		// Trim the request string - ReadString does not strip any newlines.
 		cmd = strings.Trim(cmd, "\n ")
-		log.Println(cmd + "'")
+		log.Println("Received command: '" + cmd + "'")
 
 		// Fetch the appropriate handler function from the 'handler' map and call it.
 		e.m.RLock()
@@ -149,7 +142,7 @@ func (e *Endpoint) handleMessages(conn net.Conn) {
 
 // handleGob handles the "GOB" request. It decodes the received GOB data
 // into a struct.
-func handleTimeGob(rw *bufio.ReadWriter) {
+func (e *Endpoint) handleTimeGob(rw *bufio.ReadWriter) {
 	log.Print("Receive Time Gob data:")
 	var data timeGlob
 	// Create a decoder that decodes directly into a struct variable.
@@ -160,28 +153,27 @@ func handleTimeGob(rw *bufio.ReadWriter) {
 		return
 	}
 
-	data = ClockPrune(data)
+	log.Printf("Decoding timeGlob: %#v\n", data)
+	log.Println("Pruning data")
+	data = e.gossip.ClockPrune(data)
 
 	enc := gob.NewEncoder(rw)
-	n, err := rw.WriteString("GOB\n")
-
-	if err != nil {
-		log.Println("Could not write GOB data (" + strconv.Itoa(n) + " bytes written)")
-	}
+	log.Printf("Encoding response timeGlob back to buffer: %#v\n", data)
 	err = enc.Encode(data)
 	if err != nil {
 		log.Println("Encode failed for struct: ", data)
 	}
+	log.Println("Flushing buffer")
 	err = rw.Flush()
 	if err != nil {
 		log.Println("Flush failed.")
 	}
 
-	log.Printf("Outer complexData struct: \n%v", data)
+	log.Printf("timeGlob struct: \n%v", data)
 }
 
-func handleEntryGob(rw *bufio.ReadWriter) {
-	log.Print("Receive GOB data:")
+func (e *Endpoint) handleEntryGob(rw *bufio.ReadWriter) {
+	log.Println("Receive entryGlob data:")
 	var data entryGlob
 	// Create a decoder that decodes directly into a struct variable.
 	dec := gob.NewDecoder(rw)
@@ -191,10 +183,32 @@ func handleEntryGob(rw *bufio.ReadWriter) {
 		return
 	}
 
-	UpdatingNewEntries(data)
+	log.Println("Decoding entryGlob: ", data)
+	log.Println("Updating KVS")
+	e.gossip.UpdateKVS(data)
 	// Print the complexData struct and the nested one, too, to prove
 	// that both travelled across the wire.
 	log.Printf("Outer complexData struct: \n%#v\n", data)
+}
+
+func (e *Endpoint) handleViewGob(rw *bufio.ReadWriter) {
+	var data []string
+	dec := gob.NewDecoder(rw)
+	log.Println("Decoding viewGob data")
+	err := dec.Decode(&data)
+	if err != nil {
+		log.Println("Error decoding view data")
+		return
+	}
+
+	log.Println("Updating viewList - old views: " + e.gossip.view.String())
+	e.gossip.UpdateViews(data)
+	log.Println("Views updated: ", data)
+}
+
+func (e *Endpoint) handleHelp(rw *bufio.ReadWriter) {
+	log.Println("Receive call for help")
+	wakeGossip = true
 }
 
 /*
@@ -210,7 +224,6 @@ The server starts listening for requests and triggers the appropriate handlers.
 // client is called if the app is called with -connect=`ip addr`.
 func sendTimeGlob(ip string, tg timeGlob) (*timeGlob, error) {
 	// Open a connection to the server.
-
 	var out timeGlob
 
 	rw, err := Open(ip)
@@ -219,16 +232,19 @@ func sendTimeGlob(ip string, tg timeGlob) (*timeGlob, error) {
 	}
 
 	enc := gob.NewEncoder(rw)
-	n, err := rw.WriteString("GOB\n")
+	log.Println("Sending command initialization: 'time'")
+	n, err := rw.WriteString("time\n")
 
 	if err != nil {
 		return nil, errors.Wrap(err, "Could not write GOB data ("+strconv.Itoa(n)+" bytes written)")
 	}
 
+	log.Println("Encoding timeGlob")
 	err = enc.Encode(tg)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Encode failed for struct: %#v", tg)
 	}
+	log.Println("Flushing buffer")
 	err = rw.Flush()
 	if err != nil {
 		return nil, errors.Wrap(err, "Flush failed.")
@@ -236,6 +252,7 @@ func sendTimeGlob(ip string, tg timeGlob) (*timeGlob, error) {
 
 	// Create a decoder that decodes directly into a struct variable.
 	dec := gob.NewDecoder(rw)
+	log.Println("Reading timeGlob response")
 	err = dec.Decode(&out)
 	if err != nil {
 		log.Println("Error decoding GOB data:", err)
@@ -246,8 +263,8 @@ func sendTimeGlob(ip string, tg timeGlob) (*timeGlob, error) {
 }
 
 func sendEntryGlob(ip string, eg entryGlob) error {
-	// Open a connection to the server.
 
+	// Open a connection to the server.
 	rw, err := Open(ip)
 	if err != nil {
 		return errors.Wrap(err, "Client: Failed to open connection to "+ip)
@@ -256,15 +273,18 @@ func sendEntryGlob(ip string, eg entryGlob) error {
 	// Send the request name.
 
 	enc := gob.NewEncoder(rw)
-	n, err := rw.WriteString("GOB\n")
+	log.Println("Sending command initialization: 'entry'")
+	n, err := rw.WriteString("entry\n")
 
 	if err != nil {
 		return errors.Wrap(err, "Could not write GOB data ("+strconv.Itoa(n)+" bytes written)")
 	}
+	log.Println("Encoding entryGlob: ", eg)
 	err = enc.Encode(eg)
 	if err != nil {
 		return errors.Wrapf(err, "Encode failed for struct: %#v", eg)
 	}
+	log.Println("Flushing buffer")
 	err = rw.Flush()
 	if err != nil {
 		return errors.Wrap(err, "Flush failed.")
@@ -273,16 +293,91 @@ func sendEntryGlob(ip string, eg entryGlob) error {
 	return nil
 }
 
+func sendViewList(ip string, v []string) error {
+	rw, err := Open(ip)
+	if err != nil {
+		return errors.Wrap(err, "Client: failed to open connection to "+ip)
+	}
+	enc := gob.NewEncoder(rw)
+	log.Println("Sending command initialization: 'view'")
+	n, err := rw.WriteString("view\n")
+	if err != nil {
+		return errors.Wrap(err, "Could not write view data ("+strconv.Itoa(n)+" bytes written)")
+	}
+
+	log.Println("Encoding view []string")
+	err = enc.Encode(v)
+	if err != nil {
+		return errors.Wrapf(err, "Encode failed for slice: %#v", v)
+
+	}
+	log.Println("Flushing buffer")
+	err = rw.Flush()
+	if err != nil {
+		return errors.Wrap(err, "Flush failed")
+	}
+	return nil
+}
+
+func askForHelp(ip string) error {
+	rw, err := Open(ip)
+	if err != nil {
+		return errors.Wrap(err, "Client: failed to open connection to "+ip)
+	}
+	log.Println("Sending command initialization: 'help'")
+	n, err := rw.WriteString("help\n")
+	if err != nil {
+		return errors.Wrap(err, "Could not write view data ("+strconv.Itoa(n)+" bytes written)")
+	}
+
+	log.Println("Flushing buffer")
+	err = rw.Flush()
+	return err
+}
+
 // server listens for incoming requests and dispatches them to
 // registered handler functions.
-func server() error {
+func server(a App, g GossipVals) {
+	// Register types for gob
+	gob.Register(timeGlob{})
+	gob.Register(entryGlob{})
+	gob.Register(Entry{})
+
+	// Create a  listener
+	l, err := net.Listen("tcp", port)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	// Create a cmux
+	m := cmux.New(l)
+
+	// Set up a matcher for HTTP
+	httpl := m.Match(cmux.HTTP1())
+
+	// Create a matcher for anything else
+	tcpl := m.Match(cmux.Any())
+
+	// Create the TCP endpoint
 	endpoint := NewEndpoint()
 	// Add HandleTimeGob
-	endpoint.AddHandleFunc("time", handleTimeGob)
+	endpoint.AddHandleFunc("time", endpoint.handleTimeGob)
 	// Add HandleEntryGob
-	endpoint.AddHandleFunc("entry", handleEntryGob)
-	// Start listening.
-	return endpoint.Listen()
+	endpoint.AddHandleFunc("entry", endpoint.handleEntryGob)
+	// Add HandleViewListGob
+	endpoint.AddHandleFunc("view", endpoint.handleViewGob)
+	// Add HandleHelp
+	endpoint.AddHandleFunc("help", endpoint.handleHelp)
+
+	endpoint.listener = tcpl
+	endpoint.gossip = g
+	log.Println("Server has initialized")
+
+	// Run the two listeners
+	go a.Initialize(httpl)
+	go endpoint.Listen()
+	if err := m.Serve(); !strings.Contains(err.Error(), "use of closed network connection") {
+		log.Fatalln(err)
+	}
 }
 
 // The Lshortfile flag includes file name and line number in log messages.

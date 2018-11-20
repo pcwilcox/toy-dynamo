@@ -67,15 +67,16 @@ func main() {
 	// The App object is the front end
 	a := App{db: k, view: *MyView}
 
+	log.Println("Starting server...")
+
 	// Set flag to false and ring up Gossip to start the forever loop
-	wakeGossip = false
+	wakeGossip = true
+
 	gossip := GossipVals{
 		view: MyView,
 		kvs:  k,
 	}
 	go gossip.GossipHeartbeat() // goroutines
 
-	log.Println("Starting server...")
-	// Initialize starts the server
-	a.Initialize()
+	server(a, gossip)
 }
