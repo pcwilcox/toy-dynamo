@@ -3,11 +3,8 @@
 # Mostly called from hw3_test.py to start containers
 # can be used from command line (largely for testing specific executions by hand)
 
-# last update: 11/19/18 - cleaned up many of the getoutput commands to be strings
-#                       - added some functionality to interface with Blockade (don't worry about that stuff too much)
-# past updates:
-# 11/17/18 - altered to use subnets, because Linux and Mac need them
-#          - also will spin up multiple containers from comand line at once now
+# last update: 11/17/18 - altered to use subnets, because Linux and Mac need them
+#                      - also will spin up multiple containers from comand line at once now
 
 import subprocess
 import os
@@ -38,18 +35,17 @@ class docker_controller:
 
         instance = {"testScriptAddress": hostIp+":"+port,
                     "networkIpPortAddress": networkIP+":8080"}
+        command = "docker run -p %s:8080 --net=%s --ip=%s -e VIEW=%s -e IP_PORT=%s:8080 -d %s" % (
+            port, self.mynet, networkIP, view, networkIP, tag)
+        instance["containerID"] = subprocess.getoutput(command)
 
-        command = self.sudo+["docker", "run",
-                             "-p", "%s:8080" % port,
-                             "--net=%s" % self.mynet,
-                             "--ip=%s" % networkIP,
-                             "-e", "VIEW=%s" % view,
-                             "-e", "IP_PORT=%s:8080" % networkIP,
-                             "-d", tag]
-
-        print(command)
-
-        instance["containerID"] = subprocess.getoutput(" ".join(command))
+        # instance["containerID"] = subprocess.getoutput(self.sudo+["docker", "run",
+        #                 "-p", "%s:8080"%port,
+        #                 "--net=%s"%self.mynet,
+        #                 "--ip=%s"%networkIP,
+        #                 "-e", "VIEW=%s"%view,
+        #                 "-e", "IP_PORT=%s:8080"%networkIP,
+        #                 "-d", tag])
 
         if " " in instance["containerID"]:
             print(instance["containerID"])
@@ -85,43 +81,32 @@ class docker_controller:
 
         return view
 
-    def prepBlockade(self, instanceList):
-        for instance in instanceList:
-            subprocess.run(self.sudo + ["blockade", "add", instance])
-
-    def partitionContainer(self, partitionList):
-        command = self.sudo + ["blockade", "partition"] + partitionList
-
-        subprocess.run(command)
+    def partitionContainer(self, instance):
+        output = subprocess.getoutput(
+            self.sudo + ["docker", "network", "connect", ])
 
     def cleanUpDockerContainer(self, instance=None):
         if instance == None:
             print("cleaning up all docker containers")
-
-            command = " ".join(self.sudo+["docker", "ps", "-q"])
-
+            command = "docker ps -q"
             instance = subprocess.getoutput(command)
 
             instance = instance.split("\n")
 
             for inst in instance:
-                command = " ".join(self.sudo+["docker", "kill", inst])
-
-                output = subprocess.getoutput(command)
+                kill_command = "docker kill %s" % (inst)
+                output = subprocess.getoutput(kill_command)
                 self.dPrint(output, self.verbose, 1)
 
         else:
             print("cleaning up container %s" % instance)
-            command = " ".join(self.sudo+["docker", "kill", instance])
 
+            command = "docker ps -q %s" % (instance)
             output = subprocess.getoutput(command)
 
             self.dPrint(output, self.verbose, 1)
 
         print("done cleaning")
-
-    def ps(self):
-        subprocess.run(self.sudo+["docker", "ps"])
 
 
 if __name__ == '__main__':
@@ -190,5 +175,3 @@ if __name__ == '__main__':
     if start:
         dc.spinUpManyContainers(
             dockerBuildTag, hostIp, networkIpPrefix, localPortPrefix, containerNumber)
-
-        dc.ps()

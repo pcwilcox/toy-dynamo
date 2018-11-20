@@ -45,3 +45,5 @@ const (
 
 var myIP string
 var wakeGossip bool
+var needHelp bool
+var viewChange bool

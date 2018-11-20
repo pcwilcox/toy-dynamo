@@ -41,6 +41,7 @@ jobs:               # these are like stages
             go get github.com/gorilla/handlers
             go get github.com/go-test/deep
             go get github.com/pkg/errors
+            go get github.com/soheilhy/cmux
       - run:
           name: "Use the right Python version"
           command: |

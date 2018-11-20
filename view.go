@@ -36,12 +36,53 @@ type View interface {
 
 	// Returns the item associated with this server
 	Primary() string
+
+	// Overwrite is used by gossiping to overwrite the view
+	Overwrite([]string)
+
+	// List just gives a []string of our views to make it easy to gossip
+	List() []string
+
+	// String prints it
+	String() string
 }
 
 // A viewList is a struct which implements the View interface and holds the view of the server configs
 type viewList struct {
 	views   map[string]string // This is a map because it gives O(1) lookups
 	primary string            // This is the server we're actually on
+}
+
+// List spits out a byte slice
+func (v *viewList) List() []string {
+	var s []string
+	for k := range v.views {
+		s = append(s, k)
+	}
+	return s
+}
+
+// Overwrite simply replaces the view list
+func (v *viewList) Overwrite(n []string) {
+	diff := false
+	if len(n) == len(v.views) {
+		for _, val := range n {
+			if !v.Contains(val) {
+				diff = true
+			}
+		}
+	} else {
+		diff = true
+	}
+	if diff {
+		for k := range v.views {
+			delete(v.views, k)
+		}
+		for _, k := range n {
+			v.views[k] = k
+		}
+		viewChange = true
+	}
 }
 
 // Count returns the number of elements in the view list
@@ -65,6 +106,7 @@ func (v *viewList) Contains(item string) bool {
 func (v *viewList) Remove(item string) bool {
 	if v != nil {
 		delete(v.views, item)
+		viewChange = true
 		return true
 	}
 	return false
@@ -74,6 +116,7 @@ func (v *viewList) Remove(item string) bool {
 func (v *viewList) Add(item string) bool {
 	if v != nil {
 		v.views[item] = item
+		viewChange = true
 		return true
 	}
 	return false

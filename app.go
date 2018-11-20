@@ -16,12 +16,15 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"log"
+	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
+	"github.com/soheilhy/cmux"
 )
 
 // App is a struct to hold the state for the REST API
@@ -37,7 +40,7 @@ type App struct {
 }
 
 // Initialize fires up the router and such
-func (app *App) Initialize() {
+func (app *App) Initialize(l net.Listener) {
 
 	// Initialize a router
 	r := mux.NewRouter()
@@ -58,10 +61,15 @@ func (app *App) Initialize() {
 	s.HandleFunc(keySuffix, app.GetHandler).Methods(http.MethodGet)
 	s.HandleFunc(keySuffix, app.DeleteHandler).Methods(http.MethodDelete)
 
+	// Make logger
+	Logger := handlers.LoggingHandler(MultiLogOutput, r)
+
+	v := &http.Server{
+		Handler: Logger,
+	}
 	log.Println("App initialized")
 	// Load up the server through a logger interface
-	err := http.ListenAndServe(port, handlers.LoggingHandler(MultiLogOutput, r))
-	if err != nil {
+	if err := v.Serve(l); err != cmux.ErrListenerClosed {
 		log.Fatalln(err)
 	}
 }
@@ -174,7 +182,7 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 
 				log.Printf("Inserted key-value pair")
 				// Set status
-				status = http.StatusOK // code 200
+				status = http.StatusCreated // code 201
 
 				// Build the response body
 				resp := map[string]interface{}{
@@ -189,7 +197,8 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 			} else {
 				log.Println("Key does not exist in DB, inserting...")
 				// It's a new entry so it gets a different status code
-				status = http.StatusCreated // code 201
+				// This status code is bullshit but the spec got reversed
+				status = http.StatusOK // code 200
 				time := time.Now()
 
 				// Add this key to its own payload, since the key might be dead we just increment the version number
@@ -248,8 +257,9 @@ func (app *App) GetHandler(w http.ResponseWriter, r *http.Request) {
 		// Read the message body
 		s, _ := ioutil.ReadAll(r.Body)
 		log.Println(string(s))
-		if len(s) > 0 {
-			payloadString = strings.Split(string(s[:]), "=")[1]
+		sBody, _ := url.QueryUnescape(string(s))
+		if len(sBody) > 0 {
+			payloadString = strings.Split(sBody, "=")[1]
 			log.Println(payloadString)
 		}
 	}
@@ -308,7 +318,7 @@ func (app *App) GetHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Package it into a map->JSON->[]byte
 		resp := map[string]interface{}{
-			"msg":     "Success",
+			"result":  "Success",
 			"value":   val,
 			"payload": payload,
 		}
@@ -323,7 +333,7 @@ func (app *App) GetHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Error response
 		resp := map[string]interface{}{
-			"msg":     "Error",
+			"result":  "Error",
 			"error":   "Key does not exist",
 			"payload": payloadInt,
 		}
@@ -378,35 +388,50 @@ func (app *App) SearchHandler(w http.ResponseWriter, r *http.Request) {
 	for k, v := range payloadMap {
 		payloadInt[k] = v.(int)
 	}
+	log.Println("SEARCH with payload ", payloadInt)
 
 	// See if the key exists in the db
 	alive, version := app.db.Contains(key)
-	if alive && payloadInt[key] <= version {
+	if version < payloadInt[key] {
+		log.Println("Payload out of date error")
+		w.WriteHeader(http.StatusBadRequest) // code 400
 
+		resp := map[string]interface{}{
+			"result":  "Error",
+			"msg":     "Payload out of date",
+			"payload": payloadInt,
+		}
+		body, err = json.Marshal(resp)
+		if err != nil {
+			log.Fatalln("FATAL Error: Failed to marshal JSON response")
+		}
+
+	} else if alive {
 		log.Println("Key found in DB")
 		// It does
 		w.WriteHeader(http.StatusOK) // code 200
 
 		// Package it into a map->JSON->[]byte
 		resp := map[string]interface{}{
-			"msg":     "Success",
-			"isExist": "true",
-			"payload": payloadInt,
+			"result":   "Success",
+			"isExists": true,
+			"payload":  payloadInt,
 		}
 		body, err = json.Marshal(resp)
 		if err != nil {
 			log.Fatalln("FATAL ERROR: Failed to marshal JSON response")
 		}
+
 	} else {
 		log.Println("Key not found in DB")
 		// The key doesn't exist in the db
-		w.WriteHeader(http.StatusNotFound) // code 404
+		w.WriteHeader(http.StatusOK) // code 200
 
 		// Error response
 		resp := map[string]interface{}{
-			"msg":     "Error",
-			"isExist": "false",
-			"payload": payloadInt,
+			"result":   "Success",
+			"isExists": false,
+			"payload":  payloadInt,
 		}
 		body, err = json.Marshal(resp)
 		if err != nil {
@@ -461,19 +486,20 @@ func (app *App) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check to see if we've got the key
-	alive, version := app.db.Contains(key)
-	if alive && payloadInt[key] <= version {
+	alive, _ := app.db.Contains(key)
+	if alive {
 		log.Println("Key found in DB")
 		// We do
 		w.WriteHeader(http.StatusOK) // code 200
 
 		// Delete it
 		time := time.Now()
-		app.db.Delete(key, time)
+		app.db.Delete(key, time, payloadInt)
 
 		// Successful response
 		resp := map[string]interface{}{
-			"msg":     "Success",
+			"result":  "Success",
+			"msg":     "Key deleted",
 			"payload": payloadInt,
 		}
 		body, err = json.Marshal(resp)
@@ -488,8 +514,8 @@ func (app *App) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 
 		// Error response
 		resp := map[string]interface{}{
-			"error":   "Key does not exist",
-			"msg":     "Error",
+			"msg":     "Key does not exist",
+			"result":  "Error",
 			"payload": payloadInt,
 		}
 		body, err = json.Marshal(resp)
@@ -520,6 +546,7 @@ func (app *App) ViewPutHandler(w http.ResponseWriter, r *http.Request) {
 			newPort = r.Form["ip_port"][0]
 		}
 	}
+	log.Println(newPort)
 
 	// Same content type for everything
 	w.Header().Set("Content-Type", "application/json")
@@ -577,6 +604,7 @@ func (app *App) ViewGetHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Turn envView into string for JSON response
 	str = app.view.String()
+	log.Println("My view: " + str)
 
 	// Package it into a map->JSON->[]byte
 	resp := map[string]interface{}{
@@ -601,7 +629,9 @@ func (app *App) ViewDeleteHandler(w http.ResponseWriter, r *http.Request) {
 	// Read the message body
 	s, _ := ioutil.ReadAll(r.Body)
 	log.Println(string(s))
-	deletePort := strings.Split(string(s[:]), "=")[1]
+	sBody, _ := url.QueryUnescape(string(s))
+	log.Println(sBody)
+	deletePort := strings.Split(sBody, "=")[1]
 
 	// Same content type for everything
 	w.Header().Set("Content-Type", "application/json")
