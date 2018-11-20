@@ -63,6 +63,9 @@ SINGLE     = ${NET} ${IP}2 -e IP_PORT="${PREFIX}2:${PORT}" ${NAME}1 ${TAG}
 
 # Everything executes the build, unit tests, and runs the integration test
 
+# This runs 'go build ...'
+app :
+	${BUILD} -o ${EXEC} ${LD} ${SOURCES}
 
 # This runs the unit tests
 unit :

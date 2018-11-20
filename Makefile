@@ -72,6 +72,9 @@ all : docker                                # DELETE
 	${UNIT}                                 # DELETE
 	${TEST}                                 # DELETE
 
+# This runs 'go build ...'
+app :
+	${BUILD} -o ${EXEC} ${LD} ${SOURCES}
 
 # This runs the unit tests
 unit :
