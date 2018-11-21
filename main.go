@@ -1,4 +1,3 @@
-//
 // main.go
 //
 // CMPS 128 Fall 2018
@@ -27,20 +26,22 @@ import (
 )
 
 // Versioning info defined via linker flags at compile time
-var branch string
-var hash string
-var build string
+var branch string // Git branch
+var hash string   // Shortened commit hash
+var build string  // Number of commits in the branch
 
 // MultiLogOutput controls logging output to stdout and to a log file
 var MultiLogOutput io.Writer
 
 func main() {
+	// Create a logfile
 	logFile, err := os.OpenFile("app.log", os.O_CREATE|os.O_APPEND|os.O_RDWR, 0666)
 	if err != nil {
 		panic(err)
 	}
+	// Create a stream that writes to console and the logfile
 	MultiLogOutput = io.MultiWriter(os.Stdout, logFile)
-	// Set up the logging output to stdout
+	// Set some logging flags and setup the logger
 	log.SetFlags(log.Ltime | log.Lshortfile)
 	log.SetOutput(MultiLogOutput)
 
@@ -48,14 +49,13 @@ func main() {
 	version := branch + "." + hash + "." + build
 	log.Println("Running version " + version)
 
-	// Get my port from Env
+	// IP_PORT is defined at runtime in the docker command
 	myIP = os.Getenv("IP_PORT")
 
 	log.Println("My IP is " + myIP)
 
-	// Save the view from string to slice to map, due to map being easier to access
+	// VIEW is defined at runtime in the docker command as a string
 	str := os.Getenv("VIEW")
-
 	log.Println("My view is: " + str)
 
 	// Create a viewlist and load the view into it
@@ -64,19 +64,19 @@ func main() {
 	// Make a KVS to use as the db
 	k := NewKVS()
 
-	// The App object is the front end
+	// The App object is the front end and has references to the KVS and viewList
 	a := App{db: k, view: *MyView}
 
 	log.Println("Starting server...")
 
-	// Set flag to false and ring up Gossip to start the forever loop
-	wakeGossip = true
-
+	// The gossip object controls communicating with other servers and has references to the viewlist and the kvs
 	gossip := GossipVals{
 		view: MyView,
 		kvs:  k,
 	}
+	// Start the heartbeat loop
 	go gossip.GossipHeartbeat() // goroutines
 
+	// Start the servers with references to the REST app and the gossip module
 	server(a, gossip)
 }

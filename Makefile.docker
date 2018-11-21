@@ -7,12 +7,28 @@
 # Annie Shen          ashen7
 # Victoria Tran       vilatran
 #
-# Incorporates compile-time variables into the build
+# There's lots of stuff going on here. The primary targets are listed here:
+#
+#       make              - Builds the docker container
+#
+#       make all          - Run unit tests, then build the docker container,
+#                           then run the integration tests
+#
+#       make run          - Build the docker container, then run a single instance
+#
+#       make cluster      - Build the docker container, then run 3 replicas
+#
+# When the docker container is build, a script copies all lines of this file which
+# The Dockerfile builds out of that file instead of this one. This is done because
+# otherwise when Docker executes the build step, Make complains about the Docker
+# command not being available (since our Docker base image doesn't have it).
 
-# Predefined stuff
+# These build flags compile the binary specifically for Linux architecture
 BUILD      = CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build
 UNIT       = go test
 DFLAGS     = -t ${CONTAINER} . 
+
+# PIPENV manages dependencies for the Python test script
 PIPENV     = pipenv run python3
 TESTSCRIPT = hw3_test.py
 TEST       = ${PIPENV} ${TESTSCRIPT}
@@ -44,7 +60,7 @@ LDFLAGS2   = -w -s
 # This just smashes the LDFLAGS together
 LD         = -ldflags '${LDFLAGS1} ${LDFLAGS2}'
 
-# These are defines for running a cluster
+# These are defines for running containers based on our image
 PORT       = 8080
 PREFIX     = 10.0.0.
 NET        = --net=mynet
@@ -57,13 +73,13 @@ REPLICA3   = ${NET} ${IP}3 ${VIEW} -e IP_PORT="${PREFIX}3:${PORT}" ${NAME}3 ${TA
 REPLICA4   = ${NET} ${IP}4 ${VIEW} -e IP_PORT="${PREFIX}4:${PORT}" ${NAME}4 ${TAG}
 SINGLE     = ${NET} ${IP}2 -e IP_PORT="${PREFIX}2:${PORT}" ${NAME}1 ${TAG}
 
-
+# These three commands get a list of all containers running, all containers, and all images
 
 # This will run the docker build command, which builds the app
 
-# Everything executes the build, unit tests, and runs the integration test
+# Executes the build, unit tests, and runs the integration test
 
-# This runs 'go build ...'
+# This runs 'go build ...' and is only executed by the Docker build process
 app :
 	${BUILD} -o ${EXEC} ${LD} ${SOURCES}
 
@@ -74,24 +90,16 @@ unit :
 # This runs the integration tests
 
 # This removes the binary
-spotless :
-ifneq (, $(shell ls | grep ${EXEC}))
-	- rm ${EXEC}
-endif
 
 # Alias for above
-clean : spotless
 
 # Rebuild the thing
-again :
-	${MAKE} spotless all
 
-# This runs the Docker build command
+# This runs the Docker build command and also sets up the subnet
 
 # This makes a copy of the Makefile that doesn't try to run 
 # Docker so we don't get a warning about it not being available.
 cleanfile :
-
 
 # This builds the subnet in Docker
 

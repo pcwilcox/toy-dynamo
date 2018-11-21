@@ -288,8 +288,9 @@ func TestPutRequestEmptyBody(t *testing.T) {
 	err = json.Unmarshal(body, &gotBody)
 	ok(t, err)
 	expectedBody := map[string]interface{}{
-		"msg":   "Error",
-		"error": "Value is missing",
+		"msg":     "Error",
+		"error":   "Value is missing",
+		"payload": map[string]interface{}{},
 	}
 
 	if diff := deep.Equal(expectedBody, gotBody); diff != nil {

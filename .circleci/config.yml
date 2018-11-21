@@ -5,19 +5,21 @@
 # Annie Shen            ashen7
 # Lawrence Lawson       lelawson
 # Pete Wilcox           pcwilcox
+# Victoria Tran         vilatran
 #
 # This file provides configuration for the CircleCI continuous integration
 # system. It defines the Docker images and commands to be used, how to run
 # the integration test scripts and unit tests, and what reporting
-# mechanisms to use when builds are completed. 
+# mechanisms to use when builds are completed.
+
 
 version: 2.1        # idk lets use this one
 jobs:               # these are like stages
   build:
-    machine: true
+    machine: true   # We run this build on its own machine instead of in a container
     environment:
       TEST_RESULTS: /tmp/test-results
-      GODIST: go1.11.1.linux-amd64.tar.gz
+      GODIST: go1.11.1.linux-amd64.tar.gz # Define the Go version
     steps:
       - restore_cache:  # This step restores cached dependency files
           keys:         # It uses the branch and revision as keys
@@ -25,28 +27,28 @@ jobs:               # these are like stages
             - source-v1-{{ .Branch }}
             - source-v1-
       - checkout                          # Pull the code
-      - run: mkdir -p $TEST_RESULTS
+      - run: mkdir -p $TEST_RESULTS       # Make the test directory
       - run:
           name: "Update Go version"       # Default version is 1.9, we need 1.11
           command: |
             mkdir -p download 
             test -e download/$GODIST || curl -o download/$GODIST https://storage.googleapis.com/golang/$GODIST
-            sudo rm -rf /usr/local/go
+            sudo rm -rf /usr/local/go     # Remove the existing go installation and reinstall
             sudo tar -C /usr/local -xzf download/$GODIST # Hopefully this gets cached
       - run:          
-          name: "Pull dependencies"       # Get packages we need
+          name: "Pull dependencies"       # Get the Go packages we need
           command: |
-            go get github.com/jstemmer/go-junit-report
-            go get github.com/gorilla/mux
-            go get github.com/gorilla/handlers
-            go get github.com/go-test/deep
-            go get github.com/pkg/errors
-            go get github.com/soheilhy/cmux
+            go get github.com/jstemmer/go-junit-report  # Unit test stuff
+            go get github.com/gorilla/mux               # This handles the router for the REST app
+            go get github.com/gorilla/handlers          # Logging handler
+            go get github.com/go-test/deep              # DeepEquals, used in unit tests
+            go get github.com/pkg/errors                # Error wrapping used in TCP
+            go get github.com/soheilhy/cmux             # CMUX is a connection router
       - run:
           name: "Use the right Python version"
           command: |
-            pyenv install 3.7.0a1 -s
-            pyenv global 3.7.0a1
+            pyenv install 3.7.0a1 -s                    # It's like, really hard to set the right python version
+            pyenv global 3.7.0a1                        # Like, really really hard
       - save_cache:
           key: source-v1-{{ .Branch }}-{{ .Revision }}
           paths:                          # Save the dependencies, these shouldn't change
@@ -61,10 +63,10 @@ jobs:               # these are like stages
             make unit | tee ${TEST_RESULTS}/go-test.out 
       - run:
           name: "Build the container"
-          command: make docker            # Reuse the same commands as much as we can
+          command: make                   # Reuse the same commands as much as we can
       - run:
           name: "Build the network"       # Don't think we can cache this part
-          command: make network
+          command: make network           # This builds the 'mynet' network
       - restore_cache: # restore the python deps
           keys:
             - python-v1-{{ .Branch }}-{{ .Revision }}
@@ -83,7 +85,7 @@ jobs:               # these are like stages
           paths:
             - "/home/circleci/.local/share/virtualenvs"
       - store_artifacts:
-          path: /tmp/test-results
+          path: /tmp/test-results         # This stores our unit test results
           destination: raw-test-output
       - store_test_results:
           path: /tmp/test-results
