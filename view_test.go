@@ -95,7 +95,18 @@ func TestCountReturnsNum(t *testing.T) {
 // List should return a byte slice of the view
 func TestListReturnsExistingViews(t *testing.T) {
 	v := NewView(testMain, testView)
-	equals(t, v.List(), strings.Split(testView, ","))
+	r := strings.Split(testView, ",")
+	s := v.List()
+
+	match := false
+	for _, u := range r {
+		for _, w := range s {
+			if u == w {
+				match = true
+			}
+		}
+		assert(t, match, "Element in input not returned in output")
+	}
 }
 
 // Overwrite should completely overwrite the view stored
