@@ -55,33 +55,38 @@ type viewList struct {
 
 // List spits out a byte slice
 func (v *viewList) List() []string {
-	var s []string
-	for k := range v.views {
-		s = append(s, k)
+	if v != nil {
+		var s []string
+		for k := range v.views {
+			s = append(s, k)
+		}
+		return s
 	}
-	return s
+	return nil
 }
 
 // Overwrite simply replaces the view list
 func (v *viewList) Overwrite(n []string) {
-	diff := false
-	if len(n) == len(v.views) {
-		for _, val := range n {
-			if !v.Contains(val) {
-				diff = true
+	if v != nil && v.views != nil {
+		diff := false
+		if len(n) == len(v.views) {
+			for _, val := range n {
+				if !v.Contains(val) {
+					diff = true
+				}
 			}
+		} else {
+			diff = true
 		}
-	} else {
-		diff = true
-	}
-	if diff {
-		for k := range v.views {
-			delete(v.views, k)
+		if diff {
+			for k := range v.views {
+				delete(v.views, k)
+			}
+			for _, k := range n {
+				v.views[k] = k
+			}
+			viewChange = true
 		}
-		for _, k := range n {
-			v.views[k] = k
-		}
-		viewChange = true
 	}
 }
 

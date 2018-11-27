@@ -13,6 +13,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -89,4 +90,85 @@ func TestContainsItemNotExists(t *testing.T) {
 func TestCountReturnsNum(t *testing.T) {
 	v := NewView(testMain, testView)
 	assert(t, v.Count() == 3, "Count was wrong")
+}
+
+// List should return a byte slice of the view
+func TestListReturnsExistingViews(t *testing.T) {
+	v := NewView(testMain, testView)
+	equals(t, v.List(), strings.Split(testView, ","))
+}
+
+// Overwrite should completely overwrite the view stored
+func TestOverwriteWorks(t *testing.T) {
+	v := NewView(testMain, testView)
+	newTestView := []string{"172.132.164.20:8081", "172.132.164.20:8082", "172.132.164.20:8083"}
+	m := make(map[string]string)
+	for _, s := range newTestView {
+		m[s] = s
+	}
+	v.Overwrite(newTestView)
+	assert(t, viewChange, "Overwrite did not set viewChange")
+	equals(t, m, v.views)
+
+	// Test that the 'diff' check works
+	newTestView = []string{"172.132.164.20:8081", "172.132.164.20:8082"}
+	n := make(map[string]string)
+	for _, s := range newTestView {
+		n[s] = s
+	}
+
+	v.Overwrite(newTestView)
+	assert(t, viewChange, "Overwrite did not set viewChange")
+	equals(t, n, v.views)
+}
+
+// Make sure we're handling a nil object
+func TestListViewNilDoesntExplode(t *testing.T) {
+	var v *viewList
+	var a []string
+	equals(t, a, v.List())
+}
+
+func TestOverwriteViewNilDoesntExplode(t *testing.T) {
+	var v *viewList
+	v.Overwrite([]string{"172.132.164.20:8081"})
+	assert(t, true, "Overwrite blew up on nil")
+}
+
+func TestCountViewNilDoesntExplode(t *testing.T) {
+	var v *viewList
+	assert(t, v.Count() == 0, "Count blew up")
+}
+
+func TestContainsViewNilDoesntExplode(t *testing.T) {
+	var v *viewList
+	s := "172.132.164.20:8081"
+	assert(t, !v.Contains(s), "Contains was wrong")
+}
+
+func TestRemoveViewNilDoesntExplode(t *testing.T) {
+	var v *viewList
+	s := "172.132.164.20:8081"
+	assert(t, !v.Remove(s), "Remove blew up")
+}
+
+func TestAddViewNilDoesntExplode(t *testing.T) {
+	var v *viewList
+	s := "172.132.164.20:8081"
+	assert(t, !v.Add(s), "Add blew up")
+}
+
+func TestRandomViewNilDoesntExplode(t *testing.T) {
+	var v *viewList
+	assert(t, v.Random(1) == nil, "Random blew up")
+}
+
+func TestPrimaryViewNilReturnsEmpty(t *testing.T) {
+	var v *viewList
+	assert(t, v.Primary() == "", "Primary blew up")
+}
+
+func TestStringViewNilReturnsEmpty(t *testing.T) {
+	var v *viewList
+	assert(t, v.String() == "", "String blew up")
 }

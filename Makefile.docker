@@ -18,6 +18,8 @@
 #
 #       make cluster      - Build the docker container, then run 3 replicas
 #
+#       make clean        - This removes any running replicas
+#
 # When the docker container is build, a script copies all lines of this file which
 # The Dockerfile builds out of that file instead of this one. This is done because
 # otherwise when Docker executes the build step, Make complains about the Docker

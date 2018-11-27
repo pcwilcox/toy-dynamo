@@ -92,7 +92,7 @@ func (g *GossipVals) GossipHeartbeat() {
 			setTime()
 		}
 		// Sleep for half a second before restarting
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 	}
 }
 
