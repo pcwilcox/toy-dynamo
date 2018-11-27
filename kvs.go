@@ -63,9 +63,11 @@ type Entry struct {
 	Tombstone bool           // Tombstone value showing that it was deleted
 }
 
-// Set the version
+// SetVersion the version
 func (e *Entry) SetVersion(v int) {
-	e.Version = v
+	if e != nil {
+		e.Version = v
+	}
 }
 
 // NewEntry creates a new entry

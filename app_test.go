@@ -1098,3 +1098,10 @@ func equals(tb testing.TB, exp, act interface{}) {
 		tb.FailNow()
 	}
 }
+
+// TODO: tests needed
+//
+// Test the initialize() function somehow
+// Test SearchHandler with a nil form
+// Test SearchHandler with a stale payload
+// Test DeleteHandler with a nil form

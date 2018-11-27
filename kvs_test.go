@@ -626,6 +626,26 @@ func TestGetEntryGlobKeyExist(t *testing.T) {
 	equals(t, l, h)
 }
 
+func TestSetVersionSetsVersion(t *testing.T) {
+	e := NewEntry(time.Now(), map[string]int{}, valExists, 1)
+	e.SetVersion(2)
+	assert(t, e.Version == 2, "SetVersion didn't work")
+}
+
+func TestSetVersionEntryNilDoesntExplode(t *testing.T) {
+	var e *Entry
+	e.SetVersion(2)
+	assert(t, true, "SetVersion exploded")
+}
+
+// TODO: TESTS NEEDED
+// Need a test that runs Put on a key which does exist so it tests lines 274-280
+//
+// Need to test mergeClocks with no client clock
+// Need to test mergeClocks iwth no server clock
+// Need to test GetTimeGlob with a nil key
+// Need to test GetEntryGlob with a nil key
+
 // These functions were taken from Ben Johnson's post here: https://medium.com/@benbjohnson/structuring-tests-in-go-46ddee7a25c
 
 // // assert fails the test if the condition is false.
