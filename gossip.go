@@ -39,7 +39,7 @@ func setTime() {
 
 // timesUp purely checks if 5 seconds has past
 func timesUp() bool {
-	if time.Now() == goalTime {
+	if goalTime.Before(time.Now()) {
 		needHelp = true
 		return true
 	}
@@ -135,6 +135,7 @@ func (g *GossipVals) ConflictResolution(key string, aliceEntry KeyEntry) bool {
 	log.Println("Resolving a conflict")
 	isSmaller := false
 	isLarger := false
+	incomparable := false
 
 	log.Printf("Comparing Alice's version '%#v'\n", aliceEntry)
 	aMap := aliceEntry.GetClock()
@@ -155,8 +156,13 @@ func (g *GossipVals) ConflictResolution(key string, aliceEntry KeyEntry) bool {
 			isLarger = true
 		}
 	}
+	for k := range aMap {
+		if _, exist := bMap[k]; !exist {
+			incomparable = true
+		}
+	}
 
-	if (isSmaller && isLarger) || (!isSmaller && !isLarger) {
+	if (isSmaller && isLarger) || (!isSmaller && !isLarger) || incomparable {
 		// incomparable or identical clocks, later timestamp wins
 		if aliceEntry.GetTimestamp().After(g.kvs.GetTimestamp(key)) {
 			log.Println("Alice wins with the later timestamp")
