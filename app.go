@@ -197,6 +197,8 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 			// a constraint such that they shouldn't be shown our version of the key,
 			// that's the same as if the key doesn't exist.
 			alive, version := app.db.Contains(key)
+			log.Println("Alive: ", alive)
+			log.Println("Version: ", version)
 
 			// The key hasn't been deleted, and it's recent enough to show to the,
 			// client so we can give them the 'overwrite' response.
@@ -206,13 +208,18 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 				// Set the timestamp for the new version of the key.
 				time := time.Now()
 
-				// Adjust the payload stored with the key to include its own record.
-				// This is to fix reads and also conflict resolution in concurrent
-				// writes.
-				payloadInt[key] = version + 1
+				// Create the payload to be inserted into the db, starting with this key
+				newPayload := map[string]int{key: version + 1}
+
+				// Add each of the client's payload elements
+				for k, v := range payloadInt {
+					if k != key {
+						newPayload[k] = v
+					}
+				}
 
 				// Put it in the db
-				app.db.Put(key, value, time, payloadInt)
+				app.db.Put(key, value, time, newPayload)
 
 				// Set status
 				status = http.StatusCreated // code 201
@@ -235,9 +242,18 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 				status = http.StatusOK // code 200
 				time := time.Now()
 
-				// Perform the same payload adjustment as above in order to resolve conflicts correctly.
-				payloadInt[key] = version + 1
-				app.db.Put(key, value, time, payloadInt)
+				// Create the payload to be inserted into the db, starting with this key
+				newPayload := map[string]int{key: version + 1}
+
+				// Add each of the client's payload elements
+				for k, v := range payloadInt {
+					if k != key {
+						newPayload[k] = v
+					}
+				}
+
+				// Put it in the db
+				app.db.Put(key, value, time, newPayload)
 
 				// And a slightly different response body
 				resp := map[string]interface{}{
@@ -408,36 +424,47 @@ func (app *App) SearchHandler(w http.ResponseWriter, r *http.Request) {
 	var body []byte          // Response body
 	var err error            // Error value
 	var payloadString string // Payload sent by the client
+	var payloadMap map[string]interface{}
 
 	// Same content type for everything
 	w.Header().Set("Content-Type", "application/json")
 
-	// Read the payload out of the message body
-	r.ParseForm()
+	// Check that the body isn't nil
+	if r.Body != nil {
+		// Read the message body into a string
+		s, _ := ioutil.ReadAll(r.Body)
+		log.Println(string(s))
 
-	// Create an intermediate map to parse the payload into
-	payloadMap := make(map[string]interface{})
-
-	if len(r.Form) > 0 {
-		// Read the values from the request body
-		if r.Form["payload"] != nil {
-			payloadString = r.Form["payload"][0]
-
-			if payloadString != "" {
-				// Read the payload into the intermediate map
-				err = json.Unmarshal([]byte(payloadString), &payloadMap)
-				if err != nil {
-					log.Fatalln(err)
-				}
-			}
+		// Python packs the input in Unicode for some reason so we need to convert it
+		sBody, _ := url.QueryUnescape(string(s))
+		if len(sBody) > 0 {
+			// The actual payload we care about comes after the equals sign. This splits the
+			// input into a slice and takes the second element of that slice for the payload.
+			payloadString = strings.Split(sBody, "=")[1]
+			log.Println(payloadString)
 		}
 	}
 
-	// Convert the intermediate map into map[string]int as needed by KVS
+	// Create an intermediate map to parse the payload into
+	payloadMap = make(map[string]interface{})
+
+	if payloadString != "" {
+		// Read the payload into the intermediate map
+		err = json.Unmarshal([]byte(payloadString), &payloadMap)
+		if err != nil {
+			log.Fatalln(err)
+		}
+	}
+
+	// Convert the intermediate map into map[string]int as needed by KVS. As with PutHandler
+	// we use a type assertion to set the value to float64 in the payloadMap and then typecast
+	// it as an integer to store it in the payloadInt map.
 	payloadInt := make(map[string]int)
 	for k, v := range payloadMap {
-		payloadInt[k] = v.(int)
+		payloadInt[k] = int(v.(float64))
 	}
+	log.Println(payloadInt)
+
 	log.Println("SEARCH with payload ", payloadInt)
 
 	// See if the key exists in the db
@@ -500,46 +527,73 @@ func (app *App) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	key := vars["subject"]
 
-	// Declare here, define below
-	var err error
-	var body []byte
+	// These two variables are declared here and assigned further down.
+	var payloadMap map[string]interface{} // Intermediate map for decoding
+	var payloadString string              // Payload sent by the client
+	var err error                         // Error value
+	var body []byte                       // Response body
 
 	w.Header().Set("Content-Type", "application/json")
 
-	// Read the payload out of the message body
-	r.ParseForm()
+	// Check that the body isn't nil
+	if r.Body != nil {
+		// Read the message body into a string
+		s, _ := ioutil.ReadAll(r.Body)
+		log.Println(string(s))
 
-	var payloadString string
-
-	// Create an intermediate map to parse the payload into
-	payloadMap := make(map[string]interface{})
-
-	if len(r.Form) > 0 {
-		// Read the values from the request body
-		if r.Form["payload"] != nil {
-			payloadString = r.Form["payload"][0]
-
-			if payloadString != "" {
-				// Read the payload into the intermediate map
-				err = json.Unmarshal([]byte(payloadString), &payloadMap)
-				if err != nil {
-					log.Fatalln(err)
-				}
-			}
+		// Python packs the input in Unicode for some reason so we need to convert it
+		sBody, _ := url.QueryUnescape(string(s))
+		if len(sBody) > 0 {
+			// The actual payload we care about comes after the equals sign. This splits the
+			// input into a slice and takes the second element of that slice for the payload.
+			payloadString = strings.Split(sBody, "=")[1]
+			log.Println(payloadString)
 		}
 	}
 
-	// Convert the intermediate map into map[string]int as needed by KVS
-	payloadInt := make(map[string]int)
-	for k, v := range payloadMap {
-		payloadInt[k] = v.(int)
+	// Create an intermediate map to parse the payload into
+	payloadMap = make(map[string]interface{})
+
+	if payloadString != "" {
+		// Read the payload into the intermediate map
+		err = json.Unmarshal([]byte(payloadString), &payloadMap)
+		if err != nil {
+			log.Fatalln(err)
+		}
 	}
 
-	// Check to see if we've got the key
-	alive, _ := app.db.Contains(key)
-	if alive {
-		log.Println("Key found in DB")
-		// We do
+	// Convert the intermediate map into map[string]int as needed by KVS. As with PutHandler
+	// we use a type assertion to set the value to float64 in the payloadMap and then typecast
+	// it as an integer to store it in the payloadInt map.
+	payloadInt := make(map[string]int)
+	for k, v := range payloadMap {
+		payloadInt[k] = int(v.(float64))
+	}
+
+	// Here we'll check to see if the requested key exists and get its version.
+	alive, version := app.db.Contains(key)
+
+	// If the version of the key stored in the DB is older than the value in the client's payload,
+	// then it would violate causality to show the key to the client. In this case we return an error
+	// message per the spec.
+	if version < payloadInt[key] {
+		w.WriteHeader(http.StatusBadRequest) // Code 400
+
+		log.Println("Key requested is out of date")
+
+		// Form the response body, starting with a map of values. We give the client their own payload back.
+		resp := map[string]interface{}{
+			"result":  "Error",
+			"msg":     "Payload out of date",
+			"payload": payloadInt,
+		}
+		body, err = json.Marshal(resp)
+		if err != nil {
+			log.Fatalln("FATAL Error: Failed to marshal JSON response")
+		}
+	} else if alive {
+		// The version is recent enough to show to the client, and the key has not been deleted, so we can
+		// return the values normally.
 		w.WriteHeader(http.StatusOK) // code 200
 
 		// Delete it
@@ -556,6 +610,7 @@ func (app *App) DeleteHandler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			log.Fatalln("FATAL ERROR: Failed to marshal JSON response")
 		}
+
 	} else {
 		log.Println("Key not found in DB")
 

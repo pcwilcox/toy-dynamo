@@ -47,9 +47,6 @@ func Open(addr string) (*bufio.ReadWriter, error) {
 	s = s + port
 	// Dial the remote process.
 	log.Println("Dial " + s)
-	//IP := strings.Split()
-	//outgoing := net.TCPAddr{Port: 8080}
-	//destination := net.TCPAddr{IP}
 	conn, err := net.Dial("tcp", s)
 	if err != nil {
 		return nil, errors.Wrap(err, "Dialing "+addr+" failed")
@@ -64,16 +61,13 @@ type HandleFunc func(*bufio.ReadWriter)
 // Endpoint provides an endpoint to other processess
 // that they can send data to.
 type Endpoint struct {
-	listener net.Listener
-	handler  map[string]HandleFunc
-	gossip   GossipVals
-
-	// Maps are not threadsafe, so we need a mutex to control access.
-	m sync.RWMutex
+	listener net.Listener          // The listener that this endpoint is attached to
+	handler  map[string]HandleFunc // The handlers that this endpoint uses to process requests
+	gossip   GossipVals            // The gossip module the endpoint uses
+	m        sync.RWMutex          // A lock for the handler map
 }
 
-// NewEndpoint creates a new endpoint. Too keep things simple,
-// the endpoint listens on a fixed port number.
+// NewEndpoint creates a new endpoint.
 func NewEndpoint() *Endpoint {
 	// Create a new Endpoint with an empty list of handler funcs.
 	return &Endpoint{
@@ -81,7 +75,9 @@ func NewEndpoint() *Endpoint {
 	}
 }
 
-// AddHandleFunc adds a new function for handling incoming data.
+// AddHandleFunc adds a new function for handling incoming data. The name is the
+// string passed in at the start of the connection stream, and the handleFunc
+// is the function used to handle the request.
 func (e *Endpoint) AddHandleFunc(name string, f HandleFunc) {
 	e.m.Lock()
 	e.handler[name] = f
@@ -136,16 +132,21 @@ func (e *Endpoint) handleMessages(conn net.Conn) {
 			log.Println("Command '" + cmd + "' is not registered.")
 			return
 		}
+
+		// Call the appropriate function
 		handleCommand(rw)
 	}
 }
 
-// handleGob handles the "GOB" request. It decodes the received GOB data
-// into a struct.
+// handleTimeGob reads the timeGob out of the request and passes it to the gossip
+// module, then returns the result to the client
 func (e *Endpoint) handleTimeGob(rw *bufio.ReadWriter) {
 	log.Print("Receive Time Gob data:")
+
+	// Create an empty timeGlob
 	var data timeGlob
-	// Create a decoder that decodes directly into a struct variable.
+
+	// Create a decoder that decodes directly into the empty glob
 	dec := gob.NewDecoder(rw)
 	err := dec.Decode(&data)
 	if err != nil {
@@ -154,15 +155,20 @@ func (e *Endpoint) handleTimeGob(rw *bufio.ReadWriter) {
 	}
 
 	log.Printf("Decoding timeGlob: %#v\n", data)
-	log.Println("Pruning data")
+
+	// Pass the data glob to the gossip module and get the result
 	data = e.gossip.ClockPrune(data)
 
+	// Create an encoder on the stream
 	enc := gob.NewEncoder(rw)
 	log.Printf("Encoding response timeGlob back to buffer: %#v\n", data)
+	// Encode the response back to the client
 	err = enc.Encode(data)
 	if err != nil {
 		log.Println("Encode failed for struct: ", data)
 	}
+
+	// Flush the buffer to ensure it has all been read before closing it
 	log.Println("Flushing buffer")
 	err = rw.Flush()
 	if err != nil {
@@ -210,16 +216,6 @@ func (e *Endpoint) handleHelp(rw *bufio.ReadWriter) {
 	log.Println("Receive call for help")
 	wakeGossip = true
 }
-
-/*
-## The client and server functions
-
-With all this in place, we can now set up client and server functions.
-
-The client function connects to the server and sends STRING and GOB requests.
-
-The server starts listening for requests and triggers the appropriate handlers.
-*/
 
 // client is called if the app is called with -connect=`ip addr`.
 func sendTimeGlob(ip string, tg timeGlob) (*timeGlob, error) {
@@ -378,9 +374,4 @@ func server(a App, g GossipVals) {
 	if err := m.Serve(); !strings.Contains(err.Error(), "use of closed network connection") {
 		log.Fatalln(err)
 	}
-}
-
-// The Lshortfile flag includes file name and line number in log messages.
-func init() {
-	log.SetFlags(log.Lshortfile)
 }

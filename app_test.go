@@ -2,11 +2,12 @@
 //
 // CMPS 128 Fall 2018
 //
-// Lawrence Lawson     lelawson
-// Pete Wilcox         pcwilcox
+// Lawrence Lawson   lelawson
+// Pete Wilcox       pcwilcox
+// Annie Shen        ashen7
+// Victoria Tran     vilatran
 //
-// Unit test definitions for app.go
-//
+// Unit tests for the REST app struct
 
 package main
 
@@ -37,10 +38,11 @@ var testApp App
 
 // This struct is a stub for the dbAccess object required by the app
 type TestKVS struct {
-	dbKey   string
-	dbVal   string
-	dbClock map[string]int
-	dbTime  time.Time
+	dbKey     string
+	dbVal     string
+	dbClock   map[string]int
+	dbTime    time.Time
+	dbVersion int
 }
 
 func (kvs *TestKVS) GetTimestamp(key string) time.Time {
@@ -53,7 +55,7 @@ func (kvs *TestKVS) GetTimestamp(key string) time.Time {
 // This stub returns true for the key which exists and false for the one which doesn't
 func (kvs *TestKVS) Contains(key string) (bool, int) {
 	if key == kvs.dbKey {
-		return true, 1
+		return true, kvs.dbVersion
 	}
 	return false, 0
 }
@@ -93,7 +95,18 @@ func (kvs *TestKVS) Put(key, valExists string, time time.Time, payload map[strin
 }
 
 func (kvs *TestKVS) OverwriteEntry(key string, entry KeyEntry) {
-	// goes nowhere does nothing
+	newClock := entry.GetClock()
+	log.Println(newClock)
+	for k := range kvs.dbClock {
+		delete(kvs.dbClock, k)
+	}
+	for k, v := range newClock {
+		kvs.dbClock[k] = v
+	}
+	log.Println(kvs.dbClock)
+	kvs.dbTime = entry.GetTimestamp()
+	kvs.dbVal = entry.GetValue()
+	kvs.dbVersion = entry.GetVersion()
 }
 
 func (kvs *TestKVS) GetTimeGlob() timeGlob {
@@ -106,7 +119,7 @@ func (kvs *TestKVS) GetTimeGlob() timeGlob {
 func (kvs *TestKVS) GetEntryGlob(g timeGlob) entryGlob {
 	m := make(map[string]Entry)
 	e := Entry{
-		Version:   1,
+		Version:   kvs.dbVersion,
 		Clock:     kvs.dbClock,
 		Timestamp: kvs.dbTime,
 		Value:     kvs.dbVal,
@@ -120,7 +133,7 @@ func (kvs *TestKVS) GetEntryGlob(g timeGlob) entryGlob {
 // Trying to reduce code repetition
 func setup(key string, val string) (string, *mux.Router) {
 	clock := map[string]int{key: 1}
-	testKVS = TestKVS{dbKey: key, dbVal: val, dbClock: clock}
+	testKVS = TestKVS{dbKey: key, dbVal: val, dbClock: clock, dbVersion: 1}
 
 	// This should probably be converted to a mock instance
 	v := NewView(testMain, testView)
@@ -193,7 +206,7 @@ func TestPutRequestKeyExists(t *testing.T) {
 
 	err = json.Unmarshal(body, &gotBody)
 	ok(t, err)
-	expectedPayload := map[string]interface{}{keyExists: float64(2)}
+	expectedPayload := map[string]interface{}{}
 	expectedBody := map[string]interface{}{
 		"msg":      "Updated successfully",
 		"replaced": true,
@@ -236,7 +249,7 @@ func TestPutRequestKeyDoesntExist(t *testing.T) {
 	body, err := ioutil.ReadAll(recorder.Body)
 	ok(t, err)
 
-	expectedPayload := map[string]interface{}{keyNotExists: float64(1)}
+	expectedPayload := map[string]interface{}{}
 	var gotBody map[string]interface{}
 
 	err = json.Unmarshal(body, &gotBody)
@@ -573,6 +586,56 @@ func TestDeleteKeyExists(t *testing.T) {
 		"msg":     "Key deleted",
 		"result":  "Success",
 		"payload": map[string]interface{}{},
+	}
+
+	equals(t, expectedBody, gotBody)
+
+	teardown()
+
+}
+func TestDeleteKeyExistsStalePayload(t *testing.T) {
+	// Setup the test
+	serverURL, router := setup(keyExists, valExists)
+
+	// Use a httptest recorder to observe responses
+	recorder := httptest.NewRecorder()
+
+	// This subject exists in the store already
+	subject := keyExists
+
+	// Set up the URL
+	url := serverURL + rootURL + "/" + subject
+	testPayload := map[string]int{keyExists: 2}
+	testPayloadByte, err := json.Marshal(testPayload)
+	ok(t, err)
+	testPayloadString := string(testPayloadByte[:])
+
+	testBody := "payload=" + testPayloadString
+
+	// Convert it to a []byte
+	reqBody := strings.NewReader(testBody)
+
+	// Stub a request
+	method := http.MethodDelete
+	req, err := http.NewRequest(method, url, reqBody)
+	ok(t, err)
+
+	// Finally, make the request to the function being tested.
+	router.ServeHTTP(recorder, req)
+
+	expectedStatus := http.StatusBadRequest // code 400
+	gotStatus := recorder.Code
+	equals(t, expectedStatus, gotStatus)
+	body, err := ioutil.ReadAll(recorder.Body)
+	ok(t, err)
+
+	var gotBody map[string]interface{}
+	err = json.Unmarshal(body, &gotBody)
+	ok(t, err)
+	expectedBody := map[string]interface{}{
+		"msg":     "Payload out of date",
+		"result":  "Error",
+		"payload": map[string]interface{}{keyExists: float64(2)},
 	}
 
 	equals(t, expectedBody, gotBody)
@@ -1070,6 +1133,113 @@ func TestGetHandlerStalePayload(t *testing.T) {
 	teardown()
 }
 
+// TODO: tests needed
+//
+// Test the initialize() function somehow
+// Test SearchHandler with a nil form
+// Test SearchHandler with a stale payload
+// Test DeleteHandler with a nil form
+
+func TestSearchHandlerValidPayloadKeyExists(t *testing.T) {
+	// Setup the test
+	serverURL, router := setup(keyExists, valExists)
+
+	// Use a httptest recorder to observe responses
+	recorder := httptest.NewRecorder()
+
+	// This subject exists in the store already
+	subject := keyExists
+
+	// Set up the URL
+	url := serverURL + rootURL + search + "/" + subject
+	testPayload := map[string]int{keyExists: 1}
+	testPayloadByte, err := json.Marshal(testPayload)
+	ok(t, err)
+	testPayloadString := string(testPayloadByte[:])
+
+	testBody := "payload=" + testPayloadString
+
+	// Convert it to a []byte
+	reqBody := strings.NewReader(testBody)
+	// Stub a request
+	method := http.MethodGet
+	req, err := http.NewRequest(method, url, reqBody)
+	ok(t, err)
+	// Finally, make the request to the function being tested.
+	router.ServeHTTP(recorder, req)
+
+	expectedStatus := http.StatusOK // code 200
+	gotStatus := recorder.Code
+	equals(t, expectedStatus, gotStatus)
+	body, err := ioutil.ReadAll(recorder.Body)
+	ok(t, err)
+
+	var gotBody map[string]interface{}
+
+	err = json.Unmarshal(body, &gotBody)
+	ok(t, err)
+	expectedBody := map[string]interface{}{
+		"isExists": true,
+		"result":   "Success",
+		"payload":  map[string]interface{}{keyExists: float64(1)},
+	}
+
+	equals(t, expectedBody, gotBody)
+
+	teardown()
+
+}
+
+func TestSearchHandlerStalePayloadKeyExists(t *testing.T) {
+	// Setup the test
+	serverURL, router := setup(keyExists, valExists)
+
+	// Use a httptest recorder to observe responses
+	recorder := httptest.NewRecorder()
+
+	// This subject exists in the store already
+	subject := keyExists
+
+	// Set up the URL
+	url := serverURL + rootURL + search + "/" + subject
+	testPayload := map[string]int{keyExists: 2}
+	testPayloadByte, err := json.Marshal(testPayload)
+	ok(t, err)
+	testPayloadString := string(testPayloadByte[:])
+
+	testBody := "payload=" + testPayloadString
+
+	// Convert it to a []byte
+	reqBody := strings.NewReader(testBody)
+	// Stub a request
+	method := http.MethodGet
+	req, err := http.NewRequest(method, url, reqBody)
+	ok(t, err)
+	// Finally, make the request to the function being tested.
+	router.ServeHTTP(recorder, req)
+
+	expectedStatus := http.StatusBadRequest // code 400
+	gotStatus := recorder.Code
+	equals(t, expectedStatus, gotStatus)
+	body, err := ioutil.ReadAll(recorder.Body)
+	ok(t, err)
+
+	var gotBody map[string]interface{}
+
+	err = json.Unmarshal(body, &gotBody)
+	ok(t, err)
+	expectedBody := map[string]interface{}{
+		"msg":     "Payload out of date",
+		"result":  "Error",
+		"payload": map[string]interface{}{keyExists: float64(2)},
+	}
+
+	equals(t, expectedBody, gotBody)
+
+	teardown()
+
+}
+
 // These functions were taken from Ben Johnson's post here: https://medium.com/@benbjohnson/structuring-tests-in-go-46ddee7a25c
 
 // assert fails the test if the condition is false.
@@ -1098,10 +1268,3 @@ func equals(tb testing.TB, exp, act interface{}) {
 		tb.FailNow()
 	}
 }
-
-// TODO: tests needed
-//
-// Test the initialize() function somehow
-// Test SearchHandler with a nil form
-// Test SearchHandler with a stale payload
-// Test DeleteHandler with a nil form
