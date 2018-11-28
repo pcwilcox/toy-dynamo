@@ -4,6 +4,8 @@
 //
 // Lawrence Lawson         lewlawson
 // Pete Wilcox             pcwilcox
+// Annie Shen      		   ashen7
+// Victoria Tran  		   vilatran
 //
 // This file defines the Restful interface implemented by the RESTful app.
 //
@@ -26,9 +28,8 @@ type Restful interface {
 	// DeleteHandler responds to DELETE requests by removing matching key-value pairs from the data store
 	DeleteHandler(http.ResponseWriter, *http.Request)
 
-	// ServiceDownHandler does something useful if the data store service is down
-	ServiceDownHandler(http.ResponseWriter, *http.Request)
-
-	// AliveHandler responds to 'are you alive?' requests with status OK
-	AliveHandler(http.ResponseWriter, *http.Request)
+	// ViewHandlers responds to /view view change requests of Put, Get, and Delete
+	ViewPutHandler(http.ResponseWriter, *http.Request)
+	ViewGetHandler(http.ResponseWriter, *http.Request)
+	ViewDeleteHandler(http.ResponseWriter, *http.Request)
 }

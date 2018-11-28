@@ -6,8 +6,8 @@ if [ -z "${PORT_EXT}" ]; then
 fi
 
 PORT_INT="8080"                                                         # Don't change this without modifying source code
-NAME="cs128-hw2"                                                        # Container name once it's running
+NAME="cs128-hw3"                                                        # Container name once it's running
 TAG="${NAME}"                                                           # Image tag
 BUILD_FLAGS="--force-rm --no-cache --tag ${TAG}"                        # These are used to setup the container build properly
 RUN_FLAGS="-p ${PORT_EXT}:${PORT_INT} -d --name ${NAME} --rm ${TAG}"    # This gets the app running correctly with an accessible name
-TEST_SCRIPT="python test_HW2.py"                                        # Configure this as needed
+TEST_SCRIPT="python hw3_test.py"                                        # Configure this as needed
