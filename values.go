@@ -47,7 +47,9 @@ const (
 )
 
 // These values are used throughout the app and are initially set in main
-var myIP string     // set as environment variable IP_PORT
-var wakeGossip bool // If true, we wake up during the heartbeat loop
-var needHelp bool   // If this is true, we haven't heard anything in a while
-var viewChange bool // If this is true, we need to communicate a view change
+var myIP string         // set as environment variable IP_PORT
+var wakeGossip bool     // If true, we wake up during the heartbeat loop
+var needHelp bool       // If this is true, we haven't heard anything in a while
+var viewChange bool     // If this is true, we need to communicate a view change
+var ringSize = 1000000  // The number of positions on the ring
+var numVirtualNodes int // The number of virtual nodes per shard
