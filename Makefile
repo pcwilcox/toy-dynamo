@@ -45,7 +45,7 @@ CONTAINER  = cs128-hw3
 EXEC       = app
 
 # Add source files to this list
-SOURCES    = main.go dbAccess.go app.go kvs.go restful.go values.go view.go gossip.go tcp.go
+SOURCES    = main.go dbAccess.go app.go kvs.go restful.go values.go view.go gossip.go tcp.go rbtree.go
 
 # Grabs the name of the current branch
 BRANCH    := $(shell git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/\1/')
