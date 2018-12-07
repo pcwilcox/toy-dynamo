@@ -16,7 +16,7 @@ import (
 var containerName = "cs128-hw4"
 var subnetName = "mynet"
 var prefixSubnetAdress = "10.0.0."
-var prefixPort = "80" //maybe change this to 8080 ?
+var prefixPort = "8080" //maybe change this to 8080 ?
 
 //--------------DO NOT CHANGE - Global Variables-------------\\
 var nextID = 10

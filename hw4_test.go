@@ -3,7 +3,7 @@
 / AUTHOR: Vien Van (vhvan@ucsc.edu)			  *
 / COPYRIGHT 2018 © by TEAMAWESOME			  *
 ***********************************************/
-package hw4
+package main
 
 import (
 	"fmt"
@@ -55,7 +55,7 @@ func TestDeleteNodeAllKeysShouldMigrate(t *testing.T) {
 	// 	log.Println("OwnerID: ", ownerID)
 	// }
 
-	node := getPort()
+	node := port
 	log.Println("Node: ", node)
 	deleteNode(t, node, !askEveryNode)
 	time.Sleep(2 * time.Second)
