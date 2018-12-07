@@ -22,6 +22,12 @@ import (
 type TestShard struct {
 }
 
+func (s *TestShard) GetMembers(m string) string {
+	return ""
+}
+func (s *TestShard) GetAllShards() string {
+	return ""
+}
 func (s *TestShard) CountServers() int {
 	return 1
 }

@@ -503,3 +503,12 @@ func (k *KVS) ShuffleKeys() bool {
 	}
 	return false
 }
+
+// Size returns the number of keys in the DB
+func (k *KVS) Size() int {
+	if k != nil {
+		return len(k.db)
+	}
+
+	return 0
+}
