@@ -238,20 +238,14 @@ func (s *ShardList) GetIP() string {
 // String converts the shard IDs and servers in the ID into a comma-separated string
 func (s *ShardList) String() string {
 	if s != nil {
-		// var items []string
-		// for _, k := range v.views {
-		// 	items = append(items, k)
-		// }
-		// sort.Strings(items)
-		// str := ""
-		// i := len(items)
-		// j := 0
-		// for ; j < i-1; j++ {
-		// 	str = str + items[j] + ","
-		// }
-		// str = str + items[j]
-		// return str
-		return "hi"
+
+		str := make([]string, s.NumShards)
+
+		for i := 0; i < s.NumShards; i++ {
+			str[i] = shardNames[i]
+		}
+		j := strings.Join(str, ",")
+		return j
 	}
 	return ""
 }
