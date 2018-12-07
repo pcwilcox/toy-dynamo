@@ -43,4 +43,7 @@ type dbAccess interface {
 
 	// Returns an entryGlob struct of all of the keys in the given timeGlob
 	GetEntryGlob(TimeGlob) EntryGlob
+
+	// Shuffles keys
+	ShuffleKeys() bool
 }

@@ -476,3 +476,30 @@ func (k *KVS) GetEntryGlob(tg TimeGlob) EntryGlob {
 	}
 	return EntryGlob{Keys: map[string]Entry{}}
 }
+
+// ShuffleKeys checks all the keys, and if it finds some that belong to another server then it sends them over that way
+func (k *KVS) ShuffleKeys() bool {
+	var eg EntryGlob
+	k.mutex.Lock()
+	defer k.mutex.Unlock()
+	for shard := range MyShard.ShardSlice {
+		for key := range k.db {
+			if shard == MyShard.Tree.successor(getKeyPosition(key)) {
+				eg.Keys[key] = Entry{
+					Version:   k.db[key].GetVersion(),
+					Timestamp: k.db[key].GetTimestamp(),
+					Clock:     k.db[key].GetClock(),
+					Value:     k.db[key].GetValue(),
+					Tombstone: k.db[key].Alive(),
+				}
+				delete(k.db, key)
+			}
+		}
+		if len(eg.Keys) > 0 {
+			bob := MyShard.FindBob(shard)
+			sendEntryGlob(bob, eg)
+			return true
+		}
+	}
+	return false
+}

@@ -88,12 +88,14 @@ func (g *GossipVals) GossipHeartbeat() {
 				for _, bob := range gossipee {
 					sendShardGob(bob, g.shardList.GetShardGlob())
 				}
+
+				distributeKeys = g.kvs.ShuffleKeys()
 			}
 			wakeGossip = false
 			setTime()
 		}
-		// Sleep for half a second before restarting
-		time.Sleep(50 * time.Millisecond)
+		// Sleep
+		time.Sleep(5 * time.Millisecond)
 	}
 }
 
