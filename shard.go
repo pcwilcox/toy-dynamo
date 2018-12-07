@@ -16,12 +16,17 @@ import (
 	"math/rand"
 	"sort"
 	"strings"
+
+	"github.com/go-test/deep"
 )
 
 // Shard interface defines the interactions with the shard system
 type Shard interface {
 	// Returns the number of elemetns in the shard map
-	Count() int
+	CountShards() int
+
+	// Return number of servers
+	CountServers() int
 
 	// Returns the number of elemetns in the shard map
 	ContainsServer(string) bool
@@ -60,6 +65,20 @@ type Shard interface {
 }
 
 // ShardList is a struct which implements the Shard interface and holds shard ID system of servers
+/*
+ShardList: {
+	ShardStrings: {
+        A: "192.168.0.10:8081,192.168.0.10:8082",
+        B: "192.168.0.10:8083,192.168.0.10:8084",
+    },
+    ShardSlices: {
+        A: ["192.168.0.10:8081", "192.168.0.10:8082"],
+        B: ["192.168.0.10:8083", "192.168.0.10:8084"],
+    },
+    PrimaryShard: "A",
+    PrimaryIP: "192.168.0.10:8081",
+}
+*/
 type ShardList struct {
 	ShardString  map[string]string   // This is the map of shard IDs to server names
 	ShardSlice   map[string][]string // this is a mapping of shard IDs to slices of server strings
@@ -90,34 +109,38 @@ func (s *ShardList) GetShardGlob() ShardGlob {
 
 // Overwrite overwrites our view of the world with another
 func (s *ShardList) Overwrite(sg ShardGlob) {
-	// Remove our old view of the world
-	for k := range s.ShardSlice {
-		delete(s.ShardSlice, k)
-		delete(s.ShardString, k)
-		for _, i := range getVirtualNodePositions(k) {
-			s.Tree.delete(i)
-		}
-	}
-
-	// Write the new one
-	for k, v := range sg.ShardList {
-		// Directly transfer the slices over
-		s.ShardSlice[k] = v
-
-		// Join the slices to form the string
-		s.ShardString[k] = strings.Join(v, ",")
-
-		// Check which shard we're in
-		for i := range v {
-			if v[i] == s.PrimaryIP {
-				s.PrimaryShard = k
+	if diff := deep.Equal(sg.ShardList, s.ShardSlice); diff != nil {
+		// Remove our old view of the world
+		for k := range s.ShardSlice {
+			delete(s.ShardSlice, k)
+			delete(s.ShardString, k)
+			for _, i := range getVirtualNodePositions(k) {
+				s.Tree.delete(i)
 			}
 		}
 
-		// rebuild the tree
-		for _, i := range getVirtualNodePositions(k) {
-			s.Tree.put(i, k)
+		// Write the new one
+		for k, v := range sg.ShardList {
+			// Directly transfer the slices over
+			s.ShardSlice[k] = v
+
+			// Join the slices to form the string
+			s.ShardString[k] = strings.Join(v, ",")
+
+			// Check which shard we're in
+			for i := range v {
+				if v[i] == s.PrimaryIP {
+					s.PrimaryShard = k
+				}
+			}
+
+			// rebuild the tree
+			for _, i := range getVirtualNodePositions(k) {
+				s.Tree.put(i, k)
+			}
 		}
+
+		shardChange = true
 	}
 
 }
@@ -167,10 +190,18 @@ func (s *ShardList) RandomLocal(n int) []string {
 	return t
 }
 
-// Count returns the number of elemetns in the shard map
-func (s *ShardList) Count() int {
+// CountServers returns the number of servers in the shard map
+func (s *ShardList) CountServers() int {
 	if s != nil {
 		return s.Size
+	}
+	return 0
+}
+
+// CountShards returns the number of shards
+func (s *ShardList) CountShards() int {
+	if s != nil {
+		return s.NumShards
 	}
 	return 0
 }
@@ -201,18 +232,23 @@ func (s *ShardList) ContainsServer(ip string) bool {
 // Remove deletes a shard ID from the shard list
 func (s *ShardList) Remove(shardID string) bool {
 	if s != nil {
-		// TODO we need to also move the servers and stuff
+		delete(s.ShardString, shardID)
 		delete(s.ShardSlice, shardID)
+		s.NumShards--
 		shardChange = true
 		return true
 	}
 	return false
 }
 
-// Add inserts an shard ID into the shard list
-func (s *ShardList) Add(shardID string) bool {
+// Add inserts an shard ID into the my shard list
+func (s *ShardList) Add(newShardID string) bool {
 	if s != nil {
-		// s.shards[shardID] = shardID
+		// QUESTION: is here where I choose the random name, or the caller?
+		// Insert newShardID into both maps
+		s.ShardString[newShardID] = ""
+		s.ShardSlice[newShardID] = append(s.ShardSlice[newShardID], "")
+		s.NumShards++
 		shardChange = true
 		return true
 	}
@@ -235,25 +271,38 @@ func (s *ShardList) GetIP() string {
 	return ""
 }
 
-// String converts the shard IDs and servers in the ID into a comma-separated string
+// NumLeftoverServers returns the number of leftover servers after an uneven spread
+func (s *ShardList) NumLeftoverServers() int {
+	if s != nil {
+		return s.Size % s.NumShards
+	}
+	return -1
+}
+
+// String returns a comma-separated string of shards
 func (s *ShardList) String() string {
 	if s != nil {
-		// var items []string
-		// for _, k := range v.views {
-		// 	items = append(items, k)
-		// }
-		// sort.Strings(items)
-		// str := ""
-		// i := len(items)
-		// j := 0
-		// for ; j < i-1; j++ {
-		// 	str = str + items[j] + ","
-		// }
-		// str = str + items[j]
-		// return str
-		return "hi"
+		str := make([]string, s.NumShards)
+
+		for i := 0; i < s.NumShards; i++ {
+			str[i] = shardNames[i]
+		}
+		j := strings.Join(str, ",")
+		return j
 	}
 	return ""
+}
+
+// NumServerPerShard returns number of servers per shard (equally) after reshuffle
+func (s *ShardList) NumServerPerShard() int {
+	if s != nil {
+		i := s.Size / s.NumShards
+		if i >= 2 {
+			return i
+		}
+	}
+	// The caller function needs to send response to client. Insufficent shard number!!
+	return -1
 }
 
 // NewShard creates a shardlist object and initializes it with the input string
@@ -313,26 +362,42 @@ func NewShard(primaryIP string, globalView string, numShards int) *ShardList {
 	return &s
 }
 
-// func NewShard(main string, input *viewList, numshards int) *ShardList {
-// 	// // Make a new map
-// 	s := make(map[string]string)
+// ChangeShardNumber is called by the REST API
+// Returns true if the change is legal, false otherwise
+func (s *ShardList) ChangeShardNumber(n int) bool {
+	if s.Size/n < 2 {
+		return false
+	}
 
-// 	// // Convert the input string into a slice
-// 	// slice := strings.Split(input, ",")
+	// Get our list of servers
+	str := s.String()
+	sl := strings.Split(str, ",")
+	sort.Strings(sl)
 
-// 	// // Insert each element of the slice into the map
-// 	// for _, s := range slice {
-// 	// 	v[s] = s
-// 	// }
+	// We'll make a new map for them
+	newMap := make(map[string][]string)
 
-// 	list := ShardList{
-// 		views:   s,
-// 		primary: main,
-// 	}
-// 	return &list
-// }
+	// iterate over the servers
+	for i := 0; i < len(sl); i++ {
+		// index them into the map, mod the number of shards
+		shardIndex := i % s.NumShards
 
-// func (s *ShardList) Random(n int) []string {
-// }
-// func (s *ShardList) RecalculateShard() {
-// }
+		// the shard id is the index into the name list
+		name := shardNames[shardIndex]
+
+		// append them to the list
+		newMap[name] = append(newMap[name], sl[i])
+	}
+
+	// make a shardglob
+	sg := ShardGlob{ShardList: newMap}
+
+	s.Overwrite(sg)
+
+	return true
+}
+
+// ShuffleServers redistributes servers among shards
+func (s *ShardList) ShuffleServers() {
+
+}
