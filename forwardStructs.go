@@ -14,6 +14,21 @@ package main
 
 import "time"
 
+// ShardGlob contains the only really important information we need to transmit
+type ShardGlob struct {
+	ShardList map[string][]string
+}
+
+// TimeGlob is a map of keys to timestamps and lets the gossip module figure out which ones need to be updated
+type TimeGlob struct {
+	List map[string]time.Time
+}
+
+// EntryGlob is a map of keys to entries which allowes the gossip module to enter into conflict resolution and update the required keys
+type EntryGlob struct {
+	Keys map[string]Entry
+}
+
 // GetRequest is sent from Alice to Bob when Alice receives a request
 // for a key belonging to Bob's shard.
 type GetRequest struct {

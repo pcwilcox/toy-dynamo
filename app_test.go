@@ -109,14 +109,14 @@ func (kvs *TestKVS) OverwriteEntry(key string, entry KeyEntry) {
 	kvs.dbVersion = entry.GetVersion()
 }
 
-func (kvs *TestKVS) GetTimeGlob() timeGlob {
+func (kvs *TestKVS) GetTimeGlob() TimeGlob {
 	m := make(map[string]time.Time)
 	m[kvs.dbKey] = kvs.dbTime
-	g := timeGlob{List: m}
+	g := TimeGlob{List: m}
 	return g
 }
 
-func (kvs *TestKVS) GetEntryGlob(g timeGlob) entryGlob {
+func (kvs *TestKVS) GetEntryGlob(g TimeGlob) EntryGlob {
 	m := make(map[string]Entry)
 	e := Entry{
 		Version:   kvs.dbVersion,
@@ -126,7 +126,7 @@ func (kvs *TestKVS) GetEntryGlob(g timeGlob) entryGlob {
 		Tombstone: false,
 	}
 	m[kvs.dbKey] = e
-	j := entryGlob{Keys: m}
+	j := EntryGlob{Keys: m}
 	return j
 }
 
@@ -136,10 +136,10 @@ func setup(key string, val string) (string, *mux.Router) {
 	testKVS = TestKVS{dbKey: key, dbVal: val, dbClock: clock, dbVersion: 1}
 
 	// This should probably be converted to a mock instance
-	v := NewView(testMain, testView)
+	s := NewShard(testMain, testView, 1)
 
 	// Stub the app
-	testApp := App{&testKVS, *v}
+	testApp := App{&testKVS, s}
 
 	l, err := net.Listen("tcp", "")
 	if err != nil {

@@ -1,4 +1,4 @@
-package hw4
+package main
 
 import (
 	"math"

@@ -20,44 +20,43 @@ import (
 	"github.com/go-test/deep"
 )
 
-type TestView struct {
-	view string
+type TestShard struct {
 }
 
-func (v *TestView) Count() int {
+func (s *TestShard) Count() int {
 	return 1
 }
 
-func (v *TestView) Contains(in string) bool {
-	return in == v.view
-}
-
-func (v *TestView) Remove(in string) bool {
+func (s *TestShard) Contains(in string) bool {
 	return true
 }
 
-func (v *TestView) Add(in string) bool {
+func (s *TestShard) Remove(in string) bool {
 	return true
 }
 
-func (v *TestView) Random(n int) []string {
-	return []string{v.view}
+func (s *TestShard) Add(in string) bool {
+	return true
 }
 
-func (v *TestView) Primary() string {
-	return v.view
+func (s *TestShard) Random(n int) []string {
+	return []string{}
 }
 
-func (v *TestView) List() []string {
-	return []string{v.view}
+func (s *TestShard) Primary() string {
+	return ""
 }
 
-func (v *TestView) String() string {
-	return v.view
+func (s *TestShard) List() []string {
+	return []string{}
 }
 
-func (v *TestView) Overwrite(in []string) {
-	v.view = strings.Join(in, ",")
+func (s *TestShard) String() string {
+	return ""
+}
+
+func (s *TestShard) Overwrite(in []string) {
+	// does nothing
 }
 
 func TestSetTimeSetsTime(t *testing.T) {
@@ -101,13 +100,13 @@ func TestClockPrunePrunesClocks(t *testing.T) {
 	}
 
 	// Mock a view
-	v := TestView{view: testView}
+	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, view: &v}
+	g := GossipVals{kvs: &k, shardList: &s}
 
 	// Mock an input
-	ig := timeGlob{
+	ig := TimeGlob{
 		List: map[string]time.Time{
 			keyExists:    timeExists,
 			keyNotExists: time.Now(),
@@ -134,13 +133,13 @@ func TestBuildEntryGlobBuildsGlob(t *testing.T) {
 	}
 
 	// Mock a view
-	v := TestView{view: testView}
+	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, view: &v}
+	g := GossipVals{kvs: &k, shardList: s}
 
 	// Mock an input
-	ig := timeGlob{
+	ig := TimeGlob{
 		List: map[string]time.Time{
 			keyExists:    timeExists,
 			keyNotExists: time.Now(),
@@ -156,7 +155,7 @@ func TestBuildEntryGlobBuildsGlob(t *testing.T) {
 		Clock:     k.dbClock,
 		Tombstone: false,
 	}
-	teg := entryGlob{Keys: map[string]Entry{keyExists: te}}
+	teg := EntryGlob{Keys: map[string]Entry{keyExists: te}}
 
 	if diff := deep.Equal(eg, teg); diff != nil {
 		t.Error(diff)
@@ -175,10 +174,10 @@ func TestUpdateViewsUpdatesViews(t *testing.T) {
 	}
 
 	// Mock a view
-	v := TestView{view: testView}
+	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, view: &v}
+	g := GossipVals{kvs: &k, shardList: &s}
 
 	newView := []string{"172.132.164.20:8081", "172.132.164.50:8082"}
 	s := strings.Join(newView, ",")
@@ -200,10 +199,10 @@ func TestUpdateViewsEmptyInputDoesntUpdate(t *testing.T) {
 	}
 
 	// Mock a view
-	v := TestView{view: testView}
+	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, view: &v}
+	g := GossipVals{kvs: &k, shardList: &s}
 
 	newView := []string{}
 	s := g.view.String()
@@ -224,10 +223,10 @@ func TestConflictResolutionKeyNotExist(t *testing.T) {
 	}
 
 	// Mock a view
-	v := TestView{view: testView}
+	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, view: &v}
+	g := GossipVals{kvs: &k, shardList: &s}
 
 	// Mock an input that Bob doesn't have
 	keyNotExistsEntry := Entry{
@@ -253,10 +252,10 @@ func TestConflictResolutionKeyExistAliceBigger(t *testing.T) {
 	}
 
 	// Mock a view
-	v := TestView{view: testView}
+	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, view: &v}
+	g := GossipVals{kvs: &k, shardList: &s}
 
 	// Mock an input that Bob doesn't have
 	newKeyExistsEntry := Entry{
@@ -282,10 +281,10 @@ func TestConflictResolutionKeyExistBobBigger(t *testing.T) {
 	}
 
 	// Mock a view
-	v := TestView{view: testView}
+	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, view: &v}
+	g := GossipVals{kvs: &k, shardList: &s}
 
 	// Mock an input that Bob doesn't have
 	newKeyExistsEntry := Entry{
@@ -311,10 +310,10 @@ func TestConflictResolutionKeyExistAliceLater(t *testing.T) {
 	}
 
 	// Mock a view
-	v := TestView{view: testView}
+	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, view: &v}
+	g := GossipVals{kvs: &k, shardList: &s}
 	time.Sleep(1 * time.Second)
 
 	aliceTime := time.Now()
@@ -345,10 +344,10 @@ func TestConflictResolutionKeyExistBobLater(t *testing.T) {
 	}
 
 	// Mock a view
-	v := TestView{view: testView}
+	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, view: &v}
+	g := GossipVals{kvs: &k, shardList: &s}
 
 	// Mock an input that Bob doesn't have
 	newKeyExistsEntry := Entry{
@@ -374,10 +373,10 @@ func TestUpdateKVSUpdatesKVS(t *testing.T) {
 	}
 
 	// Mock a view
-	v := TestView{view: testView}
+	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, view: &v}
+	g := GossipVals{kvs: &k, shardList: &s}
 
 	// Mock an input that Bob doesn't have
 	newKeyExistsEntry := Entry{
@@ -387,11 +386,11 @@ func TestUpdateKVSUpdatesKVS(t *testing.T) {
 		Clock:     map[string]int{keyExists: 2},
 		Tombstone: false,
 	}
-	teg := entryGlob{Keys: map[string]Entry{keyExists: newKeyExistsEntry}}
+	teg := EntryGlob{Keys: map[string]Entry{keyExists: newKeyExistsEntry}}
 
 	g.UpdateKVS(teg)
 
-	tg := timeGlob{List: map[string]time.Time{keyExists: timeExists}}
+	tg := TimeGlob{List: map[string]time.Time{keyExists: timeExists}}
 
 	eg := g.kvs.GetEntryGlob(tg)
 

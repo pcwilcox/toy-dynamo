@@ -39,8 +39,8 @@ type dbAccess interface {
 	OverwriteEntry(string, KeyEntry)
 
 	// Returns a timeGlob struct of all of the keys in the db
-	GetTimeGlob() timeGlob
+	GetTimeGlob() TimeGlob
 
 	// Returns an entryGlob struct of all of the keys in the given timeGlob
-	GetEntryGlob(timeGlob) entryGlob
+	GetEntryGlob(TimeGlob) EntryGlob
 }

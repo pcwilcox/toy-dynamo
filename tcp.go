@@ -23,21 +23,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/soheilhy/cmux"
 )
-
-// A timeGlob is a map of keys to timestamps and lets the gossip module figure out which ones need to be updated
-type timeGlob struct {
-	List map[string]time.Time
-}
-
-// An entryGlob is a map of keys to entries which allowes the gossip module to enter into conflict resolution and update the required keys
-type entryGlob struct {
-	Keys map[string]Entry
-}
 
 // Open connects to a TCP Address.
 // It returns a TCP connection armed with a timeout and wrapped into a buffered ReadWriter.
@@ -144,7 +133,7 @@ func (e *Endpoint) handleTimeGob(rw *bufio.ReadWriter) {
 	log.Print("Receive Time Gob data:")
 
 	// Create an empty timeGlob
-	var data timeGlob
+	var data TimeGlob
 
 	// Create a decoder that decodes directly into the empty glob
 	dec := gob.NewDecoder(rw)
@@ -180,7 +169,7 @@ func (e *Endpoint) handleTimeGob(rw *bufio.ReadWriter) {
 
 func (e *Endpoint) handleEntryGob(rw *bufio.ReadWriter) {
 	log.Println("Receive entryGlob data:")
-	var data entryGlob
+	var data EntryGlob
 	// Create a decoder that decodes directly into a struct variable.
 	dec := gob.NewDecoder(rw)
 	err := dec.Decode(&data)
@@ -197,8 +186,8 @@ func (e *Endpoint) handleEntryGob(rw *bufio.ReadWriter) {
 	log.Printf("Outer complexData struct: \n%#v\n", data)
 }
 
-func (e *Endpoint) handleViewGob(rw *bufio.ReadWriter) {
-	var data []string
+func (e *Endpoint) handleShardGob(rw *bufio.ReadWriter) {
+	var data ShardGlob
 	dec := gob.NewDecoder(rw)
 	log.Println("Decoding viewGob data")
 	err := dec.Decode(&data)
@@ -207,9 +196,9 @@ func (e *Endpoint) handleViewGob(rw *bufio.ReadWriter) {
 		return
 	}
 
-	log.Println("Updating viewList - old views: " + e.gossip.view.String())
-	e.gossip.UpdateViews(data)
-	log.Println("Views updated: ", data)
+	log.Println("Updating ShardList - old views: " + e.gossip.shardList.String())
+	e.gossip.UpdateShardList(data)
+	log.Println("Shards updated: ", data)
 }
 
 func (e *Endpoint) handleHelp(rw *bufio.ReadWriter) {
@@ -349,9 +338,9 @@ func (e *Endpoint) handleContains(rw *bufio.ReadWriter) {
 }
 
 // client is called if the app is called with -connect=`ip addr`.
-func sendTimeGlob(ip string, tg timeGlob) (*timeGlob, error) {
+func sendTimeGlob(ip string, tg TimeGlob) (*TimeGlob, error) {
 	// Open a connection to the server.
-	var out timeGlob
+	var out TimeGlob
 
 	rw, err := Open(ip)
 	if err != nil {
@@ -389,7 +378,7 @@ func sendTimeGlob(ip string, tg timeGlob) (*timeGlob, error) {
 	return &out, nil
 }
 
-func sendEntryGlob(ip string, eg entryGlob) error {
+func sendEntryGlob(ip string, eg EntryGlob) error {
 
 	// Open a connection to the server.
 	rw, err := Open(ip)
@@ -420,22 +409,22 @@ func sendEntryGlob(ip string, eg entryGlob) error {
 	return nil
 }
 
-func sendViewList(ip string, v []string) error {
+func sendShardGob(ip string, s ShardGlob) error {
 	rw, err := Open(ip)
 	if err != nil {
 		return errors.Wrap(err, "Client: failed to open connection to "+ip)
 	}
 	enc := gob.NewEncoder(rw)
-	log.Println("Sending command initialization: 'view'")
-	n, err := rw.WriteString("view\n")
+	log.Println("Sending command initialization: 'shard'")
+	n, err := rw.WriteString("shard\n")
 	if err != nil {
-		return errors.Wrap(err, "Could not write view data ("+strconv.Itoa(n)+" bytes written)")
+		return errors.Wrap(err, "Could not write shard data ("+strconv.Itoa(n)+" bytes written)")
 	}
 
-	log.Println("Encoding view []string")
-	err = enc.Encode(v)
+	log.Println("Encoding shard struct")
+	err = enc.Encode(s)
 	if err != nil {
-		return errors.Wrapf(err, "Encode failed for slice: %#v", v)
+		return errors.Wrapf(err, "Encode failed for shard list: %#v", s)
 
 	}
 	log.Println("Flushing buffer")
@@ -650,7 +639,7 @@ func server(a App, g GossipVals) {
 func addHandlers(e *Endpoint) {
 	e.AddHandleFunc("time", e.handleTimeGob)
 	e.AddHandleFunc("entry", e.handleEntryGob)
-	e.AddHandleFunc("view", e.handleViewGob)
+	e.AddHandleFunc("shard", e.handleShardGob)
 	e.AddHandleFunc("help", e.handleHelp)
 	e.AddHandleFunc("contains", e.handleContains)
 	e.AddHandleFunc("get", e.handleGet)
@@ -660,12 +649,12 @@ func addHandlers(e *Endpoint) {
 
 func register() {
 	// Register types for gob
-	gob.Register(timeGlob{})
-	gob.Register(entryGlob{})
+	gob.Register(TimeGlob{})
+	gob.Register(EntryGlob{})
 	gob.Register(Entry{})
 	gob.Register(GetRequest{})
 	gob.Register(PutRequest{})
 	gob.Register(GetResponse{})
 	gob.Register(ContainsResponse{})
-
+	gob.Register(ShardGlob{})
 }

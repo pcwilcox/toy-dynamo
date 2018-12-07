@@ -20,9 +20,8 @@ import (
 
 // GossipVals is a struct which implements the Gossip
 type GossipVals struct {
-	view View
-	kvs  dbAccess
-	// tcp?
+	kvs       dbAccess
+	shardList Shard
 }
 
 // Global variable for easier time tracking
@@ -52,10 +51,10 @@ func (g *GossipVals) GossipHeartbeat() {
 	setTime()
 
 	for {
-		if wakeGossip || viewChange || timesUp() {
+		if wakeGossip || shardChange || timesUp() {
 			log.Println("Gossip initiated. Ringing TCP")
 
-			gossipee := g.view.Random(2)
+			gossipee := g.shardList.RandomLocal(2)
 
 			if needHelp {
 				for _, bob := range gossipee {
@@ -80,12 +79,14 @@ func (g *GossipVals) GossipHeartbeat() {
 						log.Println("Error sending entryglob: ", err)
 						continue
 					}
+				}
 
-					if viewChange {
-						// Propagate views
-						v := g.view.List()
-						sendViewList(bob, v)
-					}
+			}
+			if shardChange {
+				gossipee = g.shardList.RandomGlobal(2)
+				// Propagate views
+				for _, bob := range gossipee {
+					sendShardGob(bob, g.shardList.GetShardGlob())
 				}
 			}
 			wakeGossip = false
@@ -97,7 +98,7 @@ func (g *GossipVals) GossipHeartbeat() {
 }
 
 // ClockPrune returns a pruned map that only contains the keys that the gossipee needs updating
-func (g *GossipVals) ClockPrune(input timeGlob) timeGlob {
+func (g *GossipVals) ClockPrune(input TimeGlob) TimeGlob {
 	own := g.kvs.GetTimeGlob() // getTimeGlob() is in glob branch
 
 	// Find and delete duplicates between two maps
@@ -114,14 +115,14 @@ func (g *GossipVals) ClockPrune(input timeGlob) timeGlob {
 }
 
 // BuildEntryGlob takes timeGlob and turn it into entryGlob
-func (g *GossipVals) BuildEntryGlob(inglob timeGlob) entryGlob {
+func (g *GossipVals) BuildEntryGlob(inglob TimeGlob) EntryGlob {
 	// TODO: understand getEntryGlob() and how to use it
 	outglob := g.kvs.GetEntryGlob(inglob)
 	return outglob
 }
 
 // UpdateKVS takes entryGlob and update its own KVS. End of Gossip protocol
-func (g *GossipVals) UpdateKVS(inglob entryGlob) {
+func (g *GossipVals) UpdateKVS(inglob EntryGlob) {
 	// Loop through all keys, check for conflicts, and update KVS when necessary.
 	for key, aliceEntry := range inglob.Keys {
 		if g.ConflictResolution(key, &aliceEntry) {
@@ -178,9 +179,7 @@ func (g *GossipVals) ConflictResolution(key string, aliceEntry KeyEntry) bool {
 	return false // bob wins
 }
 
-// UpdateViews overwrites our views
-func (g *GossipVals) UpdateViews(v []string) {
-	if len(v) > 0 {
-		g.view.Overwrite(v)
-	}
+// UpdateShardList overwrites our view of the shard list
+func (g *GossipVals) UpdateShardList(s ShardGlob) {
+	g.shardList.Overwrite(s)
 }

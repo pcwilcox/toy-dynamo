@@ -187,8 +187,8 @@ func (k *KVS) Contains(key string) (bool, int) {
 	// Grab a read lock
 	alive := false
 	version := 0
-	whoShard := r.successor(getKeyPosition(key))
-	if whoShard == MyShard.primary() {
+	whoShard := MyShard.Tree.successor(getKeyPosition(key))
+	if whoShard == MyShard.PrimaryID() {
 		k.mutex.RLock()
 		defer k.mutex.RUnlock()
 
@@ -201,8 +201,12 @@ func (k *KVS) Contains(key string) (bool, int) {
 		Key:     key,
 		Payload: nil,
 	}
-	bobIP := getIP(whoShard)
-	bobResp := sendContainsRequest(bobip, g)
+	bobIP := MyShard.FindBob(whoShard)
+	bobResp, err := sendContainsRequest(bobIP, g)
+	if err != nil {
+		log.Println(err)
+		return false, 0
+	}
 	alive = bobResp.Alive
 	version = bobResp.Version
 
@@ -222,9 +226,9 @@ func (k *KVS) contains(key string) (bool, int) {
 func (k *KVS) Get(key string, payload map[string]int) (val string, clock map[string]int) {
 	log.Println("Getting value associated with key ")
 	//Get the key position
-	whoShard := r.successor(getKeyPosition(key))
+	whoShard := MyShard.Tree.successor(getKeyPosition(key))
 	//If it isnt my key then I need to ask the server who it belongs to
-	if whoShard != MyShard.primary() {
+	if whoShard != MyShard.PrimaryID() {
 		log.Println("key requested to Get not in my shard, requesting id of another shard" + whoShard)
 		//Constructing the GetRequest Struct
 		GetSend := GetRequest{
@@ -232,7 +236,7 @@ func (k *KVS) Get(key string, payload map[string]int) (val string, clock map[str
 			Payload: payload,
 		}
 		//Retrieving bob's IP
-		bobIP := getIP(whoShard)
+		bobIP := MyShard.FindBob(whoShard)
 		//Sending the request and recieving bob's responce
 		bobResp, err := sendGetRequest(bobIP, GetSend)
 		if err != nil {
@@ -275,9 +279,9 @@ func (k *KVS) Delete(key string, time time.Time, payload map[string]int) bool {
 
 	log.Println("Attempting to delete key ")
 	//Get the key position
-	whoShard := r.successor(getKeyPosition(key))
+	whoShard := MyShard.Tree.successor(getKeyPosition(key))
 	//If it isnt my key then I need to ask the server who it belongs to
-	if whoShard != MyShard.primary() {
+	if whoShard != MyShard.PrimaryID() {
 		log.Println("Key requested to Delete not in my shard, requesting id of another shard" + whoShard)
 		//Constructing the PutRequest Struct
 		GetDelete := PutRequest{
@@ -287,12 +291,12 @@ func (k *KVS) Delete(key string, time time.Time, payload map[string]int) bool {
 			Payload:   payload,
 		}
 		//Retrieving bob's IP
-		bobIP := getIP(whoShard)
+		bobIP := MyShard.FindBob(whoShard)
 		//Sending the request and recieving bob's responce
 		bobResp, err := sendDeleteRequest(bobIP, GetDelete)
 		if err != nil {
 			log.Println("Error with sendDeleteRequest", err)
-			return false, err
+			return false
 		}
 		return bobResp
 	}
@@ -327,9 +331,9 @@ func (k *KVS) Put(key string, val string, time time.Time, payload map[string]int
 
 	if keyLen <= maxKey && valLen <= maxVal {
 		//Get the key position
-		whoShard := r.successor(getKeyPosition(key))
+		whoShard := MyShard.Tree.successor(getKeyPosition(key))
 		//If it isnt my key then I need to ask the server who it belongs to
-		if whoShard != MyShard.primary() {
+		if whoShard != MyShard.PrimaryID() {
 			log.Println("Key requested to Put not in my shard, requesting id of another shard" + whoShard)
 			//Constructing the PutRequest Struct
 			GetDelete := PutRequest{
@@ -339,12 +343,12 @@ func (k *KVS) Put(key string, val string, time time.Time, payload map[string]int
 				Payload:   payload,
 			}
 			//Retrieving bob's IP
-			bobIP := getIP(whoShard)
+			bobIP := MyShard.FindBob(whoShard)
 			//Sending the request and recieving bob's responce
-			bobResp, _ := sendPutRequest(bobIP, GetDelete)
+			bobResp, err := sendPutRequest(bobIP, GetDelete)
 			if err != nil {
 				log.Println("Error with sendPutRequest", err)
-				return false, err
+				return false
 			}
 			return bobResp
 		}
@@ -428,7 +432,7 @@ func (k *KVS) OverwriteEntry(key string, entry KeyEntry) {
 }
 
 // GetTimeGlob returns a struct containing a map of keys to their timestamps
-func (k *KVS) GetTimeGlob() timeGlob {
+func (k *KVS) GetTimeGlob() TimeGlob {
 	if k != nil {
 		k.mutex.RLock()
 		defer k.mutex.RUnlock()
@@ -438,20 +442,20 @@ func (k *KVS) GetTimeGlob() timeGlob {
 				m[key] = v.GetTimestamp()
 			}
 		}
-		g := timeGlob{List: m}
+		g := TimeGlob{List: m}
 
 		return g
 	}
-	return timeGlob{}
+	return TimeGlob{}
 }
 
 // GetEntryGlob returns a struct containing a map of keys to their entries
-func (k *KVS) GetEntryGlob(tg timeGlob) entryGlob {
+func (k *KVS) GetEntryGlob(tg TimeGlob) EntryGlob {
 	if k != nil {
 		k.mutex.RLock()
 		defer k.mutex.RUnlock()
 		entries := make(map[string]Entry)
-		eg := entryGlob{Keys: entries}
+		eg := EntryGlob{Keys: entries}
 		for n := range tg.List {
 			time := k.db[n].GetTimestamp()
 			clock := k.db[n].GetClock()
@@ -467,8 +471,8 @@ func (k *KVS) GetEntryGlob(tg timeGlob) entryGlob {
 			}
 			eg.Keys[n] = e
 		}
-		log.Println("Built entryGlob: ", eg)
+		log.Println("Built EntryGlob: ", eg)
 		return eg
 	}
-	return entryGlob{Keys: map[string]Entry{}}
+	return EntryGlob{Keys: map[string]Entry{}}
 }

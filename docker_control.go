@@ -1,4 +1,4 @@
-package hw4
+package main
 
 import (
 	"bytes"
@@ -31,7 +31,8 @@ func init() {
 	removeAllContainers()
 	if *buildFlag {
 		exec.Command("docker", "rmi", "-f", "testing").Run()
-		cmd := exec.Command("docker", "build", "-t", "testing", ".")		var out bytes.Buffer
+		cmd := exec.Command("docker", "build", "-t", "testing", ".")
+		var out bytes.Buffer
 		cmd.Stdout = &out
 		err := cmd.Run()
 		if err != nil {
