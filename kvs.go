@@ -185,11 +185,27 @@ func NewKVS() *KVS {
 func (k *KVS) Contains(key string) (bool, int) {
 	log.Println("Checking to see if db contains key ")
 	// Grab a read lock
-	k.mutex.RLock()
-	defer k.mutex.RUnlock()
+	alive := false
+	version := 0
+	whoShard := r.successor(getKeyPosition(key))
+	if whoShard == MyShard.primary() {
+		k.mutex.RLock()
+		defer k.mutex.RUnlock()
 
-	// Once the read lock has been obtained, call the non-locking contains() method
-	alive, version := k.contains(key)
+		// Once the read lock has been obtained, call the non-locking contains() method
+		alive, version = k.contains(key)
+		return alive, version
+	}
+	log.Println("key not in my shard, requesting id of another shard" + whoShard)
+	g := GetRequest{
+		Key:     key,
+		Payload: nil,
+	}
+	bobIP := getIP(whoShard)
+	bobResp := sendContainsRequest(bobip, g)
+	alive = bobResp.Alive
+	version = bobResp.Version
+
 	return alive, version
 }
 
@@ -205,7 +221,30 @@ func (k *KVS) contains(key string) (bool, int) {
 // Get returns the value associated with a particular key. If the key does not exist it returns ""
 func (k *KVS) Get(key string, payload map[string]int) (val string, clock map[string]int) {
 	log.Println("Getting value associated with key ")
+	//Get the key position
+	whoShard := r.successor(getKeyPosition(key))
+	//If it isnt my key then I need to ask the server who it belongs to
+	if whoShard != MyShard.primary() {
+		log.Println("key requested to Get not in my shard, requesting id of another shard" + whoShard)
+		//Constructing the GetRequest Struct
+		GetSend := GetRequest{
+			Key:     key,
+			Payload: payload,
+		}
+		//Retrieving bob's IP
+		bobIP := getIP(whoShard)
+		//Sending the request and recieving bob's responce
+		bobResp, err := sendGetRequest(bobIP, GetSend)
+		if err != nil {
+			log.Println("Error with sendGetRequest", err)
+			panic(err)
+		}
+		val = bobResp.Value
+		clock = bobResp.Payload
+		return val, clock
+	}
 	// Grab a read lock
+	log.Println("Checking to see if db contains key ")
 	k.mutex.RLock()
 	defer k.mutex.RUnlock()
 
@@ -225,15 +264,38 @@ func (k *KVS) Get(key string, payload map[string]int) (val string, clock map[str
 		// Return
 		return val, clock
 	}
-	log.Println("Value not found")
 
+	log.Println("Value not found")
 	// We don't have the value so just return the empty string with the payload they sent us
 	return "", payload
 }
 
 // Delete sets the tombstone associated with a particular key, updates its version and timestamp, so it appears dead
 func (k *KVS) Delete(key string, time time.Time, payload map[string]int) bool {
+
 	log.Println("Attempting to delete key ")
+	//Get the key position
+	whoShard := r.successor(getKeyPosition(key))
+	//If it isnt my key then I need to ask the server who it belongs to
+	if whoShard != MyShard.primary() {
+		log.Println("Key requested to Delete not in my shard, requesting id of another shard" + whoShard)
+		//Constructing the PutRequest Struct
+		GetDelete := PutRequest{
+			Key:       key,
+			Value:     "", //This will not be used
+			Timestamp: time,
+			Payload:   payload,
+		}
+		//Retrieving bob's IP
+		bobIP := getIP(whoShard)
+		//Sending the request and recieving bob's responce
+		bobResp, err := sendDeleteRequest(bobIP, GetDelete)
+		if err != nil {
+			log.Println("Error with sendDeleteRequest", err)
+			return false, err
+		}
+		return bobResp
+	}
 	// Grab a write lock
 	k.mutex.Lock()
 	defer k.mutex.Unlock()
@@ -249,6 +311,7 @@ func (k *KVS) Delete(key string, time time.Time, payload map[string]int) bool {
 		wakeGossip = true
 		return true
 	}
+
 	log.Println("Key not found")
 	return false
 }
@@ -263,6 +326,28 @@ func (k *KVS) Put(key string, val string, time time.Time, payload map[string]int
 	log.Println("Attempting to insert key-value pair")
 
 	if keyLen <= maxKey && valLen <= maxVal {
+		//Get the key position
+		whoShard := r.successor(getKeyPosition(key))
+		//If it isnt my key then I need to ask the server who it belongs to
+		if whoShard != MyShard.primary() {
+			log.Println("Key requested to Put not in my shard, requesting id of another shard" + whoShard)
+			//Constructing the PutRequest Struct
+			GetDelete := PutRequest{
+				Key:       key,
+				Value:     val,
+				Timestamp: time,
+				Payload:   payload,
+			}
+			//Retrieving bob's IP
+			bobIP := getIP(whoShard)
+			//Sending the request and recieving bob's responce
+			bobResp, _ := sendPutRequest(bobIP, GetDelete)
+			if err != nil {
+				log.Println("Error with sendPutRequest", err)
+				return false, err
+			}
+			return bobResp
+		}
 		log.Println("Key and value OK, inserting to DB")
 		// Grab a write lock
 		k.mutex.Lock()
@@ -286,6 +371,7 @@ func (k *KVS) Put(key string, val string, time time.Time, payload map[string]int
 		wakeGossip = true
 		return true
 	}
+
 	log.Println("Invalid entry for key or value")
 	return false
 }
