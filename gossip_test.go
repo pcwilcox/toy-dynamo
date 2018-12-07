@@ -27,10 +27,21 @@ func (s *TestShard) Count() int {
 	return 1
 }
 
-func (s *TestShard) Contains(in string) bool {
+func (s *TestShard) ContainsShard(in string) bool {
 	return true
 }
 
+func (s *TestShard) ContainsServer(in string) bool {
+	return true
+}
+
+func (s *TestShard) FindBob(in string) string {
+	return "bob"
+}
+
+func (s *TestShard) GetIP() string {
+	return "an IP"
+}
 func (s *TestShard) Remove(in string) bool {
 	return true
 }

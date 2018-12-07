@@ -130,6 +130,10 @@ func (kvs *TestKVS) GetEntryGlob(g TimeGlob) EntryGlob {
 	return j
 }
 
+func (kvs *TestKVS) ShuffleKeys() bool {
+	return true
+}
+
 // Trying to reduce code repetition
 func setup(key string, val string) (string, *mux.Router) {
 	clock := map[string]int{key: 1}
