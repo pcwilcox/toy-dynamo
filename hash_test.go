@@ -19,11 +19,10 @@ import (
 func TestGetVirtualNodePositions(t *testing.T) {
 
 	// test with 10 nodes each in two shards
-	first := 1
-	second := 2
-	num := 10
-	firstNodes := getVirtualNodePositions(first, num)
-	secondNodes := getVirtualNodePositions(second, num)
+	first := "alice"
+	second := "bob"
+	firstNodes := getVirtualNodePositions(first)
+	secondNodes := getVirtualNodePositions(second)
 	for i := range firstNodes {
 		assert(t, firstNodes[i] != secondNodes[i], "got equal node hashes")
 	}

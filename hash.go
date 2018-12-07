@@ -23,15 +23,15 @@ func getKeyPosition(key string) int {
 }
 
 // Given a shard ID and a number of nodes, hashes it to a number of ring positions
-func getVirtualNodePositions(shard int, num int) []int {
+func getVirtualNodePositions(shard string) []int {
 	s := string(shard)
 
-	if len(primes) < num {
+	if len(primes) < numVirtualNodes {
 		makePrimes()
 	}
 
-	positions := make([]int, num)
-	for i := 0; i < num; i++ {
+	positions := make([]int, numVirtualNodes)
+	for i := 0; i < numVirtualNodes; i++ {
 		positions[i] = (int(crc32.ChecksumIEEE([]byte(s))) * primes[i]) % ringSize
 	}
 	return positions
