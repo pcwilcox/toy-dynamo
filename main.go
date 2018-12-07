@@ -77,21 +77,21 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	// Create a shardList and create the seperation of shard ID to servers
+	// Create a ShardList and create the seperation of shard ID to servers
 	MyShard = NewShard(myIP, view, numshards)
 
 	// Make a KVS to use as the db
 	k := NewKVS()
 
 	// The App object is the front end and has references to the KVS and viewList
-	a := App{db: k, shard: MyShard}
+	a := App{db: k, shard: *MyShard}
 
 	log.Println("Starting server...")
 
 	// The gossip object controls communicating with other servers and has references to the viewlist and the kvs
 	gossip := GossipVals{
 		kvs:       k,
-		shardList: MyShard,
+		ShardList: MyShard,
 	}
 	// Start the heartbeat loop
 	go gossip.GossipHeartbeat() // goroutines

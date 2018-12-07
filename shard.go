@@ -60,6 +60,20 @@ type Shard interface {
 }
 
 // ShardList is a struct which implements the Shard interface and holds shard ID system of servers
+/*
+ShardList: {
+	ShardStrings: {
+        A: "192.168.0.10:8081,192.168.0.10:8082",
+        B: "192.168.0.10:8083,192.168.0.10:8084",
+    },
+    ShardSlices: {
+        A: ["192.168.0.10:8081", "192.168.0.10:8082"],
+        B: ["192.168.0.10:8083", "192.168.0.10:8084"],
+    },
+    PrimaryShard: "A",
+    PrimaryIP: "192.168.0.10:8081",
+}
+*/
 type ShardList struct {
 	ShardString  map[string]string   // This is the map of shard IDs to server names
 	ShardSlice   map[string][]string // this is a mapping of shard IDs to slices of server strings
@@ -201,18 +215,23 @@ func (s *ShardList) ContainsServer(ip string) bool {
 // Remove deletes a shard ID from the shard list
 func (s *ShardList) Remove(shardID string) bool {
 	if s != nil {
-		// TODO we need to also move the servers and stuff
+		delete(s.ShardString, shardID)
 		delete(s.ShardSlice, shardID)
+		s.NumShards--
 		shardChange = true
 		return true
 	}
 	return false
 }
 
-// Add inserts an shard ID into the shard list
-func (s *ShardList) Add(shardID string) bool {
+// Add inserts an shard ID into the my shard list
+func (s *ShardList) Add(newShardID string) bool {
 	if s != nil {
-		// s.shards[shardID] = shardID
+		// QUESTION: is here where I choose the random name, or the caller?
+		// Insert newShardID into both maps
+		s.ShardString[newShardID] = ""
+		s.ShardSlice[newShardID] = append(s.ShardSlice[newShardID], "")
+		s.NumShards++
 		shardChange = true
 		return true
 	}
@@ -235,10 +254,17 @@ func (s *ShardList) GetIP() string {
 	return ""
 }
 
-// String converts the shard IDs and servers in the ID into a comma-separated string
+// NumLeftoverServers returns the number of leftover servers after an uneven spread
+func (s *ShardList) NumLeftoverServers() int {
+	if s != nil {
+		return s.Size % s.NumShards
+	}
+	return -1
+}
+
+// String returns a comma-separated string of shards
 func (s *ShardList) String() string {
 	if s != nil {
-
 		str := make([]string, s.NumShards)
 
 		for i := 0; i < s.NumShards; i++ {
@@ -248,6 +274,18 @@ func (s *ShardList) String() string {
 		return j
 	}
 	return ""
+}
+
+// NumServerPerShard returns number of servers per shard (equally) after reshuffle
+func (s *ShardList) NumServerPerShard() int {
+	if s != nil {
+		i := s.Size / s.NumShards
+		if i >= 2 {
+			return i
+		}
+	}
+	// The caller function needs to send response to client. Insufficent shard number!!
+	return -1
 }
 
 // NewShard creates a shardlist object and initializes it with the input string
@@ -306,27 +344,3 @@ func NewShard(primaryIP string, globalView string, numShards int) *ShardList {
 
 	return &s
 }
-
-// func NewShard(main string, input *viewList, numshards int) *ShardList {
-// 	// // Make a new map
-// 	s := make(map[string]string)
-
-// 	// // Convert the input string into a slice
-// 	// slice := strings.Split(input, ",")
-
-// 	// // Insert each element of the slice into the map
-// 	// for _, s := range slice {
-// 	// 	v[s] = s
-// 	// }
-
-// 	list := ShardList{
-// 		views:   s,
-// 		primary: main,
-// 	}
-// 	return &list
-// }
-
-// func (s *ShardList) Random(n int) []string {
-// }
-// func (s *ShardList) RecalculateShard() {
-// }
