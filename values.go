@@ -36,7 +36,9 @@ const (
 	deletekey    = "I DONT EXIST"
 	invalidVal   = ""
 	testView     = "176.32.164.10:8082,176.32.164.10:8083,176.32.164.10:8084"
+	testView2    = "176.32.164.10:8080,176.32.164.10:8081,176.32.164.10:8082,176.32.164.10:8083,176.32.164.10:8084,176.32.164.10:8085"
 	testMain     = "176.32.164.10:8082"
+	// testShard	 =
 	viewExist    = "176.32.164.10:8083"
 	viewNotExist = "176.32.164.10:8085"
 	invalidKey   = `Lorem ipsum dolor sit amet, 

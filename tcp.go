@@ -196,7 +196,7 @@ func (e *Endpoint) handleShardGob(rw *bufio.ReadWriter) {
 		return
 	}
 
-	log.Println("Updating ShardList - old views: " + e.gossip.shardList.String())
+	log.Println("Updating ShardList - old views: " + e.gossip.ShardList.String())
 	e.gossip.UpdateShardList(data)
 	log.Println("Shards updated: ", data)
 }
