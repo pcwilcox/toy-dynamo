@@ -12,7 +12,6 @@
 package main
 
 import (
-	"log"
 	"testing"
 )
 
@@ -37,7 +36,6 @@ func TestMakePrimes(t *testing.T) {
 
 	// make sure they're equal
 	for i := range actualPrimes {
-		log.Println(i)
 		equals(t, actualPrimes[i], primes[i])
 	}
 }

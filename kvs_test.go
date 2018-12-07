@@ -53,6 +53,7 @@ func TestKVSContainsCheckIfDoesntExist(t *testing.T) {
 	var m sync.RWMutex
 	k := KVS{db: db, mutex: &m}
 
+	MyShard = &ShardList{}
 	alive, version := k.Contains(keyNotHere)
 
 	assert(t, version == 0, "Key found that does not exist.")
@@ -587,22 +588,22 @@ func TestGetTimeGlobKeyExists(t *testing.T) {
 	g := k.GetTimeGlob()
 	h := make(map[string]time.Time)
 	h[keyExists] = timestamp
-	j := timeGlob{List: h}
+	j := TimeGlob{List: h}
 	equals(t, j, g)
 }
 
 func TestGetTimeGlobKeyNotExists(t *testing.T) {
 	k := NewKVS()
 	h := make(map[string]time.Time)
-	j := timeGlob{List: h}
+	j := TimeGlob{List: h}
 	equals(t, j, k.GetTimeGlob())
 }
 
 func TestGetEntryGlobEmptyTimeGlob(t *testing.T) {
 	k := NewKVS()
-	g := timeGlob{}
+	g := TimeGlob{}
 	h := k.GetEntryGlob(g)
-	j := entryGlob{Keys: map[string]Entry{}}
+	j := EntryGlob{Keys: map[string]Entry{}}
 	equals(t, j, h)
 }
 
@@ -622,7 +623,7 @@ func TestGetEntryGlobKeyExist(t *testing.T) {
 	h := k.GetEntryGlob(g)
 	j := make(map[string]Entry)
 	j[keyExists] = *e
-	l := entryGlob{Keys: j}
+	l := EntryGlob{Keys: j}
 	equals(t, l, h)
 }
 

@@ -13,7 +13,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -54,8 +53,16 @@ func (s *TestShard) Random(n int) []string {
 	return []string{}
 }
 
-func (s *TestShard) Primary() string {
+func (s *TestShard) PrimaryID() string {
 	return ""
+}
+
+func (s *TestShard) RandomGlobal(n int) []string {
+	return []string{}
+}
+
+func (s *TestShard) RandomLocal(n int) []string {
+	return []string{}
 }
 
 func (s *TestShard) List() []string {
@@ -66,10 +73,13 @@ func (s *TestShard) String() string {
 	return ""
 }
 
-func (s *TestShard) Overwrite(in []string) {
+func (s *TestShard) Overwrite(in ShardGlob) {
 	// does nothing
 }
 
+func (s *TestShard) GetShardGlob() ShardGlob {
+	return ShardGlob{}
+}
 func TestSetTimeSetsTime(t *testing.T) {
 	before := time.Now()
 
@@ -147,7 +157,7 @@ func TestBuildEntryGlobBuildsGlob(t *testing.T) {
 	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, shardList: s}
+	g := GossipVals{kvs: &k, shardList: &s}
 
 	// Mock an input
 	ig := TimeGlob{
@@ -172,55 +182,6 @@ func TestBuildEntryGlobBuildsGlob(t *testing.T) {
 		t.Error(diff)
 	}
 
-}
-
-func TestUpdateViewsUpdatesViews(t *testing.T) {
-	// Mock a KVS
-	timeExists := time.Now()
-	k := TestKVS{
-		dbClock: map[string]int{keyExists: 1},
-		dbKey:   keyExists,
-		dbTime:  timeExists,
-		dbVal:   valExists,
-	}
-
-	// Mock a view
-	s := TestShard{}
-
-	// Make a gossip
-	g := GossipVals{kvs: &k, shardList: &s}
-
-	newView := []string{"172.132.164.20:8081", "172.132.164.50:8082"}
-	s := strings.Join(newView, ",")
-
-	g.UpdateViews(newView)
-
-	assert(t, g.view.String() == s, "UpdateViews didn't update the view")
-
-}
-
-func TestUpdateViewsEmptyInputDoesntUpdate(t *testing.T) {
-	// Mock a KVS
-	timeExists := time.Now()
-	k := TestKVS{
-		dbClock: map[string]int{keyExists: 1},
-		dbKey:   keyExists,
-		dbTime:  timeExists,
-		dbVal:   valExists,
-	}
-
-	// Mock a view
-	s := TestShard{}
-
-	// Make a gossip
-	g := GossipVals{kvs: &k, shardList: &s}
-
-	newView := []string{}
-	s := g.view.String()
-
-	g.UpdateViews(newView)
-
-	assert(t, g.view.String() == s, "UpdateViews updated the view")
 }
 
 func TestConflictResolutionKeyNotExist(t *testing.T) {

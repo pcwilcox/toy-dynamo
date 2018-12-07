@@ -13,6 +13,7 @@ import (
 	"testing"
 )
 
+var containerName = "cs128-hw4"
 var subnetName = "mynet"
 var prefixSubnetAdress = "10.0.0."
 var prefixPort = "80" //maybe change this to 8080 ?
@@ -30,8 +31,8 @@ func init() {
 	flag.Parse()
 	removeAllContainers()
 	if *buildFlag {
-		exec.Command("docker", "rmi", "-f", "testing").Run()
-		cmd := exec.Command("docker", "build", "-t", "testing", ".")
+		exec.Command("docker", "rmi", "-f", containerName).Run()
+		cmd := exec.Command("docker", "build", "-t", containerName, ".")
 		var out bytes.Buffer
 		cmd.Stdout = &out
 		err := cmd.Run()
@@ -109,7 +110,7 @@ func runAContainer(ports ...string) string {
 	}
 	container := containersInfos[port]
 	args := []string{"run", "-p", port + ":8080", "--net=" + subnetName, "--ip=" + container["networkIp"], "-e", "VIEW=" + generateView(),
-		"-e", "IP_PORT=" + container["networkIp"] + ":8080", "-e", "S=" + strconv.Itoa(initNumOfShards), "-d", "testing"}
+		"-e", "IP_PORT=" + container["networkIp"] + ":8080", "-e", "S=" + strconv.Itoa(initNumOfShards), "-d", containerName}
 	cmd := exec.Command("docker", args...)
 	var out bytes.Buffer
 	cmd.Stdout = &out
