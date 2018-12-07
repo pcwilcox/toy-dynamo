@@ -16,10 +16,10 @@ import (
 var containerName = "cs128-hw4"
 var subnetName = "mynet"
 var prefixSubnetAdress = "10.0.0."
-var prefixPort = "8080" //maybe change this to 8080 ?
+var prefixPort = "808" //maybe change this to 8080 ?
 
 //--------------DO NOT CHANGE - Global Variables-------------\\
-var nextID = 10
+var nextID = 11
 var containersInfos map[string]map[string]string
 var askEveryNode = true
 var initNumOfShards int
@@ -56,7 +56,7 @@ func runContainers(numOfShards int, numOfContainers int) {
 
 func initContainersInfos() {
 	containersInfos = make(map[string]map[string]string)
-	for i := 10; i < 10+initNumOfContainers; i++ {
+	for i := 2; i < 2+initNumOfContainers; i++ {
 		key := prefixPort + strconv.Itoa(i)
 		containersInfos[key] = make(map[string]string)
 		containersInfos[key]["networkIp"] = prefixSubnetAdress + strconv.Itoa(i)
@@ -147,5 +147,6 @@ func sendRequest(port string, typeReq string, route string, t *testing.T, status
 }
 
 func getNextID() int {
+	nextID++
 	return nextID
 }
