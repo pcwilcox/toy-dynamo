@@ -15,7 +15,7 @@ import (
 
 var subnetName = "mynet"
 var prefixSubnetAdress = "10.0.0."
-var prefixPort = "80"
+var prefixPort = "80" //maybe change this to 8080 ?
 
 //--------------DO NOT CHANGE - Global Variables-------------\\
 var nextID = 10
@@ -31,8 +31,7 @@ func init() {
 	removeAllContainers()
 	if *buildFlag {
 		exec.Command("docker", "rmi", "-f", "testing").Run()
-		cmd := exec.Command("docker", "build", "-t", "testing", "../src/.")
-		var out bytes.Buffer
+		cmd := exec.Command("docker", "build", "-t", "testing", ".")		var out bytes.Buffer
 		cmd.Stdout = &out
 		err := cmd.Run()
 		if err != nil {
