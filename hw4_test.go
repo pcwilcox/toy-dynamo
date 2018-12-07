@@ -13,6 +13,8 @@ func TestGetShardIDFromEveryNode(t *testing.T) {
 	runContainers(2, 4)
 	for port := range containersInfos {
 		res := sendRequest(port, "GET", "shard/my_id", t, http.StatusOK, nil)
+		_, ok := res["id"]
+		assert(t, ok, "failed to get shard ID response")
 		if res["id"].(float64) >= float64(initNumOfShards) {
 			t.Errorf("localhost:%v: shard_id must be < %v: %v", port, initNumOfShards, res["id"].(int))
 		}

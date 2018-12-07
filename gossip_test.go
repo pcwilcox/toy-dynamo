@@ -13,7 +13,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -23,14 +22,29 @@ import (
 type TestShard struct {
 }
 
-func (s *TestShard) Count() int {
+func (s *TestShard) CountServers() int {
 	return 1
 }
 
-func (s *TestShard) Contains(in string) bool {
+func (s *TestShard) CountShards() int {
+	return 1
+}
+
+func (s *TestShard) ContainsShard(in string) bool {
 	return true
 }
 
+func (s *TestShard) ContainsServer(in string) bool {
+	return true
+}
+
+func (s *TestShard) FindBob(in string) string {
+	return "bob"
+}
+
+func (s *TestShard) GetIP() string {
+	return "an IP"
+}
 func (s *TestShard) Remove(in string) bool {
 	return true
 }
@@ -43,8 +57,16 @@ func (s *TestShard) Random(n int) []string {
 	return []string{}
 }
 
-func (s *TestShard) Primary() string {
+func (s *TestShard) PrimaryID() string {
 	return ""
+}
+
+func (s *TestShard) RandomGlobal(n int) []string {
+	return []string{}
+}
+
+func (s *TestShard) RandomLocal(n int) []string {
+	return []string{}
 }
 
 func (s *TestShard) List() []string {
@@ -55,10 +77,13 @@ func (s *TestShard) String() string {
 	return ""
 }
 
-func (s *TestShard) Overwrite(in []string) {
+func (s *TestShard) Overwrite(in ShardGlob) {
 	// does nothing
 }
 
+func (s *TestShard) GetShardGlob() ShardGlob {
+	return ShardGlob{}
+}
 func TestSetTimeSetsTime(t *testing.T) {
 	before := time.Now()
 
@@ -103,7 +128,7 @@ func TestClockPrunePrunesClocks(t *testing.T) {
 	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, shardList: &s}
+	g := GossipVals{kvs: &k, ShardList: &s}
 
 	// Mock an input
 	ig := TimeGlob{
@@ -136,7 +161,7 @@ func TestBuildEntryGlobBuildsGlob(t *testing.T) {
 	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, shardList: s}
+	g := GossipVals{kvs: &k, ShardList: &s}
 
 	// Mock an input
 	ig := TimeGlob{
@@ -163,55 +188,6 @@ func TestBuildEntryGlobBuildsGlob(t *testing.T) {
 
 }
 
-func TestUpdateViewsUpdatesViews(t *testing.T) {
-	// Mock a KVS
-	timeExists := time.Now()
-	k := TestKVS{
-		dbClock: map[string]int{keyExists: 1},
-		dbKey:   keyExists,
-		dbTime:  timeExists,
-		dbVal:   valExists,
-	}
-
-	// Mock a view
-	s := TestShard{}
-
-	// Make a gossip
-	g := GossipVals{kvs: &k, shardList: &s}
-
-	newView := []string{"172.132.164.20:8081", "172.132.164.50:8082"}
-	s := strings.Join(newView, ",")
-
-	g.UpdateViews(newView)
-
-	assert(t, g.view.String() == s, "UpdateViews didn't update the view")
-
-}
-
-func TestUpdateViewsEmptyInputDoesntUpdate(t *testing.T) {
-	// Mock a KVS
-	timeExists := time.Now()
-	k := TestKVS{
-		dbClock: map[string]int{keyExists: 1},
-		dbKey:   keyExists,
-		dbTime:  timeExists,
-		dbVal:   valExists,
-	}
-
-	// Mock a view
-	s := TestShard{}
-
-	// Make a gossip
-	g := GossipVals{kvs: &k, shardList: &s}
-
-	newView := []string{}
-	s := g.view.String()
-
-	g.UpdateViews(newView)
-
-	assert(t, g.view.String() == s, "UpdateViews updated the view")
-}
-
 func TestConflictResolutionKeyNotExist(t *testing.T) {
 	// Mock a KVS
 	timeExists := time.Now()
@@ -226,7 +202,7 @@ func TestConflictResolutionKeyNotExist(t *testing.T) {
 	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, shardList: &s}
+	g := GossipVals{kvs: &k, ShardList: &s}
 
 	// Mock an input that Bob doesn't have
 	keyNotExistsEntry := Entry{
@@ -255,7 +231,7 @@ func TestConflictResolutionKeyExistAliceBigger(t *testing.T) {
 	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, shardList: &s}
+	g := GossipVals{kvs: &k, ShardList: &s}
 
 	// Mock an input that Bob doesn't have
 	newKeyExistsEntry := Entry{
@@ -284,7 +260,7 @@ func TestConflictResolutionKeyExistBobBigger(t *testing.T) {
 	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, shardList: &s}
+	g := GossipVals{kvs: &k, ShardList: &s}
 
 	// Mock an input that Bob doesn't have
 	newKeyExistsEntry := Entry{
@@ -313,7 +289,7 @@ func TestConflictResolutionKeyExistAliceLater(t *testing.T) {
 	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, shardList: &s}
+	g := GossipVals{kvs: &k, ShardList: &s}
 	time.Sleep(1 * time.Second)
 
 	aliceTime := time.Now()
@@ -347,7 +323,7 @@ func TestConflictResolutionKeyExistBobLater(t *testing.T) {
 	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, shardList: &s}
+	g := GossipVals{kvs: &k, ShardList: &s}
 
 	// Mock an input that Bob doesn't have
 	newKeyExistsEntry := Entry{
@@ -376,7 +352,7 @@ func TestUpdateKVSUpdatesKVS(t *testing.T) {
 	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, shardList: &s}
+	g := GossipVals{kvs: &k, ShardList: &s}
 
 	// Mock an input that Bob doesn't have
 	newKeyExistsEntry := Entry{
