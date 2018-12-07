@@ -22,7 +22,11 @@ import (
 type TestShard struct {
 }
 
-func (s *TestShard) Count() int {
+func (s *TestShard) CountServers() int {
+	return 1
+}
+
+func (s *TestShard) CountShards() int {
 	return 1
 }
 
@@ -124,7 +128,7 @@ func TestClockPrunePrunesClocks(t *testing.T) {
 	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, shardList: &s}
+	g := GossipVals{kvs: &k, ShardList: &s}
 
 	// Mock an input
 	ig := TimeGlob{
@@ -157,7 +161,7 @@ func TestBuildEntryGlobBuildsGlob(t *testing.T) {
 	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, shardList: &s}
+	g := GossipVals{kvs: &k, ShardList: &s}
 
 	// Mock an input
 	ig := TimeGlob{
@@ -198,7 +202,7 @@ func TestConflictResolutionKeyNotExist(t *testing.T) {
 	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, shardList: &s}
+	g := GossipVals{kvs: &k, ShardList: &s}
 
 	// Mock an input that Bob doesn't have
 	keyNotExistsEntry := Entry{
@@ -227,7 +231,7 @@ func TestConflictResolutionKeyExistAliceBigger(t *testing.T) {
 	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, shardList: &s}
+	g := GossipVals{kvs: &k, ShardList: &s}
 
 	// Mock an input that Bob doesn't have
 	newKeyExistsEntry := Entry{
@@ -256,7 +260,7 @@ func TestConflictResolutionKeyExistBobBigger(t *testing.T) {
 	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, shardList: &s}
+	g := GossipVals{kvs: &k, ShardList: &s}
 
 	// Mock an input that Bob doesn't have
 	newKeyExistsEntry := Entry{
@@ -285,7 +289,7 @@ func TestConflictResolutionKeyExistAliceLater(t *testing.T) {
 	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, shardList: &s}
+	g := GossipVals{kvs: &k, ShardList: &s}
 	time.Sleep(1 * time.Second)
 
 	aliceTime := time.Now()
@@ -319,7 +323,7 @@ func TestConflictResolutionKeyExistBobLater(t *testing.T) {
 	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, shardList: &s}
+	g := GossipVals{kvs: &k, ShardList: &s}
 
 	// Mock an input that Bob doesn't have
 	newKeyExistsEntry := Entry{
@@ -348,7 +352,7 @@ func TestUpdateKVSUpdatesKVS(t *testing.T) {
 	s := TestShard{}
 
 	// Make a gossip
-	g := GossipVals{kvs: &k, shardList: &s}
+	g := GossipVals{kvs: &k, ShardList: &s}
 
 	// Mock an input that Bob doesn't have
 	newKeyExistsEntry := Entry{
