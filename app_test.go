@@ -45,6 +45,9 @@ type TestKVS struct {
 	dbVersion int
 }
 
+func (kvs *TestKVS) Size() int {
+	return 1
+}
 func (kvs *TestKVS) GetTimestamp(key string) time.Time {
 	if key == kvs.dbKey {
 		return kvs.dbTime

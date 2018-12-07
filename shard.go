@@ -28,9 +28,10 @@ type Shard interface {
 	// Return number of servers
 	CountServers() int
 
-	// Returns the number of elemetns in the shard map
+	// Return true if we contain the server
 	ContainsServer(string) bool
 
+	// Return true if we contain the shard
 	ContainsShard(string) bool
 
 	// Deletes a shard ID from the shard list
@@ -38,6 +39,12 @@ type Shard interface {
 
 	// Inserts an shard ID into the shard list
 	Add(string) bool
+
+	// Returns a slice of shard IDs
+	GetAllShards() string
+
+	// Return a string of members of one shard
+	GetMembers(string) string
 
 	// Returns the actual shard ID I am in
 	PrimaryID() string
@@ -87,6 +94,27 @@ type ShardList struct {
 	Tree         RBTree              // This is our red-black tree holding the shard positions on the ring
 	Size         int                 // total number of servers
 	NumShards    int                 // total number of shards
+}
+
+// GetAllShards returns a comma-separated list of shards
+func (s *ShardList) GetAllShards() string {
+	if s != nil {
+		var sl []string
+		for k := range s.ShardString {
+			sl = append(sl, k)
+		}
+		st := strings.Join(sl, ", ")
+		return st
+	}
+	return ""
+}
+
+// GetMembers returns the members of one shard
+func (s *ShardList) GetMembers(shard string) string {
+	if s != nil {
+		return s.ShardString[shard]
+	}
+	return ""
 }
 
 // FindBob returns a random element of the chosen shard

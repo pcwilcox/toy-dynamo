@@ -14,10 +14,17 @@ package main
 
 const (
 	// These control the REST API
-	rootURL   = "/keyValue-store" // We hang the router off this
-	port      = ":8080"           // This is used for the TCP module
-	search    = "/search"
-	view      = "/view"
+	rootURL = "/keyValue-store" // We hang the router off this
+	port    = ":8080"           // This is used for the TCP module
+	search  = "/search"
+	view    = "/view"
+	shard   = "/shard"
+	members = "/members"
+	count   = "/count"
+	myID    = "/my_id"
+	allID   = "/all_ids"
+
+	changeNum = "/changeShardNumber"
 	keySuffix = "/{subject}"
 
 	// Maximum input restrictions
