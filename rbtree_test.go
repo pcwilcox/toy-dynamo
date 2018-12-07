@@ -19,7 +19,7 @@ func TestNodeSizeReturnsSize(t *testing.T) {
 
 	w := RBNode{
 		Key:    1,
-		Value:  1,
+		Value:  "A",
 		Color:  false,
 		Weight: 1,
 		Left:   nil,
@@ -29,7 +29,7 @@ func TestNodeSizeReturnsSize(t *testing.T) {
 
 	x := RBNode{
 		Key:    3,
-		Value:  1,
+		Value:  "B",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -38,7 +38,7 @@ func TestNodeSizeReturnsSize(t *testing.T) {
 
 	y := RBNode{
 		Key:    2,
-		Value:  1,
+		Value:  "C",
 		Color:  black,
 		Weight: 3,
 		Left:   &w,
@@ -53,7 +53,7 @@ func TestNodeFlipColorsFlipsColors(t *testing.T) {
 
 	w := RBNode{
 		Key:    1,
-		Value:  1,
+		Value:  "A",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -65,7 +65,7 @@ func TestNodeFlipColorsFlipsColors(t *testing.T) {
 	w.Color = black
 	x := RBNode{
 		Key:    3,
-		Value:  1,
+		Value:  "A",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -74,7 +74,7 @@ func TestNodeFlipColorsFlipsColors(t *testing.T) {
 
 	y := RBNode{
 		Key:    2,
-		Value:  1,
+		Value:  "A",
 		Color:  red,
 		Weight: 3,
 		Left:   &w,
@@ -89,21 +89,21 @@ func TestNodeFlipColorsFlipsColors(t *testing.T) {
 
 func TestNodeGet(t *testing.T) {
 	var u *RBNode
-	assert(t, u.get(1) == -1, "Get failed on nil node")
+	assert(t, u.get(1) == "", "Get failed on nil node")
 
 	w := RBNode{
 		Key:    1,
-		Value:  1,
+		Value:  "A",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
 		Right:  nil,
 	}
-	assert(t, w.get(1) == 1, "get failed to return value")
+	assert(t, w.get(1) == "A", "get failed to return value")
 
 	x := RBNode{
 		Key:    3,
-		Value:  10,
+		Value:  "AA",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -112,16 +112,16 @@ func TestNodeGet(t *testing.T) {
 
 	y := RBNode{
 		Key:    2,
-		Value:  20,
+		Value:  "BB",
 		Color:  black,
 		Weight: 3,
 		Left:   &w,
 		Right:  &x,
 	}
 
-	assert(t, y.get(1) == 1, "get failed to return left value")
-	assert(t, y.get(2) == 20, "get failed to return middle value")
-	assert(t, y.get(3) == 10, "get failed to return right value")
+	assert(t, y.get(1) == "A", "get failed to return left value")
+	assert(t, y.get(2) == "BB", "get failed to return middle value")
+	assert(t, y.get(3) == "AA", "get failed to return right value")
 }
 
 func TestIsRed(t *testing.T) {
@@ -129,7 +129,7 @@ func TestIsRed(t *testing.T) {
 	assert(t, !u.isRed(), "isRed returned true for nil node")
 	w := RBNode{
 		Key:    1,
-		Value:  1,
+		Value:  "A",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -141,13 +141,13 @@ func TestIsRed(t *testing.T) {
 }
 
 func TestNewNode(t *testing.T) {
-	w := newNode(1, 2, black)
+	w := newNode(1, "A", black)
 	equals(t, 1, w.Key)
-	equals(t, 2, w.Value)
+	equals(t, "A", w.Value)
 	equals(t, black, w.Color)
-	x := newNode(3, 4, red)
+	x := newNode(3, "B", red)
 	equals(t, 3, x.Key)
-	equals(t, 4, x.Value)
+	equals(t, "B", x.Value)
 	equals(t, red, x.Color)
 	assert(t, x.Left == nil, "left child assigned")
 	assert(t, x.Right == nil, "right child assigned")
@@ -158,7 +158,7 @@ func TestNodeMin(t *testing.T) {
 	assert(t, u.min() == nil, "min returned a non-nil value")
 	w := RBNode{
 		Key:    1,
-		Value:  1,
+		Value:  "A",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -168,7 +168,7 @@ func TestNodeMin(t *testing.T) {
 
 	y := RBNode{
 		Key:    2,
-		Value:  20,
+		Value:  "B",
 		Color:  black,
 		Weight: 3,
 		Left:   &w,
@@ -184,7 +184,7 @@ func TestNodeRotateRight(t *testing.T) {
 
 	w := RBNode{
 		Key:    1,
-		Value:  1,
+		Value:  "A",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -194,7 +194,7 @@ func TestNodeRotateRight(t *testing.T) {
 
 	x := RBNode{
 		Key:    3,
-		Value:  10,
+		Value:  "B",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -203,7 +203,7 @@ func TestNodeRotateRight(t *testing.T) {
 
 	y := RBNode{
 		Key:    2,
-		Value:  20,
+		Value:  "C",
 		Color:  black,
 		Weight: 3,
 		Left:   &w,
@@ -225,7 +225,7 @@ func TestNodeRotateLeft(t *testing.T) {
 
 	w := RBNode{
 		Key:    1,
-		Value:  1,
+		Value:  "A",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -235,7 +235,7 @@ func TestNodeRotateLeft(t *testing.T) {
 
 	x := RBNode{
 		Key:    3,
-		Value:  10,
+		Value:  "B",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -244,7 +244,7 @@ func TestNodeRotateLeft(t *testing.T) {
 
 	y := RBNode{
 		Key:    2,
-		Value:  20,
+		Value:  "C",
 		Color:  black,
 		Weight: 3,
 		Left:   &w,
@@ -262,51 +262,51 @@ func TestNodeRotateLeft(t *testing.T) {
 
 func TestNodePut(t *testing.T) {
 	var u *RBNode
-	u = u.put(20, 20)
+	u = u.put(20, "A")
 	assert(t, u != nil, "put on a nil node returned nil")
 	equals(t, 20, u.Key)
-	equals(t, 20, u.Value)
+	equals(t, "A", u.Value)
 	equals(t, red, u.Color)
 	u.Color = black
 
-	u = u.put(10, 10)
+	u = u.put(10, "AA")
 	assert(t, u != nil, "put on a non-nil node returned nil")
 	equals(t, 20, u.Key)
-	equals(t, 20, u.Value)
+	equals(t, "A", u.Value)
 	equals(t, 10, u.Left.Key)
-	equals(t, 10, u.Left.Value)
+	equals(t, "AA", u.Left.Value)
 	equals(t, red, u.Left.Color)
 	u.Color = black
 
-	u = u.put(30, 30)
+	u = u.put(30, "CC")
 	assert(t, u != nil, "put on a non-nil node returned nil")
 	equals(t, 20, u.Key)
-	equals(t, 20, u.Value)
+	equals(t, "A", u.Value)
 	equals(t, 10, u.Left.Key)
-	equals(t, 10, u.Left.Value)
+	equals(t, "AA", u.Left.Value)
 	equals(t, black, u.Left.Color)
 	equals(t, 30, u.Right.Key)
-	equals(t, 30, u.Right.Value)
+	equals(t, "CC", u.Right.Value)
 	equals(t, black, u.Right.Color)
 	equals(t, red, u.Color)
 	u.Color = black
 
-	u = u.put(30, 300)
-	equals(t, 300, u.Right.Value)
+	u = u.put(30, "D")
+	equals(t, "D", u.Right.Value)
 
-	u = u.put(40, 40)
+	u = u.put(40, "E")
 	equals(t, black, u.Color)
 	u.Color = black
 
-	u = u.put(50, 50)
+	u = u.put(50, "F")
 	equals(t, red, u.Left.Color)
 	u.Color = black
 
-	u = u.put(1, 1)
+	u = u.put(1, "alice")
 	u.Color = black
-	u = u.put(2, 2)
+	u = u.put(2, "bob")
 	u.Color = black
-	u = u.put(3, 3)
+	u = u.put(3, "carol")
 	u.Color = black
 	equals(t, red, u.Left.Right.Left.Color)
 }
@@ -316,7 +316,7 @@ func TestNodeCeil(t *testing.T) {
 	assert(t, u.ceil(1) == nil, "ceil returned a non-nil value")
 	w := RBNode{
 		Key:    1,
-		Value:  1,
+		Value:  "alice",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -326,7 +326,7 @@ func TestNodeCeil(t *testing.T) {
 
 	x := RBNode{
 		Key:    5,
-		Value:  50,
+		Value:  "bob",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -335,7 +335,7 @@ func TestNodeCeil(t *testing.T) {
 
 	y := RBNode{
 		Key:    3,
-		Value:  30,
+		Value:  "carol",
 		Color:  black,
 		Weight: 3,
 		Left:   &w,
@@ -351,7 +351,7 @@ func TestNodeFloor(t *testing.T) {
 	assert(t, u.floor(1) == nil, "ceil returned a non-nil value")
 	w := RBNode{
 		Key:    1,
-		Value:  1,
+		Value:  "alice",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -361,7 +361,7 @@ func TestNodeFloor(t *testing.T) {
 
 	x := RBNode{
 		Key:    5,
-		Value:  50,
+		Value:  "bob",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -370,7 +370,7 @@ func TestNodeFloor(t *testing.T) {
 
 	y := RBNode{
 		Key:    3,
-		Value:  30,
+		Value:  "carol",
 		Color:  black,
 		Weight: 3,
 		Left:   &w,
@@ -387,7 +387,7 @@ func TestNodeSelection(t *testing.T) {
 
 	w := RBNode{
 		Key:    1,
-		Value:  1,
+		Value:  "alice",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -397,7 +397,7 @@ func TestNodeSelection(t *testing.T) {
 
 	x := RBNode{
 		Key:    5,
-		Value:  50,
+		Value:  "bob",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -406,7 +406,7 @@ func TestNodeSelection(t *testing.T) {
 
 	y := RBNode{
 		Key:    3,
-		Value:  30,
+		Value:  "carol",
 		Color:  black,
 		Weight: 3,
 		Left:   &w,
@@ -424,7 +424,7 @@ func TestNodeRank(t *testing.T) {
 
 	w := RBNode{
 		Key:    1,
-		Value:  1,
+		Value:  "alice",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -434,7 +434,7 @@ func TestNodeRank(t *testing.T) {
 
 	x := RBNode{
 		Key:    5,
-		Value:  50,
+		Value:  "bob",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -443,7 +443,7 @@ func TestNodeRank(t *testing.T) {
 
 	y := RBNode{
 		Key:    3,
-		Value:  30,
+		Value:  "carol",
 		Color:  black,
 		Weight: 3,
 		Left:   &w,
@@ -462,7 +462,7 @@ func TestNodeMoveRedLeft(t *testing.T) {
 
 	w := RBNode{
 		Key:    1,
-		Value:  1,
+		Value:  "alice",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -472,7 +472,7 @@ func TestNodeMoveRedLeft(t *testing.T) {
 
 	x := RBNode{
 		Key:    5,
-		Value:  50,
+		Value:  "bob",
 		Color:  red,
 		Weight: 1,
 		Left:   nil,
@@ -481,7 +481,7 @@ func TestNodeMoveRedLeft(t *testing.T) {
 
 	y := RBNode{
 		Key:    3,
-		Value:  30,
+		Value:  "charles",
 		Color:  black,
 		Weight: 3,
 		Left:   nil,
@@ -490,7 +490,7 @@ func TestNodeMoveRedLeft(t *testing.T) {
 
 	v := RBNode{
 		Key:    6,
-		Value:  60,
+		Value:  "david",
 		Color:  red,
 		Weight: 1,
 		Left:   nil,
@@ -498,7 +498,7 @@ func TestNodeMoveRedLeft(t *testing.T) {
 	}
 	u = &RBNode{
 		Key:    7,
-		Value:  70,
+		Value:  "eddie",
 		Color:  black,
 		Weight: 2,
 		Left:   &v,
@@ -521,7 +521,7 @@ func TestNodeMoveRedRight(t *testing.T) {
 
 	w := RBNode{
 		Key:    10,
-		Value:  1,
+		Value:  "alice",
 		Color:  red,
 		Weight: 1,
 		Left:   nil,
@@ -532,7 +532,7 @@ func TestNodeMoveRedRight(t *testing.T) {
 
 	x := RBNode{
 		Key:    50,
-		Value:  50,
+		Value:  "bob",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -541,7 +541,7 @@ func TestNodeMoveRedRight(t *testing.T) {
 
 	y := RBNode{
 		Key:    30,
-		Value:  30,
+		Value:  "carol",
 		Color:  black,
 		Weight: 3,
 		Left:   nil,
@@ -553,7 +553,7 @@ func TestNodeMoveRedRight(t *testing.T) {
 
 	v := RBNode{
 		Key:    1,
-		Value:  60,
+		Value:  "donnie",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -561,7 +561,7 @@ func TestNodeMoveRedRight(t *testing.T) {
 	}
 	u = &RBNode{
 		Key:    7,
-		Value:  70,
+		Value:  "eleanor",
 		Color:  black,
 		Weight: 2,
 		Left:   &v,
@@ -584,7 +584,7 @@ func TestNodeDeleteMin(t *testing.T) {
 
 	w := RBNode{
 		Key:    10,
-		Value:  1,
+		Value:  "adam",
 		Color:  red,
 		Weight: 1,
 		Left:   nil,
@@ -593,7 +593,7 @@ func TestNodeDeleteMin(t *testing.T) {
 	assert(t, w.deleteMin() == nil, "deleteMin returned non-nil for single node")
 	w = RBNode{
 		Key:    10,
-		Value:  1,
+		Value:  "billy",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -602,7 +602,7 @@ func TestNodeDeleteMin(t *testing.T) {
 
 	x := RBNode{
 		Key:    50,
-		Value:  50,
+		Value:  "chuck",
 		Color:  black,
 		Weight: 1,
 		Left:   &w,
@@ -611,7 +611,7 @@ func TestNodeDeleteMin(t *testing.T) {
 
 	y := RBNode{
 		Key:    30,
-		Value:  30,
+		Value:  "dean",
 		Color:  black,
 		Weight: 3,
 		Left:   nil,
@@ -627,7 +627,7 @@ func TestNodeDeleteMin(t *testing.T) {
 
 	w = RBNode{
 		Key:    40,
-		Value:  1,
+		Value:  "eric",
 		Color:  red,
 		Weight: 1,
 		Left:   nil,
@@ -638,7 +638,7 @@ func TestNodeDeleteMin(t *testing.T) {
 
 	u = &RBNode{
 		Key:   1,
-		Value: 1,
+		Value: "frank",
 		Color: black,
 		Left:  nil,
 		Right: nil,
@@ -660,7 +660,7 @@ func TestNodeDelete(t *testing.T) {
 
 	w := RBNode{
 		Key:    10,
-		Value:  1,
+		Value:  "willy",
 		Color:  red,
 		Weight: 1,
 		Left:   nil,
@@ -672,7 +672,7 @@ func TestNodeDelete(t *testing.T) {
 
 	v := RBNode{
 		Key:    35,
-		Value:  35,
+		Value:  "xavier",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -680,7 +680,7 @@ func TestNodeDelete(t *testing.T) {
 	}
 	r := RBNode{
 		Key:    25,
-		Value:  25,
+		Value:  "tomas",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -689,7 +689,7 @@ func TestNodeDelete(t *testing.T) {
 
 	y := RBNode{
 		Key:    30,
-		Value:  30,
+		Value:  "ralph",
 		Color:  black,
 		Weight: 3,
 		Left:   &r,
@@ -698,7 +698,7 @@ func TestNodeDelete(t *testing.T) {
 
 	w = RBNode{
 		Key:    10,
-		Value:  1,
+		Value:  "brian",
 		Color:  black,
 		Weight: 4,
 		Left:   nil,
@@ -706,7 +706,7 @@ func TestNodeDelete(t *testing.T) {
 	}
 	x := RBNode{
 		Key:    50,
-		Value:  50,
+		Value:  "timmy",
 		Color:  red,
 		Weight: 5,
 		Left:   &w,
@@ -726,7 +726,7 @@ func TestNodeMax(t *testing.T) {
 
 	w := RBNode{
 		Key:    10,
-		Value:  1,
+		Value:  "yvonne",
 		Color:  red,
 		Weight: 1,
 		Left:   nil,
@@ -735,7 +735,7 @@ func TestNodeMax(t *testing.T) {
 	assert(t, w.max() == &w, "max returned wrong value for single node")
 	w = RBNode{
 		Key:    10,
-		Value:  1,
+		Value:  "ezekiel",
 		Color:  black,
 		Weight: 1,
 		Left:   nil,
@@ -744,7 +744,7 @@ func TestNodeMax(t *testing.T) {
 
 	x := RBNode{
 		Key:    50,
-		Value:  50,
+		Value:  "steve",
 		Color:  black,
 		Weight: 1,
 		Left:   &w,
@@ -753,7 +753,7 @@ func TestNodeMax(t *testing.T) {
 
 	y := RBNode{
 		Key:    30,
-		Value:  30,
+		Value:  "hector",
 		Color:  black,
 		Weight: 3,
 		Left:   nil,
@@ -768,7 +768,7 @@ func TestNodeMax(t *testing.T) {
 
 	v := RBNode{
 		Key:    75,
-		Value:  30,
+		Value:  "leiland",
 		Color:  black,
 		Weight: 3,
 		Left:   nil,
@@ -785,10 +785,10 @@ func TestTreeSize(t *testing.T) {
 	var r *RBTree
 	equals(t, 0, r.size())
 
-	w := newNode(1, 1, true)
+	w := newNode(1, "scott", true)
 	r = &RBTree{Root: w}
 	equals(t, 1, r.size())
-	x := newNode(10, 10, false)
+	x := newNode(10, "amy", false)
 	x.Left = w
 	x.Weight = 2
 	r.Root = x
@@ -797,36 +797,36 @@ func TestTreeSize(t *testing.T) {
 
 func TestTreeGet(t *testing.T) {
 	var r *RBTree
-	equals(t, -1, r.get(10))
+	equals(t, "", r.get(10))
 	r = &RBTree{}
 
-	r.put(10, 10)
-	equals(t, 10, r.get(10))
+	r.put(10, "harold")
+	equals(t, "harold", r.get(10))
 
-	r.put(20, 20)
-	equals(t, 20, r.get(20))
+	r.put(20, "charles")
+	equals(t, "charles", r.get(20))
 }
 
 func TestTreePut(t *testing.T) {
 	var r *RBTree
 
-	r.put(10, 10)
-	equals(t, -1, r.get(10))
+	r.put(10, "mark")
+	equals(t, "", r.get(10))
 
 	r = &RBTree{}
-	r.put(10, 10)
-	equals(t, 10, r.get(10))
+	r.put(10, "nicholas")
+	equals(t, "nicholas", r.get(10))
 }
 
 func TestTreeMin(t *testing.T) {
 	var r *RBTree
-	equals(t, -1, r.min())
+	equals(t, "", r.min())
 
 	r = &RBTree{}
-	r.put(10, 10)
-	equals(t, 10, r.min())
-	r.put(100, 100)
-	equals(t, 10, r.min())
+	r.put(10, "thomas")
+	equals(t, "thomas", r.min())
+	r.put(100, "gary")
+	equals(t, "thomas", r.min())
 
 }
 
@@ -835,7 +835,7 @@ func TestTreeFloor(t *testing.T) {
 	equals(t, -1, r.floor(1))
 
 	r = &RBTree{}
-	r.put(10, 10)
+	r.put(10, "larry")
 	equals(t, 10, r.floor(50))
 	equals(t, -1, r.floor(1))
 }
@@ -845,7 +845,7 @@ func TestTreeSelection(t *testing.T) {
 	equals(t, -1, r.selection(1))
 
 	r = &RBTree{}
-	r.put(10, 10)
+	r.put(10, "terry")
 	equals(t, 10, r.selection(0))
 	equals(t, -1, r.selection(10))
 }
@@ -855,7 +855,7 @@ func TestTreeRank(t *testing.T) {
 	equals(t, -1, r.rank(1))
 
 	r = &RBTree{}
-	r.put(10, 10)
+	r.put(10, "maury")
 	equals(t, 1, r.rank(11))
 	equals(t, 0, r.rank(5))
 }
@@ -865,14 +865,14 @@ func TestTreeDeleteMin(t *testing.T) {
 	r.deleteMin()
 
 	r = &RBTree{}
-	r.put(10, 10)
-	r.put(1, 1)
-	r.put(25, 25)
-	r.put(100, 100)
-	r.put(2, 2)
-	equals(t, 1, r.min())
+	r.put(10, "barry")
+	r.put(1, "gerry")
+	r.put(25, "harry")
+	r.put(100, "kerry")
+	r.put(2, "perry")
+	equals(t, "gerry", r.min())
 	r.deleteMin()
-	equals(t, 2, r.min())
+	equals(t, "perry", r.min())
 
 }
 
@@ -881,54 +881,54 @@ func TestTreeDelete(t *testing.T) {
 	r.delete(10)
 
 	r = &RBTree{}
-	r.put(10, 10)
-	r.put(1, 1)
-	r.put(25, 25)
-	r.put(50, 50)
+	r.put(10, "aiden")
+	r.put(1, "tyler")
+	r.put(25, "dakota")
+	r.put(50, "abcde")
 	r.delete(10)
 	r.delete(50)
-	equals(t, -1, r.get(10))
-	equals(t, 1, r.get(1))
-	equals(t, 25, r.get(25))
+	equals(t, "", r.get(10))
+	equals(t, "tyler", r.get(1))
+	equals(t, "dakota", r.get(25))
 
 }
 
 func TestTreeMax(t *testing.T) {
 	var r *RBTree
-	equals(t, -1, r.max())
+	equals(t, "", r.max())
 
 	r = &RBTree{}
 
-	r.put(10, 10)
-	equals(t, 10, r.max())
-	r.put(100, 100)
-	equals(t, 100, r.max())
+	r.put(10, "dakota")
+	equals(t, "dakota", r.max())
+	r.put(100, "bruce")
+	equals(t, "bruce", r.max())
 }
 
 func TestTreeSuccessor(t *testing.T) {
 	var r *RBTree
-	equals(t, -1, r.successor(10))
+	equals(t, "", r.successor(10))
 
 	r = &RBTree{}
-	r.put(10, 10)
-	r.put(20, 20)
-	r.put(1, 1)
-	equals(t, 10, r.successor(10))
-	equals(t, 10, r.successor(5))
-	equals(t, 20, r.successor(15))
-	equals(t, 1, r.successor(25))
+	r.put(10, "sasha")
+	r.put(20, "michelle")
+	r.put(1, "barack")
+	equals(t, "sasha", r.successor(10))
+	equals(t, "sasha", r.successor(5))
+	equals(t, "michelle", r.successor(15))
+	equals(t, "barack", r.successor(25))
 }
 
 func TestTreePredecessor(t *testing.T) {
 	var r *RBTree
-	equals(t, -1, r.predecessor(1))
+	equals(t, "", r.predecessor(1))
 
 	r = &RBTree{}
-	r.put(10, 10)
-	r.put(20, 20)
-	r.put(1, 1)
-	equals(t, 10, r.predecessor(10))
-	equals(t, 10, r.predecessor(15))
-	equals(t, 20, r.predecessor(25))
-	equals(t, 1, r.predecessor(5))
+	r.put(10, "peter")
+	r.put(20, "dimitris")
+	r.put(1, "heiner")
+	equals(t, "peter", r.predecessor(10))
+	equals(t, "peter", r.predecessor(15))
+	equals(t, "dimitris", r.predecessor(25))
+	equals(t, "heiner", r.predecessor(5))
 }

@@ -15,7 +15,9 @@ import (
 	"sync"
 )
 
-// RBTree is a red-black tree
+// RBTree is a red-black tree structure which balances itself in order
+// to maintain O(logn) insert, delete, search times. It uses integers
+// for keys and strings for values.
 type RBTree struct {
 	Root  *RBNode // the root RBNode
 	Mutex sync.RWMutex
@@ -27,6 +29,7 @@ const (
 	black = false
 )
 
+// Returns number of keys in the tree
 func (r *RBTree) size() int {
 	if r != nil {
 		r.Mutex.RLock()
@@ -36,16 +39,18 @@ func (r *RBTree) size() int {
 	return 0
 }
 
-func (r *RBTree) get(key int) int {
+// Returns value associated with a particular key if it exists
+func (r *RBTree) get(key int) string {
 	if r != nil {
 		r.Mutex.RLock()
 		defer r.Mutex.RUnlock()
 		return r.Root.get(key)
 	}
-	return -1
+	return ""
 }
 
-func (r *RBTree) put(key int, value int) {
+// Inserts a value associated with a particular key
+func (r *RBTree) put(key int, value string) {
 	if r != nil {
 		r.Mutex.Lock()
 		defer r.Mutex.Unlock()
@@ -58,15 +63,18 @@ func (r *RBTree) put(key int, value int) {
 	}
 }
 
-func (r *RBTree) min() int {
+// Returns the value of the smallest key
+func (r *RBTree) min() string {
 	if r != nil {
 		r.Mutex.RLock()
 		defer r.Mutex.RUnlock()
-		return r.Root.min().Key
+		return r.Root.min().Value
 	}
-	return -1
+	return ""
 }
 
+// Returns key X such that X is the largest key which is less than
+// or equal to the input
 func (r *RBTree) floor(key int) int {
 	if r != nil {
 		r.Mutex.RLock()
@@ -79,6 +87,7 @@ func (r *RBTree) floor(key int) int {
 	return -1
 }
 
+// Returns key X such that X is the k-th smallest key
 func (r *RBTree) selection(k int) int {
 	if r != nil {
 		r.Mutex.RLock()
@@ -91,6 +100,7 @@ func (r *RBTree) selection(k int) int {
 	return -1
 }
 
+// Returns the number of keys smaller than k
 func (r *RBTree) rank(k int) int {
 	if r != nil {
 		r.Mutex.RLock()
@@ -100,6 +110,7 @@ func (r *RBTree) rank(k int) int {
 	return -1
 }
 
+// Deletes the node with the minimum key
 func (r *RBTree) deleteMin() {
 	if r != nil {
 		r.Mutex.Lock()
@@ -114,6 +125,7 @@ func (r *RBTree) deleteMin() {
 	}
 }
 
+// Deletes the node with key k
 func (r *RBTree) delete(k int) {
 	if r != nil {
 		r.Mutex.Lock()
@@ -128,17 +140,20 @@ func (r *RBTree) delete(k int) {
 	}
 }
 
-func (r *RBTree) max() int {
+// Returns the value of the maximum key
+func (r *RBTree) max() string {
 	if r != nil && r.Root != nil {
 		r.Mutex.RLock()
 		defer r.Mutex.RUnlock()
 		x := r.Root.max()
 		return x.Value
 	}
-	return -1
+	return ""
 }
 
-func (r *RBTree) successor(k int) int {
+// If there is a key k, returns its value. Otherwise, if there is a
+// larger key, return that value. Otherwise, return the smallest value.
+func (r *RBTree) successor(k int) string {
 	if r != nil && r.Root != nil {
 		r.Mutex.RLock()
 		defer r.Mutex.RUnlock()
@@ -148,10 +163,12 @@ func (r *RBTree) successor(k int) int {
 		}
 		return r.min()
 	}
-	return -1
+	return ""
 }
 
-func (r *RBTree) predecessor(k int) int {
+// If there is a key k, returns its value. Otherwise, if there is a
+// smaller value, returns it. Otherwise, returns the largest value.
+func (r *RBTree) predecessor(k int) string {
 	if r != nil && r.Root != nil {
 		r.Mutex.RLock()
 		defer r.Mutex.RUnlock()
@@ -161,13 +178,13 @@ func (r *RBTree) predecessor(k int) int {
 		}
 		return r.max()
 	}
-	return -1
+	return ""
 }
 
 // RBNode is a RBNode in a RBTree
 type RBNode struct {
 	Key    int     // hashed position on the ring
-	Value  int     // shard ID
+	Value  string  // shard ID
 	Left   *RBNode // Left child
 	Right  *RBNode // Right child
 	Weight int     // number of RBNodes on this subtree
@@ -329,7 +346,7 @@ func (n *RBNode) min() *RBNode {
 	return nil
 }
 
-func (n *RBNode) put(key int, value int) *RBNode {
+func (n *RBNode) put(key int, value string) *RBNode {
 	if n != nil {
 		if key < n.Key {
 			n.Left = n.Left.put(key, value)
@@ -354,7 +371,7 @@ func (n *RBNode) put(key int, value int) *RBNode {
 	return n
 }
 
-func newNode(key int, value int, color bool) *RBNode {
+func newNode(key int, value string, color bool) *RBNode {
 	n := RBNode{
 		Key:    key,
 		Value:  value,
@@ -366,7 +383,7 @@ func newNode(key int, value int, color bool) *RBNode {
 	return &n
 }
 
-func (n *RBNode) get(key int) int {
+func (n *RBNode) get(key int) string {
 	if n != nil {
 		if key < n.Key {
 			return n.Left.get(key)
@@ -376,7 +393,7 @@ func (n *RBNode) get(key int) int {
 		}
 		return n.Value
 	}
-	return -1
+	return ""
 }
 
 func (n *RBNode) isRed() bool {
