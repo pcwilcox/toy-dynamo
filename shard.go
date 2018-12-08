@@ -317,13 +317,20 @@ func (s *ShardList) ContainsShard(shardID string) bool {
 // ContainsServer checks to see if the server exists
 func (s *ShardList) ContainsServer(ip string) bool {
 	if s != nil {
+		log.Println("Checking to see if we hold server ", ip)
 		s.Mutex.RLock()
 		defer s.Mutex.RUnlock()
-		for _, v := range s.ShardSlice {
-			for _, i := range v {
-				if i == ip {
-					return true
-				}
+		return s.containsServer(ip)
+	}
+	return false
+}
+
+// ContainsServer checks to see if the server exists
+func (s *ShardList) containsServer(ip string) bool {
+	for _, v := range s.ShardSlice {
+		for _, i := range v {
+			if i == ip {
+				return true
 			}
 		}
 	}
@@ -382,18 +389,27 @@ func (s *ShardList) RemoveServer(server string) bool {
 	if s != nil {
 		s.Mutex.Lock()
 		defer s.Mutex.Unlock()
+		log.Println("Attempting to remove server ", server)
+
+		var newShardCount int
+		extraServers := s.numLeftoverServers()
+		if extraServers < 1 {
+			log.Println("Reducing shard count")
+			newShardCount = s.NumShards - 1
+		} else {
+			newShardCount = s.NumShards
+		}
 
 		st := s.string()
 		sp := strings.Split(st, ",")
 		newSlice := []string{}
 		for _, v := range sp {
-			if v == server {
-				continue
+			if v != server {
+				newSlice = append(newSlice, v)
 			}
-			newSlice = append(newSlice, v)
 		}
 		sort.Strings(newSlice)
-		sg := MakeGlob(newSlice, s.NumShards)
+		sg := MakeGlob(newSlice, newShardCount)
 		s.overwrite(sg)
 		return true
 	}
@@ -449,6 +465,10 @@ func (s *ShardList) NumLeftoverServers() int {
 		return s.Size % s.NumShards
 	}
 	return -1
+}
+
+func (s *ShardList) numLeftoverServers() int {
+	return s.Size % s.NumShards
 }
 
 // String returns a comma-separated string of servers
