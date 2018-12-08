@@ -300,14 +300,15 @@ func (s *ShardList) ContainsShard(shardID string) bool {
 	if s != nil {
 		s.Mutex.RLock()
 		defer s.Mutex.RUnlock()
-		log.Println("checking for shard ", shardID)
+		sp := strings.TrimSpace(shardID)
+		log.Println("checking for shard ", sp)
 		for k := range s.ShardSlice {
-			match := k == shardID
+			match := k == sp
 			if match {
-				log.Println(k, " is a match for input", shardID)
+				log.Println(k, " is a match for input", sp)
 			}
 		}
-		_, ok := s.ShardSlice[shardID]
+		_, ok := s.ShardSlice[sp]
 		return ok
 	}
 	return false
