@@ -389,7 +389,7 @@ func (s *ShardList) NumLeftoverServers() int {
 	return -1
 }
 
-// String returns a comma-separated string of shards
+// String returns a comma-separated string of servers
 func (s *ShardList) String() string {
 	if s != nil {
 		s.Mutex.RLock()
@@ -402,11 +402,14 @@ func (s *ShardList) String() string {
 
 func (s *ShardList) string() string {
 	if s != nil {
-		str := make([]string, s.NumShards)
+		str := []string{}
 
-		for i := 0; i < s.NumShards; i++ {
-			str[i] = shardNames[i]
+		for _, v := range s.ShardSlice {
+			for _, t := range v {
+				str = append(str, t)
+			}
 		}
+		sort.Strings(str)
 		j := strings.Join(str, ",")
 		return j
 	}
@@ -521,7 +524,7 @@ func (s *ShardList) ChangeShardNumber(n int) bool {
 		// iterate over the servers
 		for i := 0; i < len(sl); i++ {
 			// index them into the map, mod the number of shards
-			shardIndex := i % s.NumShards
+			shardIndex := i % n
 
 			// the shard id is the index into the name list
 			name := shardNames[shardIndex]
