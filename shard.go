@@ -16,6 +16,7 @@ import (
 	"math/rand"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/go-test/deep"
 )
@@ -94,11 +95,14 @@ type ShardList struct {
 	Tree         RBTree              // This is our red-black tree holding the shard positions on the ring
 	Size         int                 // total number of servers
 	NumShards    int                 // total number of shards
+	Mutex        sync.RWMutex        // lock for the whole thing
 }
 
 // GetAllShards returns a comma-separated list of shards
 func (s *ShardList) GetAllShards() string {
 	if s != nil {
+		s.Mutex.RLock()
+		defer s.Mutex.RUnlock()
 		var sl []string
 		for k := range s.ShardString {
 			sl = append(sl, k)
@@ -112,6 +116,8 @@ func (s *ShardList) GetAllShards() string {
 // GetMembers returns the members of one shard
 func (s *ShardList) GetMembers(shard string) string {
 	if s != nil {
+		s.Mutex.RLock()
+		defer s.Mutex.RUnlock()
 		return s.ShardString[shard]
 	}
 	return ""
@@ -119,16 +125,23 @@ func (s *ShardList) GetMembers(shard string) string {
 
 // FindBob returns a random element of the chosen shard
 func (s *ShardList) FindBob(shard string) string {
-	r := rand.Int()
-	l := s.ShardSlice[shard]
-	i := r % len(l)
-	bob := l[i]
-	return bob
+	if s != nil {
+		s.Mutex.RLock()
+		defer s.Mutex.RUnlock()
+		r := rand.Int()
+		l := s.ShardSlice[shard]
+		i := r % len(l)
+		bob := l[i]
+		return bob
+	}
+	return ""
 }
 
 // GetShardGlob returns a ShardGlob
 func (s *ShardList) GetShardGlob() ShardGlob {
 	if s != nil {
+		s.Mutex.RLock()
+		defer s.Mutex.RUnlock()
 		g := ShardGlob{ShardList: s.ShardSlice}
 		return g
 	}
@@ -137,90 +150,106 @@ func (s *ShardList) GetShardGlob() ShardGlob {
 
 // Overwrite overwrites our view of the world with another
 func (s *ShardList) Overwrite(sg ShardGlob) {
-	if diff := deep.Equal(sg.ShardList, s.ShardSlice); diff != nil {
-		// Remove our old view of the world
-		for k := range s.ShardSlice {
-			delete(s.ShardSlice, k)
-			delete(s.ShardString, k)
-			for _, i := range getVirtualNodePositions(k) {
-				s.Tree.delete(i)
-			}
-		}
-
-		// Write the new one
-		for k, v := range sg.ShardList {
-			// Directly transfer the slices over
-			s.ShardSlice[k] = v
-
-			// Join the slices to form the string
-			s.ShardString[k] = strings.Join(v, ",")
-
-			// Check which shard we're in
-			for i := range v {
-				if v[i] == s.PrimaryIP {
-					s.PrimaryShard = k
+	if s != nil {
+		s.Mutex.Lock()
+		defer s.Mutex.Unlock()
+		if diff := deep.Equal(sg.ShardList, s.ShardSlice); diff != nil {
+			// Remove our old view of the world
+			for k := range s.ShardSlice {
+				delete(s.ShardSlice, k)
+				delete(s.ShardString, k)
+				for _, i := range getVirtualNodePositions(k) {
+					s.Tree.delete(i)
 				}
 			}
 
-			// rebuild the tree
-			for _, i := range getVirtualNodePositions(k) {
-				s.Tree.put(i, k)
-			}
-		}
+			// Write the new one
+			for k, v := range sg.ShardList {
+				// Directly transfer the slices over
+				s.ShardSlice[k] = v
 
-		shardChange = true
+				// Join the slices to form the string
+				s.ShardString[k] = strings.Join(v, ",")
+
+				// Check which shard we're in
+				for i := range v {
+					if v[i] == s.PrimaryIP {
+						s.PrimaryShard = k
+					}
+				}
+
+				// rebuild the tree
+				for _, i := range getVirtualNodePositions(k) {
+					s.Tree.put(i, k)
+				}
+			}
+
+			shardChange = true
+		}
 	}
 
 }
 
 // RandomGlobal returns a random selection of other servers from any shard
 func (s *ShardList) RandomGlobal(n int) []string {
-	var t []string
+	if s != nil {
+		s.Mutex.RLock()
+		defer s.Mutex.RUnlock()
+		var t []string
 
-	if n > s.Size {
-		n = s.Size - 1
-	}
-
-	for _, v := range s.ShardSlice {
-		r := rand.Int() % len(v)
-		if v[r] == s.PrimaryIP {
-			continue
+		if n > s.Size {
+			n = s.Size - 1
 		}
-		t = append(t, v[r])
-		if len(t) >= n {
-			break
-		}
-	}
 
-	return t
+		for _, v := range s.ShardSlice {
+			r := rand.Int() % len(v)
+			if v[r] == s.PrimaryIP {
+				continue
+			}
+			t = append(t, v[r])
+			if len(t) >= n {
+				break
+			}
+		}
+
+		return t
+	}
+	return []string{}
 }
 
 // RandomLocal returns a random selection of other servers from within our own shard
 func (s *ShardList) RandomLocal(n int) []string {
-	var t []string
+	if s != nil {
+		s.Mutex.RLock()
+		defer s.Mutex.RUnlock()
+		var t []string
 
-	l := s.ShardSlice[s.PrimaryShard]
-	if n > len(l)-1 {
-		n = len(l) - 2
-	}
-
-	for len(t) < n {
-		r := rand.Int() % len(l)
-		if l[r] == s.PrimaryIP {
-			continue
+		l := s.ShardSlice[s.PrimaryShard]
+		if n > len(l)-1 {
+			n = len(l) - 2
 		}
-		t = append(t, l[r])
-		if len(t) >= n {
-			break
-		}
-	}
 
-	return t
+		for len(t) < n {
+			r := rand.Int() % len(l)
+			if l[r] == s.PrimaryIP {
+				continue
+			}
+			t = append(t, l[r])
+			if len(t) >= n {
+				break
+			}
+		}
+
+		return t
+	}
+	return []string{}
 }
 
 // CountServers returns the number of servers in the shard map
 func (s *ShardList) CountServers() int {
 	if s != nil {
+		s.Mutex.RLock()
+		defer s.Mutex.RUnlock()
 		return s.Size
 	}
 	return 0
@@ -229,6 +258,8 @@ func (s *ShardList) CountServers() int {
 // CountShards returns the number of shards
 func (s *ShardList) CountShards() int {
 	if s != nil {
+		s.Mutex.RLock()
+		defer s.Mutex.RUnlock()
 		return s.NumShards
 	}
 	return 0
@@ -237,6 +268,8 @@ func (s *ShardList) CountShards() int {
 // ContainsShard returns true if the ShardList contains a given shardID
 func (s *ShardList) ContainsShard(shardID string) bool {
 	if s != nil {
+		s.Mutex.RLock()
+		defer s.Mutex.RUnlock()
 		_, ok := s.ShardSlice[shardID]
 		return ok
 	}
@@ -246,6 +279,8 @@ func (s *ShardList) ContainsShard(shardID string) bool {
 // ContainsServer checks to see if the server exists
 func (s *ShardList) ContainsServer(ip string) bool {
 	if s != nil {
+		s.Mutex.RLock()
+		defer s.Mutex.RUnlock()
 		for _, v := range s.ShardSlice {
 			for _, i := range v {
 				if i == ip {
@@ -260,6 +295,8 @@ func (s *ShardList) ContainsServer(ip string) bool {
 // Remove deletes a shard ID from the shard list
 func (s *ShardList) Remove(shardID string) bool {
 	if s != nil {
+		s.Mutex.Lock()
+		defer s.Mutex.Unlock()
 		delete(s.ShardString, shardID)
 		delete(s.ShardSlice, shardID)
 		s.NumShards--
@@ -272,6 +309,8 @@ func (s *ShardList) Remove(shardID string) bool {
 // Add inserts an shard ID into the my shard list
 func (s *ShardList) Add(newShardID string) bool {
 	if s != nil {
+		s.Mutex.Lock()
+		defer s.Mutex.Unlock()
 		// QUESTION: is here where I choose the random name, or the caller?
 		// Insert newShardID into both maps
 		s.ShardString[newShardID] = ""
@@ -286,6 +325,8 @@ func (s *ShardList) Add(newShardID string) bool {
 // PrimaryID returns the actual shard ID I am in
 func (s *ShardList) PrimaryID() string {
 	if s != nil {
+		s.Mutex.RLock()
+		defer s.Mutex.RUnlock()
 		return s.PrimaryShard
 	}
 	return ""
@@ -294,6 +335,8 @@ func (s *ShardList) PrimaryID() string {
 // GetIP returns my IP
 func (s *ShardList) GetIP() string {
 	if s != nil {
+		s.Mutex.Lock()
+		defer s.Mutex.Unlock()
 		return s.PrimaryIP
 	}
 	return ""
@@ -302,6 +345,8 @@ func (s *ShardList) GetIP() string {
 // NumLeftoverServers returns the number of leftover servers after an uneven spread
 func (s *ShardList) NumLeftoverServers() int {
 	if s != nil {
+		s.Mutex.Lock()
+		defer s.Mutex.Unlock()
 		return s.Size % s.NumShards
 	}
 	return -1
@@ -310,6 +355,8 @@ func (s *ShardList) NumLeftoverServers() int {
 // String returns a comma-separated string of shards
 func (s *ShardList) String() string {
 	if s != nil {
+		s.Mutex.Lock()
+		defer s.Mutex.Unlock()
 		str := make([]string, s.NumShards)
 
 		for i := 0; i < s.NumShards; i++ {
@@ -324,6 +371,8 @@ func (s *ShardList) String() string {
 // NumServerPerShard returns number of servers per shard (equally) after reshuffle
 func (s *ShardList) NumServerPerShard() int {
 	if s != nil {
+		s.Mutex.Lock()
+		defer s.Mutex.Unlock()
 		i := s.Size / s.NumShards
 		if i >= 2 {
 			return i
@@ -338,11 +387,10 @@ func NewShard(primaryIP string, globalView string, numShards int) *ShardList {
 	// init fields
 	shardSlice := make(map[string][]string)
 	shardString := make(map[string]string)
-	rbtree := RBTree{}
 	s := ShardList{
 		ShardSlice:  shardSlice,
 		ShardString: shardString,
-		Tree:        rbtree,
+		Tree:        RBTree{},
 		NumShards:   numShards,
 		PrimaryIP:   primaryIP,
 	}
@@ -393,39 +441,39 @@ func NewShard(primaryIP string, globalView string, numShards int) *ShardList {
 // ChangeShardNumber is called by the REST API
 // Returns true if the change is legal, false otherwise
 func (s *ShardList) ChangeShardNumber(n int, err error) bool {
-	if s.Size/n < 2 {
-		return false
+	if s != nil {
+		s.Mutex.Lock()
+		defer s.Mutex.Unlock()
+		if s.Size/n < 2 {
+			return false
+		}
+
+		// Get our list of servers
+		str := s.String()
+		sl := strings.Split(str, ",")
+		sort.Strings(sl)
+
+		// We'll make a new map for them
+		newMap := make(map[string][]string)
+
+		// iterate over the servers
+		for i := 0; i < len(sl); i++ {
+			// index them into the map, mod the number of shards
+			shardIndex := i % s.NumShards
+
+			// the shard id is the index into the name list
+			name := shardNames[shardIndex]
+
+			// append them to the list
+			newMap[name] = append(newMap[name], sl[i])
+		}
+
+		// make a shardglob
+		sg := ShardGlob{ShardList: newMap}
+
+		s.Overwrite(sg)
+
+		return true
 	}
-
-	// Get our list of servers
-	str := s.String()
-	sl := strings.Split(str, ",")
-	sort.Strings(sl)
-
-	// We'll make a new map for them
-	newMap := make(map[string][]string)
-
-	// iterate over the servers
-	for i := 0; i < len(sl); i++ {
-		// index them into the map, mod the number of shards
-		shardIndex := i % s.NumShards
-
-		// the shard id is the index into the name list
-		name := shardNames[shardIndex]
-
-		// append them to the list
-		newMap[name] = append(newMap[name], sl[i])
-	}
-
-	// make a shardglob
-	sg := ShardGlob{ShardList: newMap}
-
-	s.Overwrite(sg)
-
-	return true
-}
-
-// ShuffleServers redistributes servers among shards
-func (s *ShardList) ShuffleServers() {
-
+	return false
 }
