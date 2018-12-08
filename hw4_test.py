@@ -282,7 +282,14 @@ class TestHW4(unittest.TestCase):
     def checkConsistentMembership(self, ipPort, ID):
         shard = self.checkGetMembers(ipPort, ID)
         for member in shard:
-            self.assertEqual(self.checkGetMyShardId(member), ID)
+            ind = None
+            for container in self.view:
+                if container["networkIpPortAddress"] == member:
+                    ind = container
+
+            if ind != None:
+                ip = ind["testScriptAddress"]
+                self.assertEqual(self.checkGetMyShardId(ip), ID)
 
 ##########################################################################
 ## Tests start here ##
@@ -291,6 +298,7 @@ class TestHW4(unittest.TestCase):
     # check that they do things,
     # not that they do the right thing,
     # just that they don't return an error
+
     def test_a_shard_endpoints(self):
         ipPort = self.view[0]["testScriptAddress"]
 
@@ -299,14 +307,12 @@ class TestHW4(unittest.TestCase):
         self.checkGetMembers(ipPort, ID)
         self.getShardView(ipPort)
 
-    # check everyone agrees about who is where
-    # THIS DOESNT WORK AT ALL
-    # def test_b_shard_consistent_view(self):
-    #     ipPort = self.view[0]["testScriptAddress"]
+    def test_b_shard_consistent_view(self):
+        ipPort = self.view[0]["testScriptAddress"]
 
-    #     shardView = self.getShardView(ipPort)
-    #     for ID in shardView.keys():
-    #         self.checkConsistentMembership(ipPort, ID)
+        shardView = self.getShardView(ipPort)
+        for ID in shardView.keys():
+            self.checkConsistentMembership(ipPort, ID)
 
     # no node is alone in a shard
     def test_c_shard_no_lonely_nodes(self):
