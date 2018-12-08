@@ -16,7 +16,6 @@ import "time"
 
 // dbAccess interface defines methods for interactions between the REST API front end and the key-value store
 type dbAccess interface {
-
 	// Size returns the number of keys
 	Size() int
 

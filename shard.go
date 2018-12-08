@@ -40,12 +40,6 @@ type Shard interface {
 	// Inserts an shard ID into the shard list
 	Add(string) bool
 
-	// Returns a slice of shard IDs
-	GetAllShards() string
-
-	// Return a string of members of one shard
-	GetMembers(string) string
-
 	// Returns the actual shard ID I am in
 	PrimaryID() string
 
@@ -69,6 +63,12 @@ type Shard interface {
 
 	// GetShardGlob returns a Shard object
 	GetShardGlob() ShardGlob
+
+	// GetAllShards returns a comma separated string of all shard ids
+	GetAllShards() string
+
+	// GetMembers returns a comma separated string of all member servers addresses
+	GetMembers(string) string
 }
 
 // ShardList is a struct which implements the Shard interface and holds shard ID system of servers
@@ -392,7 +392,7 @@ func NewShard(primaryIP string, globalView string, numShards int) *ShardList {
 
 // ChangeShardNumber is called by the REST API
 // Returns true if the change is legal, false otherwise
-func (s *ShardList) ChangeShardNumber(n int) bool {
+func (s *ShardList) ChangeShardNumber(n int, err error) bool {
 	if s.Size/n < 2 {
 		return false
 	}

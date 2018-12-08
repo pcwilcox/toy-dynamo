@@ -71,11 +71,16 @@ func main() {
 	// Store s as the number of shards from env
 	// docker run -p 8082:8080 --net=mynet --ip=10.0.0.2 -e VIEW="10.0.0.2:8080,10.0.0.3:8080,10.0.0.4:8080" -e IP_PORT="10.0.0.2:8080" -e S="3" REPLICA_1
 	s := os.Getenv("S")
+	var numshards int
 	log.Println("There is total of " + s + " shard(s)")
-	// Convert string to int
-	numshards, err := strconv.Atoi(s)
-	if err != nil {
-		panic(err)
+	if s == "" {
+		numshards = defaultShardCount
+	} else {
+		// Convert string to int
+		numshards, err = strconv.Atoi(s)
+		if err != nil {
+			panic(err)
+		}
 	}
 	// Create a ShardList and create the seperation of shard ID to servers
 	MyShard = NewShard(myIP, view, numshards)

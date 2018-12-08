@@ -71,12 +71,17 @@ PORT       = 8080
 PREFIX     = 10.0.0.
 NET        = --net=mynet
 IP         = --ip=${PREFIX}
-VIEW       = -e VIEW="${PREFIX}2:${PORT},${PREFIX}3:${PORT},${PREFIX}4:${PORT}"
-TAG        = cs128-hw3
+VIEW       = -e VIEW="${PREFIX}2:${PORT},${PREFIX}3:${PORT},${PREFIX}4:${PORT},${PREFIX}5:${PORT},${PREFIX}6:${PORT},${PREFIX}7:${PORT}"
+SHARDS     = -e S="3"
+TAG        = ${CONTAINER}
 NAME       = --name REPLICA_
-REPLICA2   = ${NET} ${IP}2 ${VIEW} -e IP_PORT="${PREFIX}2:${PORT}" ${NAME}2 ${TAG}
-REPLICA3   = ${NET} ${IP}3 ${VIEW} -e IP_PORT="${PREFIX}3:${PORT}" ${NAME}3 ${TAG}
-REPLICA4   = ${NET} ${IP}4 ${VIEW} -e IP_PORT="${PREFIX}4:${PORT}" ${NAME}4 ${TAG}
+REPLICA2   = ${NET} ${IP}2 ${VIEW} -e IP_PORT="${PREFIX}2:${PORT}" ${SHARDS} ${NAME}2 ${TAG} $(\n)
+REPLICA3   = ${NET} ${IP}3 ${VIEW} -e IP_PORT="${PREFIX}3:${PORT}" ${SHARDS} ${NAME}3 ${TAG} $(\n)
+REPLICA4   = ${NET} ${IP}4 ${VIEW} -e IP_PORT="${PREFIX}4:${PORT}" ${SHARDS} ${NAME}4 ${TAG} $(\n)
+REPLICA5   = ${NET} ${IP}5 ${VIEW} -e IP_PORT="${PREFIX}5:${PORT}" ${SHARDS} ${NAME}5 ${TAG} $(\n)
+REPLICA6   = ${NET} ${IP}6 ${VIEW} -e IP_PORT="${PREFIX}6:${PORT}" ${SHARDS} ${NAME}6 ${TAG} $(\n)
+REPLICA7   = ${NET} ${IP}7 ${VIEW} -e IP_PORT="${PREFIX}7:${PORT}" ${SHARDS} ${NAME}7 ${TAG} $(\n)
+REPLICAS   = ${REPLICA2} ${REPLICA3} ${REPLICA4} ${REPLICA5} ${REPLICA6} ${REPLICA7} 
 SINGLE     = ${NET} ${IP}2 -e IP_PORT="${PREFIX}2:${PORT}" ${NAME}1 ${TAG}
 
 # These three commands get a list of all containers running, all containers, and all images
@@ -136,11 +141,19 @@ endif                                                       # DELETE
 run : dockerclean docker                       # DELETE
 	${DOCKERRUN} ${SINGLE}                     # DELETE
 
+define \n
+
+
+endef
+
 # This builds a set of three nodes that should be able to talk to each other
-cluster : dockerclean docker                   # DELETE
-	${DOCKERRUN} ${REPLICA2}                   # DELETE
-	${DOCKERRUN} ${REPLICA3}                   # DELETE
-	${DOCKERRUN} ${REPLICA4}                   # DELETE
+cluster : dockerclean docker    # DELETE
+	${DOCKERRUN} ${REPLICA2}    # DELETE
+	${DOCKERRUN} ${REPLICA3}    # DELETE
+	${DOCKERRUN} ${REPLICA4}    # DELETE
+	${DOCKERRUN} ${REPLICA5}    # DELETE
+	${DOCKERRUN} ${REPLICA6}    # DELETE
+	${DOCKERRUN} ${REPLICA7}    # DELETE
 
 dockerclean :                                                                                                # DELETE
 	$(shell docker kill $$(docker ps -a | grep REPLICA | awk ' $$1 { print $$1 } ') > /dev/null 2>&1)        # DELETE

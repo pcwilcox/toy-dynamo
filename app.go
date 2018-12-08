@@ -19,6 +19,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -60,11 +61,11 @@ func (app *App) Initialize(l net.Listener) {
 	r.HandleFunc(view, app.ViewDeleteHandler).Methods(http.MethodDelete)
 
 	// Thse handlers implement the /shard endpoint and handle GET, PUT
-	r.HandleFunc(shard+changeNum, app.ShardPutDiffShardNumHandler).Methods(http.MethodPut)
-	r.HandleFunc(shard+myID, app.ShardGetMyIDHandler).Methods(http.MethodGet)
-	r.HandleFunc(shard+allID, app.ShardGetAllHandler).Methods(http.MethodGet)
-	r.HandleFunc(shard+members, app.ShardGetMembersHandler).Methods(http.MethodGet)
-	r.HandleFunc(shard+count, app.ShardGetNumKeysHandler).Methods(http.MethodGet)
+	r.HandleFunc(shard+changeNum+shardSuffix, app.ShardPutChangeNumberHandler).Methods(http.MethodPut)
+	r.HandleFunc(shard+shardSuffix, app.ShardGetMyIDHandler).Methods(http.MethodGet)
+	r.HandleFunc(shard+shardSuffix, app.ShardGetAllHandler).Methods(http.MethodGet)
+	r.HandleFunc(shard+members+shardSuffix, app.ShardGetMembersHandler).Methods(http.MethodGet)
+	r.HandleFunc(shard+count+shardSuffix, app.ShardGetNumKeysHandler).Methods(http.MethodGet)
 
 	// These handlers implement the KVS API and handle GET, PUT, DELETE
 	s.HandleFunc(keySuffix, app.PutHandler).Methods(http.MethodPut)
@@ -886,7 +887,8 @@ func (app *App) ShardGetMembersHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK) // code 200
 
 		// returns servers in the shard id into a comma separated string
-		members := app.shard.String()
+		members := app.shard.GetMembers(shardID)
+
 		// Package it into a map->JSON->[]byte
 		resp := map[string]interface{}{
 			"result":  "Success",
@@ -901,23 +903,21 @@ func (app *App) ShardGetMembersHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(body)
 }
 
-// ShardGetNumKeysHandler blah blah
+// ShardGetNumKeysHandler returns the number of keys in the shard
 func (app *App) ShardGetNumKeysHandler(w http.ResponseWriter, r *http.Request) {
-	var invalid bool
+	log.Println("Handling GET number of keys request")
+
+	// Read the key from the URL using Gorilla Mux URL parsing.
+	vars := mux.Vars(r)
+	shard := vars["shard-id"]
+
+	var body []byte  // Response body
+	var err error    // Error value
+	var invalid bool // Flag true is shard id is invalid
 	var numKeys int
 	var shardID string
-	log.Println("GET num keys")
 
-	invalid = false
-
-	s, _ := ioutil.ReadAll(r.Body)
-	log.Println(string(s))
-
-	// Python packs the input in Unicode for some reason so we need to convert it
-	sBody, _ := url.QueryUnescape(string(s))
-	// want to grab the value after /shard/members/
-	shardID = strings.Split(sBody, shard+count)[0]
-
+	shardID = shard
 	invalid = app.shard.ContainsShard(shardID)
 
 	for {
@@ -926,9 +926,6 @@ func (app *App) ShardGetNumKeysHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	numKeys = app.db.Size()
-
-	var body []byte
-	var err error
 
 	if invalid {
 		log.Println("Shard is invalid")
@@ -951,7 +948,7 @@ func (app *App) ShardGetNumKeysHandler(w http.ResponseWriter, r *http.Request) {
 		// Package it into a map->JSON->[]byte
 		resp := map[string]interface{}{
 			"result": "Success",
-			"Count":  numKeys,
+			"Count":  string(numKeys),
 		}
 		body, err = json.Marshal(resp)
 		if err != nil {
@@ -961,6 +958,76 @@ func (app *App) ShardGetNumKeysHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write(body)
 }
 
-func (app *App) ShardPutDiffShardNumHandler(w http.ResponseWriter, r *http.Request) {
+// ShardPutChangeNumberHandler triggers a reshuffle and returns list of new shards
+func (app *App) ShardPutChangeNumberHandler(w http.ResponseWriter, r *http.Request) {
+	log.Println("HANDLING shard PUT")
 
+	// Declare some variables here and define them below.
+	var body []byte // Response body
+	var err error
+	var currentCount int
+	var shardUpdate string
+
+	// Check that the body isn't nil
+	if r.Body != nil {
+		// Read the message body into a string
+		s, _ := ioutil.ReadAll(r.Body)
+		log.Println(string(s))
+
+		// Python packs the input in Unicode for some reason so we need to convert it
+		sBody, _ := url.QueryUnescape(string(s))
+		if len(sBody) > 0 {
+			// The actual payload we care about comes after the equals sign. This splits the
+			// input into a slice and takes the second element of that slice for the payload.
+			shardUpdate = strings.Split(sBody, "=")[1]
+			log.Println(shardUpdate)
+		}
+	}
+
+	currentCount = app.shard.CountServers()
+
+	// if requested shard change is less than number of current shards, return err
+	if strings.Compare(shardUpdate, string(currentCount)) == -1 {
+		log.Println("Shard is invalid")
+		w.WriteHeader(http.StatusBadRequest) // code 400
+
+		resp := map[string]interface{}{
+			"result": "Error",
+			"msg":    "Not enough nodes for " + shardUpdate + " shards",
+		}
+		body, err = json.Marshal(resp)
+		if err != nil {
+			log.Fatalln("FATAL Error: Failed to marshal JSON response")
+		}
+
+		// if ChangeShardNumber() returns false, return err
+	} else if !app.shard.ChangeShardNumber(strconv.Atoi(shardUpdate)) {
+		log.Println("Shard is invalid")
+		w.WriteHeader(http.StatusBadRequest) // code 400
+
+		resp := map[string]interface{}{
+			"result": "Error",
+			"msg":    "Not enough nodes for " + shardUpdate + " shards result in a nonfault tolerant shard",
+		}
+		body, err = json.Marshal(resp)
+		if err != nil {
+			log.Fatalln("FATAL Error: Failed to marshal JSON response")
+		}
+	} else {
+		log.Println("Here are your shard ids")
+		// It does
+		w.WriteHeader(http.StatusOK) // code 200
+
+		// Package it into a map->JSON->[]byte
+		resp := map[string]interface{}{
+			"result": "Success",
+			"Count":  app.shard.GetAllShards(), // accesses the global ShardList
+		}
+		body, err = json.Marshal(resp)
+		if err != nil {
+			log.Fatalln("FATAL ERROR: Failed to marshal JSON response")
+		}
+	}
+
+	w.Write(body)
 }
