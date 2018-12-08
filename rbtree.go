@@ -12,15 +12,14 @@
 package main
 
 import (
-	"sync"
+	"log"
 )
 
 // RBTree is a red-black tree structure which balances itself in order
 // to maintain O(logn) insert, delete, search times. It uses integers
 // for keys and strings for values.
 type RBTree struct {
-	Root  *RBNode // the root RBNode
-	Mutex sync.RWMutex
+	Root *RBNode // the root RBNode
 }
 
 // Colors for nodes
@@ -32,8 +31,6 @@ const (
 // Returns number of keys in the tree
 func (r *RBTree) size() int {
 	if r != nil {
-		r.Mutex.RLock()
-		defer r.Mutex.RUnlock()
 		return r.Root.size()
 	}
 	return 0
@@ -42,8 +39,6 @@ func (r *RBTree) size() int {
 // Returns value associated with a particular key if it exists
 func (r *RBTree) get(key int) string {
 	if r != nil {
-		r.Mutex.RLock()
-		defer r.Mutex.RUnlock()
 		return r.Root.get(key)
 	}
 	return ""
@@ -51,10 +46,10 @@ func (r *RBTree) get(key int) string {
 
 // Inserts a value associated with a particular key
 func (r *RBTree) put(key int, value string) {
+	log.Println("handling put - key: ", key, " value: ", value)
 	if r != nil {
-		r.Mutex.Lock()
-		defer r.Mutex.Unlock()
 		if r.Root == nil {
+			log.Println("Made new root")
 			r.Root = newNode(key, value, black)
 		} else {
 			r.Root = r.Root.put(key, value)
@@ -66,8 +61,6 @@ func (r *RBTree) put(key int, value string) {
 // Returns the value of the smallest key
 func (r *RBTree) min() string {
 	if r != nil {
-		r.Mutex.RLock()
-		defer r.Mutex.RUnlock()
 		return r.Root.min().Value
 	}
 	return ""
@@ -77,8 +70,6 @@ func (r *RBTree) min() string {
 // or equal to the input
 func (r *RBTree) floor(key int) int {
 	if r != nil {
-		r.Mutex.RLock()
-		defer r.Mutex.RUnlock()
 		x := r.Root.floor(key)
 		if x != nil {
 			return x.Key
@@ -90,8 +81,6 @@ func (r *RBTree) floor(key int) int {
 // Returns key X such that X is the k-th smallest key
 func (r *RBTree) selection(k int) int {
 	if r != nil {
-		r.Mutex.RLock()
-		defer r.Mutex.RUnlock()
 		x := r.Root.selection(k)
 		if x != nil {
 			return x.Key
@@ -103,8 +92,6 @@ func (r *RBTree) selection(k int) int {
 // Returns the number of keys smaller than k
 func (r *RBTree) rank(k int) int {
 	if r != nil {
-		r.Mutex.RLock()
-		defer r.Mutex.RUnlock()
 		return r.Root.rank(k)
 	}
 	return -1
@@ -113,8 +100,6 @@ func (r *RBTree) rank(k int) int {
 // Deletes the node with the minimum key
 func (r *RBTree) deleteMin() {
 	if r != nil {
-		r.Mutex.Lock()
-		defer r.Mutex.Unlock()
 		if !r.Root.Left.isRed() && !r.Root.Right.isRed() {
 			r.Root.Color = red
 		}
@@ -128,8 +113,6 @@ func (r *RBTree) deleteMin() {
 // Deletes the node with key k
 func (r *RBTree) delete(k int) {
 	if r != nil {
-		r.Mutex.Lock()
-		defer r.Mutex.Unlock()
 		if r.Root != nil && !r.Root.Left.isRed() && !r.Root.Right.isRed() {
 			r.Root.Color = red
 		}
@@ -143,8 +126,6 @@ func (r *RBTree) delete(k int) {
 // Returns the value of the maximum key
 func (r *RBTree) max() string {
 	if r != nil && r.Root != nil {
-		r.Mutex.RLock()
-		defer r.Mutex.RUnlock()
 		x := r.Root.max()
 		return x.Value
 	}
@@ -154,15 +135,17 @@ func (r *RBTree) max() string {
 // If there is a key k, returns its value. Otherwise, if there is a
 // larger key, return that value. Otherwise, return the smallest value.
 func (r *RBTree) successor(k int) string {
+	log.Println("finding successor for key ", k)
 	if r != nil && r.Root != nil {
-		r.Mutex.RLock()
-		defer r.Mutex.RUnlock()
 		x := r.Root.ceil(k)
 		if x != nil {
+			log.Println("successor found", x.Value)
 			return x.Value
 		}
+		log.Println("successor found: ", r.min())
 		return r.min()
 	}
+	log.Println("r is nil or root is nil")
 	return ""
 }
 
@@ -170,8 +153,6 @@ func (r *RBTree) successor(k int) string {
 // smaller value, returns it. Otherwise, returns the largest value.
 func (r *RBTree) predecessor(k int) string {
 	if r != nil && r.Root != nil {
-		r.Mutex.RLock()
-		defer r.Mutex.RUnlock()
 		x := r.Root.floor(k)
 		if x != nil {
 			return x.Value
@@ -368,6 +349,7 @@ func (n *RBNode) put(key int, value string) *RBNode {
 		n = newNode(key, value, red)
 	}
 	n.Weight = 1 + n.Left.size() + n.Right.size()
+	log.Println("Returning node - k: ", n.Key, " v: ", n.Value)
 	return n
 }
 
@@ -380,6 +362,7 @@ func newNode(key int, value string, color bool) *RBNode {
 		Weight: 1,
 		Color:  color,
 	}
+	log.Println("Made new node - k: ", key, "v: ", value)
 	return &n
 }
 

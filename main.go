@@ -85,6 +85,8 @@ func main() {
 	// Create a ShardList and create the seperation of shard ID to servers
 	MyShard = NewShard(myIP, view, numshards)
 
+	log.Println("My shard ID is ", MyShard.PrimaryID())
+
 	// Make a KVS to use as the db
 	k := NewKVS()
 
@@ -102,5 +104,5 @@ func main() {
 	go gossip.GossipHeartbeat() // goroutines
 
 	// Start the servers with references to the REST app and the gossip module
-	server(a, gossip)
+	server(&a, &gossip)
 }

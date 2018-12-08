@@ -187,7 +187,8 @@ func (k *KVS) Contains(key string) (bool, int) {
 	// Grab a read lock
 	alive := false
 	version := 0
-	whoShard := MyShard.Tree.successor(getKeyPosition(key))
+	whoShard := MyShard.GetSuccessor(getKeyPosition(key))
+	log.Println("shard of the key is ", shard)
 	if whoShard == MyShard.PrimaryID() {
 		k.mutex.RLock()
 		defer k.mutex.RUnlock()
@@ -226,7 +227,7 @@ func (k *KVS) contains(key string) (bool, int) {
 func (k *KVS) Get(key string, payload map[string]int) (val string, clock map[string]int) {
 	log.Println("Getting value associated with key ")
 	//Get the key position
-	whoShard := MyShard.Tree.successor(getKeyPosition(key))
+	whoShard := MyShard.GetSuccessor(getKeyPosition(key))
 	//If it isnt my key then I need to ask the server who it belongs to
 	if whoShard != MyShard.PrimaryID() {
 		log.Println("key requested to Get not in my shard, requesting id of another shard" + whoShard)
@@ -279,7 +280,7 @@ func (k *KVS) Delete(key string, time time.Time, payload map[string]int) bool {
 
 	log.Println("Attempting to delete key ")
 	//Get the key position
-	whoShard := MyShard.Tree.successor(getKeyPosition(key))
+	whoShard := MyShard.GetSuccessor(getKeyPosition(key))
 	//If it isnt my key then I need to ask the server who it belongs to
 	if whoShard != MyShard.PrimaryID() {
 		log.Println("Key requested to Delete not in my shard, requesting id of another shard" + whoShard)
@@ -331,7 +332,7 @@ func (k *KVS) Put(key string, val string, time time.Time, payload map[string]int
 
 	if keyLen <= maxKey && valLen <= maxVal {
 		//Get the key position
-		whoShard := MyShard.Tree.successor(getKeyPosition(key))
+		whoShard := MyShard.GetSuccessor(getKeyPosition(key))
 		//If it isnt my key then I need to ask the server who it belongs to
 		if whoShard != MyShard.PrimaryID() {
 			log.Println("Key requested to Put not in my shard, requesting id of another shard" + whoShard)
@@ -484,7 +485,7 @@ func (k *KVS) ShuffleKeys() bool {
 	defer k.mutex.Unlock()
 	for shard := range MyShard.ShardSlice {
 		for key := range k.db {
-			if shard == MyShard.Tree.successor(getKeyPosition(key)) {
+			if shard == MyShard.GetSuccessor(getKeyPosition(key)) {
 				eg.Keys[key] = Entry{
 					Version:   k.db[key].GetVersion(),
 					Timestamp: k.db[key].GetTimestamp(),

@@ -13,6 +13,7 @@
 package main
 
 import (
+	"log"
 	"math/rand"
 	"sort"
 	"strings"
@@ -92,10 +93,21 @@ type ShardList struct {
 	ShardSlice   map[string][]string // this is a mapping of shard IDs to slices of server strings
 	PrimaryShard string              // This is the shard ID I belong in
 	PrimaryIP    string              // this is my IP
-	Tree         RBTree              // This is our red-black tree holding the shard positions on the ring
+	Tree         *RBTree             // This is our red-black tree holding the shard positions on the ring
 	Size         int                 // total number of servers
 	NumShards    int                 // total number of shards
-	Mutex        sync.RWMutex        // lock for the whole thing
+	Mutex        *sync.RWMutex       // lock for the whole thing
+}
+
+// GetSuccessor asks the tree for the successor
+func (s *ShardList) GetSuccessor(k int) string {
+	if s != nil {
+		log.Println("Finding successor of position ", k)
+		s.Mutex.RLock()
+		defer s.Mutex.RUnlock()
+		return s.Tree.successor(k)
+	}
+	return ""
 }
 
 // GetAllShards returns a comma-separated list of shards
@@ -128,10 +140,12 @@ func (s *ShardList) FindBob(shard string) string {
 	if s != nil {
 		s.Mutex.RLock()
 		defer s.Mutex.RUnlock()
+		log.Println("Finding a Bob in shard ", shard)
 		r := rand.Int()
 		l := s.ShardSlice[shard]
 		i := r % len(l)
 		bob := l[i]
+		log.Println("Found Bob: ", bob)
 		return bob
 	}
 	return ""
@@ -384,15 +398,22 @@ func (s *ShardList) NumServerPerShard() int {
 
 // NewShard creates a shardlist object and initializes it with the input string
 func NewShard(primaryIP string, globalView string, numShards int) *ShardList {
+	log.Println("Making new ShardList")
+	log.Println("primaryIP : ", primaryIP)
+	log.Println("globalView: ", globalView)
+	log.Println("numShards : ", numShards)
 	// init fields
 	shardSlice := make(map[string][]string)
 	shardString := make(map[string]string)
+	var r RBTree
+	var m sync.RWMutex
 	s := ShardList{
 		ShardSlice:  shardSlice,
 		ShardString: shardString,
-		Tree:        RBTree{},
+		Tree:        &r,
 		NumShards:   numShards,
 		PrimaryIP:   primaryIP,
+		Mutex:       &m,
 	}
 
 	// take the view and split it into individual server IPs
@@ -426,14 +447,15 @@ func NewShard(primaryIP string, globalView string, numShards int) *ShardList {
 		s.ShardString[k] = strings.Join(v, ",")
 	}
 
-	// build the red black tree
-	var tree RBTree
-
 	for k := range s.ShardSlice {
 		for _, i := range getVirtualNodePositions(k) {
-			tree.put(i, k)
+			s.Tree.put(i, k)
 		}
 	}
+
+	log.Println("ShardString: ", s.ShardString)
+	log.Println("RBTree: ", s.Tree)
+	log.Println("Tree root: ", s.Tree.Root)
 
 	return &s
 }

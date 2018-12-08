@@ -13,18 +13,22 @@ package main
 
 import (
 	"hash/crc32"
+	"log"
 )
 
 var primes []int
 
 // Given a key, hashes it to the ring position
 func getKeyPosition(key string) int {
-	return int(crc32.ChecksumIEEE([]byte(key))) % ringSize
+	log.Println("Hashing key ", key)
+	i := int(crc32.ChecksumIEEE([]byte(key))) % ringSize
+	log.Println("Hashes to ", i)
+	return i
 }
 
 // Given a shard ID and a number of nodes, hashes it to a number of ring positions
 func getVirtualNodePositions(shard string) []int {
-	s := string(shard)
+	log.Println("Getting node positions for shard ", shard)
 
 	if len(primes) < numVirtualNodes {
 		makePrimes()
@@ -32,8 +36,9 @@ func getVirtualNodePositions(shard string) []int {
 
 	positions := make([]int, numVirtualNodes)
 	for i := 0; i < numVirtualNodes; i++ {
-		positions[i] = (int(crc32.ChecksumIEEE([]byte(s))) * primes[i]) % ringSize
+		positions[i] = (int(crc32.ChecksumIEEE([]byte(shard))) * primes[i]) % ringSize
 	}
+	log.Println("positions computed: ", positions)
 	return positions
 }
 

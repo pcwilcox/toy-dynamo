@@ -52,7 +52,7 @@ type HandleFunc func(*bufio.ReadWriter)
 type Endpoint struct {
 	listener net.Listener          // The listener that this endpoint is attached to
 	handler  map[string]HandleFunc // The handlers that this endpoint uses to process requests
-	gossip   GossipVals            // The gossip module the endpoint uses
+	gossip   *GossipVals           // The gossip module the endpoint uses
 	m        sync.RWMutex          // A lock for the handler map
 }
 
@@ -604,7 +604,7 @@ func askForHelp(ip string) error {
 
 // server listens for incoming requests and dispatches them to
 // registered handler functions.
-func server(a App, g GossipVals) {
+func server(a *App, g *GossipVals) {
 	// Create a  listener
 	l, err := net.Listen("tcp", port)
 	if err != nil {
