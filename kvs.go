@@ -484,8 +484,10 @@ func (k *KVS) ShuffleKeys() bool {
 	k.mutex.Lock()
 	defer k.mutex.Unlock()
 	for shard := range MyShard.ShardSlice {
+		log.Println("Checking for keys belonging to shard ", shard)
 		for key := range k.db {
 			if shard == MyShard.GetSuccessor(getKeyPosition(key)) {
+				log.Println("Found key ", key)
 				eg.Keys[key] = Entry{
 					Version:   k.db[key].GetVersion(),
 					Timestamp: k.db[key].GetTimestamp(),

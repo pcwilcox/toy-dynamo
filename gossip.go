@@ -52,17 +52,19 @@ func (g *GossipVals) GossipHeartbeat() {
 
 	for {
 		if wakeGossip || shardChange || timesUp() {
-			log.Println("Gossip initiated. Ringing TCP")
+			log.Println("Heartbeat")
 
 			gossipee := g.ShardList.RandomLocal(2)
 
 			if needHelp {
 				for _, bob := range gossipee {
+					log.Println("Asking for help from ", bob)
 					askForHelp(bob)
 				}
 				needHelp = false
 			} else {
 				for _, bob := range gossipee {
+					log.Println("sending timeglob to ", bob)
 					// Get timeglob
 					t := g.kvs.GetTimeGlob()
 					//Send our timeglob to gossipee and return back their pruned timeglob
@@ -86,6 +88,7 @@ func (g *GossipVals) GossipHeartbeat() {
 				gossipee = g.ShardList.RandomGlobal(2)
 				// Propagate views
 				for _, bob := range gossipee {
+					log.Println("sending shardlist update to ", bob)
 					sendShardGob(bob, g.ShardList.GetShardGlob())
 				}
 

@@ -207,11 +207,12 @@ func (s *ShardList) Overwrite(sg ShardGlob) {
 // RandomGlobal returns a random selection of other servers from any shard
 func (s *ShardList) RandomGlobal(n int) []string {
 	if s != nil {
+		log.Println("Finding ", n, " random global servers")
 		s.Mutex.RLock()
 		defer s.Mutex.RUnlock()
 		var t []string
 
-		if n > s.Size {
+		if n > s.Size-1 {
 			n = s.Size - 1
 		}
 
@@ -226,6 +227,7 @@ func (s *ShardList) RandomGlobal(n int) []string {
 			}
 		}
 
+		log.Println("found servers: ", t)
 		return t
 	}
 	return []string{}
@@ -234,13 +236,14 @@ func (s *ShardList) RandomGlobal(n int) []string {
 // RandomLocal returns a random selection of other servers from within our own shard
 func (s *ShardList) RandomLocal(n int) []string {
 	if s != nil {
+		log.Println("Finding ", n, " random local servers")
 		s.Mutex.RLock()
 		defer s.Mutex.RUnlock()
 		var t []string
 
-		l := s.ShardSlice[s.PrimaryShard]
+		l := s.ShardSlice[s.PrimaryID()]
 		if n > len(l)-1 {
-			n = len(l) - 2
+			n = len(l) - 1
 		}
 
 		for len(t) < n {
@@ -254,6 +257,7 @@ func (s *ShardList) RandomLocal(n int) []string {
 			}
 		}
 
+		log.Println("found servers: ", t)
 		return t
 	}
 	return []string{}
@@ -285,6 +289,12 @@ func (s *ShardList) ContainsShard(shardID string) bool {
 		s.Mutex.RLock()
 		defer s.Mutex.RUnlock()
 		log.Println("checking for shard ", shardID)
+		for k := range s.ShardSlice {
+			match := k == shardID
+			if match {
+				log.Println(k, " is a match for input", shardID)
+			}
+		}
 		_, ok := s.ShardSlice[shardID]
 		return ok
 	}
@@ -420,6 +430,9 @@ func NewShard(primaryIP string, globalView string, numShards int) *ShardList {
 	// take the view and split it into individual server IPs
 	sp := strings.Split(globalView, ",")
 
+	// assign size
+	s.Size = len(sp)
+
 	// sort them
 	sort.Strings(sp)
 
@@ -457,13 +470,14 @@ func NewShard(primaryIP string, globalView string, numShards int) *ShardList {
 	log.Println("ShardString: ", s.ShardString)
 	log.Println("RBTree: ", s.Tree)
 	log.Println("Tree root: ", s.Tree.Root)
+	log.Println("Size: ", s.Size)
 
 	return &s
 }
 
 // ChangeShardNumber is called by the REST API
 // Returns true if the change is legal, false otherwise
-func (s *ShardList) ChangeShardNumber(n int, err error) bool {
+func (s *ShardList) ChangeShardNumber(n int) bool {
 	if s != nil {
 		s.Mutex.Lock()
 		defer s.Mutex.Unlock()
