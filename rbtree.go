@@ -349,7 +349,6 @@ func (n *RBNode) put(key int, value string) *RBNode {
 		n = newNode(key, value, red)
 	}
 	n.Weight = 1 + n.Left.size() + n.Right.size()
-	log.Println("Returning node - k: ", n.Key, " v: ", n.Value)
 	return n
 }
 
@@ -362,7 +361,6 @@ func newNode(key int, value string, color bool) *RBNode {
 		Weight: 1,
 		Color:  color,
 	}
-	log.Println("Made new node - k: ", key, "v: ", value)
 	return &n
 }
 

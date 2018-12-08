@@ -53,19 +53,19 @@ func (app *App) Initialize(l net.Listener) {
 	s := r.PathPrefix(rootURL).Subrouter()
 
 	// This is the search handler, which has a different prefix
-	s.HandleFunc(search+keySuffix, app.SearchHandler).Methods(http.MethodGet)
+	s.HandleFunc(searchURL+keySuffix, app.SearchHandler).Methods(http.MethodGet)
 
 	// These handlers implement the /view endpoint and handle GET, PUT, DELETE
-	r.HandleFunc(view, app.ViewPutHandler).Methods(http.MethodPut)
-	r.HandleFunc(view, app.ViewGetHandler).Methods(http.MethodGet)
-	r.HandleFunc(view, app.ViewDeleteHandler).Methods(http.MethodDelete)
+	r.HandleFunc(viewURL, app.ViewPutHandler).Methods(http.MethodPut)
+	r.HandleFunc(viewURL, app.ViewGetHandler).Methods(http.MethodGet)
+	r.HandleFunc(viewURL, app.ViewDeleteHandler).Methods(http.MethodDelete)
 
 	// Thse handlers implement the /shard endpoint and handle GET, PUT
-	r.HandleFunc(shard+changeNum+shardSuffix, app.ShardPutChangeNumberHandler).Methods(http.MethodPut)
-	r.HandleFunc(shard+shardSuffix, app.ShardGetMyIDHandler).Methods(http.MethodGet)
-	r.HandleFunc(shard+shardSuffix, app.ShardGetAllHandler).Methods(http.MethodGet)
-	r.HandleFunc(shard+members+shardSuffix, app.ShardGetMembersHandler).Methods(http.MethodGet)
-	r.HandleFunc(shard+count+shardSuffix, app.ShardGetNumKeysHandler).Methods(http.MethodGet)
+	r.HandleFunc(shardURL+changeNum+shardSuffix, app.ShardPutChangeNumberHandler).Methods(http.MethodPut)
+	r.HandleFunc(shardURL+shardSuffix, app.ShardGetMyIDHandler).Methods(http.MethodGet)
+	r.HandleFunc(shardURL+shardSuffix, app.ShardGetAllHandler).Methods(http.MethodGet)
+	r.HandleFunc(shardURL+membersURL+shardSuffix, app.ShardGetMembersHandler).Methods(http.MethodGet)
+	r.HandleFunc(shardURL+countURL+shardSuffix, app.ShardGetNumKeysHandler).Methods(http.MethodGet)
 
 	// These handlers implement the KVS API and handle GET, PUT, DELETE
 	s.HandleFunc(keySuffix, app.PutHandler).Methods(http.MethodPut)

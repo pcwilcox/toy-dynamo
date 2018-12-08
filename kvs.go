@@ -188,7 +188,7 @@ func (k *KVS) Contains(key string) (bool, int) {
 	alive := false
 	version := 0
 	whoShard := MyShard.GetSuccessor(getKeyPosition(key))
-	log.Println("shard of the key is ", shard)
+	log.Println("shard of the key is ", whoShard)
 	if whoShard == MyShard.PrimaryID() {
 		k.mutex.RLock()
 		defer k.mutex.RUnlock()
