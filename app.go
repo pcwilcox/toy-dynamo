@@ -972,10 +972,13 @@ func (app *App) ShardPutChangeNumberHandler(w http.ResponseWriter, r *http.Reque
 		}
 	}
 
+	log.Println("newCount: ", newCount)
+	log.Println("shardUpdate: ", shardUpdate)
 	currentCount = app.shard.CountServers()
+	log.Println("currentCount: ", currentCount)
 
 	// if requested shard change is less than number of current shards, return err
-	if shardUpdate < currentCount {
+	if shardUpdate > currentCount {
 		log.Println("Shard is invalid")
 		w.WriteHeader(http.StatusBadRequest) // code 400
 

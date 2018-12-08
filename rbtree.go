@@ -113,6 +113,7 @@ func (r *RBTree) deleteMin() {
 // Deletes the node with key k
 func (r *RBTree) delete(k int) {
 	if r != nil {
+		log.Println("deleting ", k)
 		if r.Root != nil && !r.Root.Left.isRed() && !r.Root.Right.isRed() {
 			r.Root.Color = red
 		}

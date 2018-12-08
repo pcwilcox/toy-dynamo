@@ -165,11 +165,14 @@ func (s *ShardList) GetShardGlob() ShardGlob {
 // Overwrite overwrites our view of the world with another
 func (s *ShardList) Overwrite(sg ShardGlob) {
 	if s != nil {
+		log.Println("attempting to overwrite")
 		s.Mutex.Lock()
 		defer s.Mutex.Unlock()
 		if diff := deep.Equal(sg.ShardList, s.ShardSlice); diff != nil {
+			log.Println(diff)
 			// Remove our old view of the world
 			for k := range s.ShardSlice {
+				log.Println("deleting id ", k)
 				delete(s.ShardSlice, k)
 				delete(s.ShardString, k)
 				for _, i := range getVirtualNodePositions(k) {
@@ -181,14 +184,17 @@ func (s *ShardList) Overwrite(sg ShardGlob) {
 			for k, v := range sg.ShardList {
 				// Directly transfer the slices over
 				s.ShardSlice[k] = v
+				log.Println("shard id: ", k, " servers: ", s.ShardSlice[k])
 
 				// Join the slices to form the string
 				s.ShardString[k] = strings.Join(v, ",")
+				log.Println("shard id: ", k, " servers: ", s.ShardString[k])
 
 				// Check which shard we're in
 				for i := range v {
 					if v[i] == s.PrimaryIP {
 						s.PrimaryShard = k
+						log.Println("This server's new ID is ", k)
 					}
 				}
 
@@ -479,16 +485,21 @@ func NewShard(primaryIP string, globalView string, numShards int) *ShardList {
 // Returns true if the change is legal, false otherwise
 func (s *ShardList) ChangeShardNumber(n int) bool {
 	if s != nil {
+		log.Println("Attempting to change shard count to ", n)
 		s.Mutex.Lock()
 		defer s.Mutex.Unlock()
 		if s.Size/n < 2 {
+			log.Println("Not enough nodes")
 			return false
 		}
 
 		// Get our list of servers
 		str := s.String()
+		log.Println("Current servers: ", str)
 		sl := strings.Split(str, ",")
+		log.Println("as a slice: ", sl)
 		sort.Strings(sl)
+		log.Println("sorted: ", sl)
 
 		// We'll make a new map for them
 		newMap := make(map[string][]string)
@@ -505,6 +516,7 @@ func (s *ShardList) ChangeShardNumber(n int) bool {
 			newMap[name] = append(newMap[name], sl[i])
 		}
 
+		log.Println("made a new map: ", newMap)
 		// make a shardglob
 		sg := ShardGlob{ShardList: newMap}
 
