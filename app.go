@@ -832,6 +832,7 @@ func (app *App) ShardGetAllHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Package it into a map->JSON->[]byte
 	resp := map[string]interface{}{
+		"result":    "Success",
 		"shard_ids": members,
 	}
 	body, err = json.Marshal(resp)
@@ -1020,8 +1021,8 @@ func (app *App) ShardPutChangeNumberHandler(w http.ResponseWriter, r *http.Reque
 
 		// Package it into a map->JSON->[]byte
 		resp := map[string]interface{}{
-			"result": "Success",
-			"Count":  app.shard.GetAllShards(), // accesses the global ShardList
+			"result":    "Success",
+			"shard_ids": app.shard.GetAllShards(), // accesses the global ShardList
 		}
 		body, err = json.Marshal(resp)
 		if err != nil {
