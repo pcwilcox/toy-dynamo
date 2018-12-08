@@ -73,7 +73,7 @@ func TestDeleteNodeAllKeysShouldMigrate(t *testing.T) {
 
 }
 
-func DeleteKeyShouldDecrementCount(t *testing.T) {
+func TestDeleteKeyShouldDecrementCount(t *testing.T) {
 	runContainers(2, 4)
 	key := "Hey!"
 	value := "Vien is awesome!"

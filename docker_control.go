@@ -19,7 +19,7 @@ var prefixSubnetAdress = "10.0.0."
 var prefixPort = "808" //maybe change this to 8080 ?
 
 //--------------DO NOT CHANGE - Global Variables-------------\\
-var nextID = 11
+var nextID = 1
 var containersInfos map[string]map[string]string
 var askEveryNode = true
 var initNumOfShards int
@@ -147,6 +147,5 @@ func sendRequest(port string, typeReq string, route string, t *testing.T, status
 }
 
 func getNextID() int {
-	nextID++
 	return nextID
 }
