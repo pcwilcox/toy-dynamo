@@ -168,6 +168,12 @@ func (s *ShardList) Overwrite(sg ShardGlob) {
 		log.Println("attempting to overwrite")
 		s.Mutex.Lock()
 		defer s.Mutex.Unlock()
+		s.overwrite(sg)
+	}
+}
+
+func (s *ShardList) overwrite(sg ShardGlob) {
+	if s != nil {
 		if diff := deep.Equal(sg.ShardList, s.ShardSlice); diff != nil {
 			log.Println(diff)
 			// Remove our old view of the world
@@ -366,8 +372,8 @@ func (s *ShardList) PrimaryID() string {
 // GetIP returns my IP
 func (s *ShardList) GetIP() string {
 	if s != nil {
-		s.Mutex.Lock()
-		defer s.Mutex.Unlock()
+		s.Mutex.RLock()
+		defer s.Mutex.RUnlock()
 		return s.PrimaryIP
 	}
 	return ""
@@ -376,8 +382,8 @@ func (s *ShardList) GetIP() string {
 // NumLeftoverServers returns the number of leftover servers after an uneven spread
 func (s *ShardList) NumLeftoverServers() int {
 	if s != nil {
-		s.Mutex.Lock()
-		defer s.Mutex.Unlock()
+		s.Mutex.RLock()
+		defer s.Mutex.RUnlock()
 		return s.Size % s.NumShards
 	}
 	return -1
@@ -386,8 +392,16 @@ func (s *ShardList) NumLeftoverServers() int {
 // String returns a comma-separated string of shards
 func (s *ShardList) String() string {
 	if s != nil {
-		s.Mutex.Lock()
-		defer s.Mutex.Unlock()
+		s.Mutex.RLock()
+		defer s.Mutex.RUnlock()
+
+		return s.string()
+	}
+	return ""
+}
+
+func (s *ShardList) string() string {
+	if s != nil {
 		str := make([]string, s.NumShards)
 
 		for i := 0; i < s.NumShards; i++ {
@@ -494,7 +508,7 @@ func (s *ShardList) ChangeShardNumber(n int) bool {
 		}
 
 		// Get our list of servers
-		str := s.String()
+		str := s.string()
 		log.Println("Current servers: ", str)
 		sl := strings.Split(str, ",")
 		log.Println("as a slice: ", sl)
@@ -520,7 +534,7 @@ func (s *ShardList) ChangeShardNumber(n int) bool {
 		// make a shardglob
 		sg := ShardGlob{ShardList: newMap}
 
-		s.Overwrite(sg)
+		s.overwrite(sg)
 
 		return true
 	}
