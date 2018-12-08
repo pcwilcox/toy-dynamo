@@ -1,3 +1,9 @@
+/**********************************************
+/ AUTHOR: Akobir Khamidov (akhamido@ucsc.edu) *
+/ AUTHOR: Vien Van (vhvan@ucsc.edu)			  *
+/ COPYRIGHT 2018 © by TEAMAWESOME			  *
+***********************************************/
+
 package main
 
 import (
@@ -13,17 +19,21 @@ import (
 	"testing"
 )
 
-var containerName = "cs128-hw4"
+// ------------ CHANGE THIS LINE --------------------------\\
 var subnetName = "mynet"
 var prefixSubnetAdress = "10.0.0."
-var prefixPort = "808" //maybe change this to 8080 ?
+var prefixPort = "80"
+var path = "../src/." // tell where your docker file EX: "." Current path. "../." One path down
+// --------------------END ----------------------------------\\
 
-//--------------DO NOT CHANGE - Global Variables-------------\\
-var nextID = 1
+// ----------------------------------------------------- DO NOT GO BEYOND THIS LINE ----------------------------------------------------\\
+
+//------------------ - Global Variables----------------------\\
+var nextID = 10
 var containersInfos map[string]map[string]string
 var askEveryNode = true
 var initNumOfShards int
-var initNumOfContainers int
+var initNumOfContainers int // Error if > 8
 
 //----------------------END-----------------------------------\\
 func init() {
@@ -31,8 +41,8 @@ func init() {
 	flag.Parse()
 	removeAllContainers()
 	if *buildFlag {
-		exec.Command("docker", "rmi", "-f", containerName).Run()
-		cmd := exec.Command("docker", "build", "-t", containerName, ".")
+		exec.Command("docker", "rmi", "-f", "testing").Run()
+		cmd := exec.Command("docker", "build", "-t", "testing", path)
 		var out bytes.Buffer
 		cmd.Stdout = &out
 		err := cmd.Run()
@@ -110,7 +120,7 @@ func runAContainer(ports ...string) string {
 	}
 	container := containersInfos[port]
 	args := []string{"run", "-p", port + ":8080", "--net=" + subnetName, "--ip=" + container["networkIp"], "-e", "VIEW=" + generateView(),
-		"-e", "IP_PORT=" + container["networkIp"] + ":8080", "-e", "S=" + strconv.Itoa(initNumOfShards), "-d", containerName}
+		"-e", "IP_PORT=" + container["networkIp"] + ":8080", "-e", "S=" + strconv.Itoa(initNumOfShards), "-d", "testing"}
 	cmd := exec.Command("docker", args...)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -148,4 +158,15 @@ func sendRequest(port string, typeReq string, route string, t *testing.T, status
 
 func getNextID() int {
 	return nextID
+}
+
+func getPort() (string, string) {
+	var node string
+	var port string
+	for port = range containersInfos {
+		networkIP := containersInfos[port]["networkIp"]
+		node = networkIP + ":" + "8080"
+		break
+	}
+	return port, node
 }

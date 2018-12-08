@@ -6,17 +6,31 @@
 package main
 
 import (
-	"fmt"
-	"log"
-	"math"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"testing"
 	"time"
 )
 
+var kvs map[string]string
+
+//---------------------------------------------------- Messages -----------------------------------------------------------------------------------------------------------\
+var goodDeleteNode = map[string]interface{}{"result": "Success", "statusCode": http.StatusOK}
+var goodDeleteKey = map[string]interface{}{"result": "Success", "msg": "Key deleted", "statusCode": http.StatusOK}
+var goodAddedKey = map[string]interface{}{"replaced": false, "msg": "Added successfully", "statusCode": http.StatusCreated}
+var goodPutShard = map[string]interface{}{"result": "Success", "statusCode": http.StatusOK}
+var notExistKey = map[string]interface{}{"result": "Error", "msg": "Key does not exist", "statusCode": http.StatusNotFound}
+var crazyPutShard = map[string]interface{}{"result": "Error", "msg": "Not enough nodes for 5 shards", "statusCode": http.StatusBadRequest}
+var faultyPutShard = map[string]interface{}{"result": "Error", "msg": "Not enough nodes. 3 shards result in a nonfault tolerant shard", "statusCode": http.StatusBadRequest}
+
+//---------------------------------------------------- END ----------------------------------------------------------------------------------------------------------------\
+
+//----------------------------------------------------SEARCH KEY -------------------------------------------------------\
+// Write inside
+//------------------------------------------------------ END -----------------------------------------------------------\
 func TestShardIdIsUniqueFromEveryNode(t *testing.T) {
 	runContainers(2, 4)
 	key := "GuessWhat??"
@@ -37,63 +51,24 @@ func TestShardIdIsUniqueFromEveryNode(t *testing.T) {
 	}
 }
 
-func TestDeleteNodeAllKeysShouldMigrate(t *testing.T) {
+// 12 random keys stored
+// Expecting: Sum of shard 1 and shard 2 should be equal to length of KVS
+func TestGetAllCount(t *testing.T) {
 	runContainers(2, 4)
-	miniKVS := map[string]int{
-		"A": 1, "B": 2, "C": 3,
-		"D": 4, "E": 5, "F": 6,
-		"G": 7, "H": 8, "I": 9,
-		"J": 10, "K": 11, "L": 12,
-	}
-	for k, v := range miniKVS {
-		initPutKey(t, k, string(v))
-	}
+	populateKVS(t, 12)
 	time.Sleep(2 * time.Second)
-	// for k, v := range miniKVS {
-	// 	expectedGetKey := map[string]interface{}{"result": "Success", "value": v, "statusCode": http.StatusOK}
-	// 	ownerID := checkGetKey(t, k, expectedGetKey, !askEveryNode)
-	// 	log.Println("OwnerID: ", ownerID)
-	// }
-
-	node := port
-	log.Println("Node: ", node)
-	deleteNode(t, node, !askEveryNode)
-	time.Sleep(2 * time.Second)
-	count := getCount(t, 0, http.StatusOK, !askEveryNode)
-	log.Println("Count: ", count)
-	// for k, v := range miniKVS {
-	// 	expectedGetKey := map[string]interface{}{"result": "Success", "value": v, "statusCode": http.StatusOK}
-	// 	ownerID := checkGetKey(t, k, expectedGetKey, !askEveryNode)
-	// 	// count := getCount(t, ownerID, http.StatusOK, !askEveryNode)
-	// 	if ownerID != 0 {
-	// 		t.Errorf("Keys did not migrate. Owner ID %v still exists\n", ownerID)
-	// 	}
-	// 	log.Println("OwnerID: ", ownerID)
-	// }
-
+	checkGetAllCount(t)
 }
 
-func TestDeleteKeyShouldDecrementCount(t *testing.T) {
+// 12 random keys stored
+// 2 keys deleted
+// Expected: total keys should be 10
+func TestDeleteKeys(t *testing.T) {
 	runContainers(2, 4)
-	key := "Hey!"
-	value := "Vien is awesome!"
-	initPutKey(t, key, value)
-	expectedGetKey := map[string]interface{}{"result": "Success", "value": value, "statusCode": http.StatusOK}
-	ownerID := checkGetKey(t, key, expectedGetKey, !askEveryNode)
-	count := getCount(t, ownerID, http.StatusOK, !askEveryNode)
-
-	expectedDeleteKey := map[string]interface{}{"result": "Success", "msg": "Key deleted", "statusCode": http.StatusOK}
-	checkDeleteKey(t, key, expectedDeleteKey, !askEveryNode)
-	time.Sleep(2 * time.Second)
-
-	expectedGetKey = map[string]interface{}{"result": "Error", "msg": "Key does not exist", "statusCode": http.StatusNotFound}
-
-	otherCount := getCount(t, ownerID, http.StatusOK, askEveryNode)
-
-	if otherCount == count {
-		t.Errorf("count before delete: %v == count after delete: %v", count, otherCount)
-	}
-
+	populateKVS(t, 12)
+	checkGetAllCount(t)
+	checkDeleteKey(t, goodDeleteKey, !askEveryNode)
+	checkGetAllCount(t)
 }
 
 func TestGetShardIDFromEveryNode(t *testing.T) {
@@ -106,11 +81,111 @@ func TestGetShardIDFromEveryNode(t *testing.T) {
 	}
 }
 
-func TestGetAllShardIDsFromEveryNode(t *testing.T) {
+func TestKeyNotExist(t *testing.T) {
 	runContainers(2, 4)
+	checkGetKey(t, "bumba", notExistKey, askEveryNode)
+}
+
+func TestPutKeyFalse(t *testing.T) {
+	runContainers(2, 4)
+	checkPutKey(t, "Kuku", "Monkey", goodAddedKey, !askEveryNode)
+}
+
+// ------------------------------ Sharding - members ------------------------------------------/
+
+// Expected: [A B C D] should not change to [A][B][C][D][]
+func TestTryToIncrTo5Shard(t *testing.T) {
+	runContainers(1, 4)
+	chechMinNumMembersInShardFromEveryNode(t)
+	checkPutShard(t, 5, crazyPutShard)
+}
+
+// Expected: [A B C D] should not change to [A][B][C D]
+func TestTryToIncrTo3Shard(t *testing.T) {
+	runContainers(1, 4)
+	chechMinNumMembersInShardFromEveryNode(t)
+	checkPutShard(t, 3, faultyPutShard)
+}
+
+// Expected: [A B C D] -> [A B][C D]
+func TestIncrTo2Shards(t *testing.T) {
+	runContainers(1, 4)
+	chechMinNumMembersInShardFromEveryNode(t)
+	checkPutShard(t, 2, goodPutShard)
+	chechMinNumMembersInShardFromEveryNode(t)
+}
+
+// Expected: [A B] [C D] -> [A B C D]
+func TestDecTo1Shard(t *testing.T) {
+	runContainers(2, 4)
+	chechMinNumMembersInShardFromEveryNode(t)
+	checkPutShard(t, 1, goodPutShard)
+	chechMinNumMembersInShardFromEveryNode(t)
+}
+
+// Expected: [A B C D ] [E F G] -> [A B C] [D E] [F G]
+func TestIncrTo3Shard(t *testing.T) {
+	runContainers(2, 7)
+	chechMinNumMembersInShardFromEveryNode(t)
+	checkPutShard(t, 3, goodPutShard)
+	chechMinNumMembersInShardFromEveryNode(t)
+}
+
+// TODO it should check if total number of nodes in system to increase by X. len(containersInfos) == totalInSystem
+func TestAddNode(t *testing.T) {
+	// runContainers(2, 4)
+	// newNetworkIP := runAContainer()
+	// putView := map[string]interface{}{"result": "Success", "msg": "Successfully added " + newNetworkIP + ":8080 to view"}
+	// checkView(t, "PUT", putView, newNetworkIP, !askEveryNode)
+	// chechMinNumMembersInShardFromEveryNode(t)
+}
+
+// Expecting: stored keys stays same 12
+func TestDeleteNode(t *testing.T) {
+	runContainers(2, 4)
+	populateKVS(t, 12)
+	time.Sleep(2 * time.Second)
+	checkGetAllCount(t)
+	checkDeleteNode(t, goodDeleteNode, !askEveryNode)
+	time.Sleep(2 * time.Second)
+	checkGetAllCount(t)
+}
+
+// Expecting: 1 shard 1 node
+func TestDeleteNode1Node1Shard(t *testing.T) {
+	runContainers(1, 2)
+	populateKVS(t, 12)
+	time.Sleep(2 * time.Second)
+	checkGetAllCount(t)
+	checkDeleteNode(t, goodDeleteNode, !askEveryNode)
+	time.Sleep(2 * time.Second)
+	checkGetAllCount(t)
+}
+
+// ----------------------- Sharding - kvs Expected: size of key to stay same----------------------/
+func TestIncreaseShardTo2from1(t *testing.T) {
+	runContainers(1, 4)
+	populateKVS(t, 23)
+	checkPutShard(t, 2, goodPutShard)
+	time.Sleep(2 * time.Second)
+	checkGetAllCount(t)
+}
+
+func TestDecreaseShardTo3From4(t *testing.T) {
+	runContainers(4, 8)
+	populateKVS(t, 23)
+	checkPutShard(t, 3, goodPutShard)
+	time.Sleep(2 * time.Second)
+	checkGetAllCount(t)
+}
+
+//--------------------------------------- Helper Functions----------------------------------/
+
+func checkGetAllShardIDs(t *testing.T) []string {
+	var shardIDs []string
 	for port := range containersInfos {
 		res := sendRequest(port, "GET", "shard/all_ids", t, http.StatusOK, nil)
-		_, ok := res["shard_ids"]
+		respShardIDs, ok := res["shard_ids"].(string)
 		if !ok {
 			t.Errorf("localhost:%v: empty shard_ids received", port)
 			t.FailNow()
@@ -119,98 +194,64 @@ func TestGetAllShardIDsFromEveryNode(t *testing.T) {
 		for i := 0; i < initNumOfShards; i++ {
 			expectedIDs += strconv.Itoa(i) + ","
 		}
-		expectedIDs = strings.TrimRight(expectedIDs, ",")
 
-		if expectedIDs != res["shard_ids"].(string) {
+		shardIDs = strings.Split(respShardIDs, ",")
+		sort.Strings(shardIDs)
+		expectedIDs = strings.TrimRight(expectedIDs, ",")
+		if expectedIDs != strings.Join(shardIDs, ",") {
 			t.Errorf("localhost:%v: Expected: %v: %v", port, expectedIDs, res["shard_ids"])
 		}
 		if res["result"].(string) != "Success" {
 			t.Errorf("localhost:%v: result must be Success: %v", port, res["result"].(string))
 		}
 	}
+	return shardIDs
 }
 
-func TestMinNumMembersInShard(t *testing.T) {
-	runContainers(2, 4)
-	t.Run("Min", chechMinNumMembersInShardFromEveryNode)
-}
-
-func TestMinNumMembersInShardAfterAddingOneNode(t *testing.T) {
-	runContainers(2, 4)
-	newNetworkIP := runAContainer()
-	putView := map[string]interface{}{"result": "Success", "msg": "Successfully added " + newNetworkIP + ":8080 to view"}
-	checkView(t, "PUT", putView, newNetworkIP, !askEveryNode)
-	chechMinNumMembersInShardFromEveryNode(t)
-}
-
-func TestKeyNotExist(t *testing.T) {
-	runContainers(2, 4)
-	expectedGetKey := map[string]interface{}{"result": "Error", "msg": "Key does not exist", "statusCode": http.StatusNotFound}
-	checkGetKey(t, "bumba", expectedGetKey, askEveryNode)
-}
-
-func TestPutKeyFalse(t *testing.T) {
-	runContainers(2, 4)
-	expectedPutKey := map[string]interface{}{"replaced": false, "msg": "Added successfully", "statusCode": http.StatusCreated}
-	checkPutKey(t, "Kuku", "Monkey", expectedPutKey, !askEveryNode)
-}
-
-func Test5Shard4Nodes(t *testing.T) {
-	runContainers(1, 4)
-	chechMinNumMembersInShardFromEveryNode(t)
-	putShard := map[string]interface{}{"result": "Error", "msg": "Not enough nodes for 5 shards", "statusCode": http.StatusBadRequest}
-	checkPutShard(t, 5, putShard)
-}
-
-func Test3Shard4Nodes(t *testing.T) {
-	runContainers(1, 4)
-	chechMinNumMembersInShardFromEveryNode(t)
-	putShard := map[string]interface{}{"result": "Error", "msg": "Not enough nodes. 3 shards result in a nonfault tolerant shard", "statusCode": http.StatusBadRequest}
-	checkPutShard(t, 3, putShard)
-}
-
-func Test2Shard4Nodes(t *testing.T) {
-	runContainers(1, 4)
-	chechMinNumMembersInShardFromEveryNode(t)
-	putShard := map[string]interface{}{"result": "Success", "statusCode": http.StatusOK}
-	checkPutShard(t, 2, putShard)
-	chechMinNumMembersInShardFromEveryNode(t)
-}
-func Test1Shard4Nodes(t *testing.T) {
-	runContainers(2, 4)
-	chechMinNumMembersInShardFromEveryNode(t)
-	putShard := map[string]interface{}{"result": "Success", "statusCode": http.StatusOK}
-	checkPutShard(t, 1, putShard)
-	chechMinNumMembersInShardFromEveryNode(t)
-}
-
-//--------------------------------------- Helper Functions----------------------------------/
-
-func initPutKey(t *testing.T, key string, value string) {
-	expectedPutKey := map[string]interface{}{"replaced": false, "msg": "Added successfully", "statusCode": http.StatusCreated}
-	checkPutKey(t, key, value, expectedPutKey, !askEveryNode)
-}
-
-func deleteNode(t *testing.T, node string, deleteErrbody bool) {
-	body := url.Values{}
-	body.Add("ip_port", node)
+func checkDeleteNode(t *testing.T, expected map[string]interface{}, deleteEveryNode bool) {
 	for port := range containersInfos {
+		body := url.Values{}
+		deletePort, deleteNetworkIP := getPort()
+		body.Add("ip_port", deleteNetworkIP)
 		res := sendRequest(port, "DELETE", "view", t, http.StatusOK, body)
-		log.Println("DELETE RES: ", res)
-		if !deleteErrbody {
+
+		result, isExist := res["result"].(string)
+		if !isExist {
+			t.Errorf("localhost:%v: Received empty response from deleteNode: %v", port, res)
+			t.FailNow()
+		}
+		if result != expected["result"].(string) {
+			t.Errorf("localhost:%v: result Expected: %v Received %v", port, expected["result"], result)
+		}
+
+		if result == "Success" {
+			expectedMsg := "Successfully removed " + deleteNetworkIP + " from view"
+			if res["msg"] != expectedMsg {
+				t.Errorf("localhost:%v: msg Expected %v Received %v", port, expectedMsg, res["msg"])
+				t.FailNow()
+			}
+			deleteNodeFromInfos(deletePort)
+		} else {
+			expectedMsg := deleteNetworkIP + " is not in current view"
+			if res["msg"] != expectedMsg {
+				t.Errorf("localhost:%v: msg Expected %v Received %v", port, expectedMsg, res["msg"])
+				t.FailNow()
+			}
+
+		}
+		if !deleteEveryNode {
 			return
 		}
 	}
-	t.Logf("Before deleting node: %v", node)
-	delete(containersInfos, node)
-	t.Logf("After deleting node: %v", node)
-
 }
+
 func chechMinNumMembersInShardFromEveryNode(t *testing.T) {
-	minNumMembers := int(math.Ceil(float64(initNumOfContainers) / float64(initNumOfShards)))
+	minNumMembers := initNumOfContainers / initNumOfShards
 	for port := range containersInfos {
 		for shardID := 0; shardID < initNumOfShards; shardID++ {
-			res := sendRequest(port, "GET", "shard/members/"+strconv.Itoa(shardID), t, http.StatusOK, nil)
+			body := url.Values{}
+			url := "shard/members/" + strconv.Itoa(shardID)
+			res := sendRequest(port, "GET", url, t, http.StatusOK, body)
 			_, ok := res["members"]
 			if !ok {
 				t.Errorf("localhost:%v: members must not be empty for shard_id %v: %v", port, shardID, res)
@@ -250,12 +291,11 @@ func checkView(t *testing.T, typeReq string, expected map[string]interface{}, ne
 	}
 }
 
-func checkGetKey(t *testing.T, key string, expected map[string]interface{}, askEveryone bool) float64 {
-	var ownerID = -1.
+func checkGetKey(t *testing.T, key string, expected map[string]interface{}, askEveryone bool) int {
+	var ownerID = -1
 	for port := range containersInfos {
 		body := url.Values{}
 		res := sendRequest(port, "GET", "keyValue-store/"+key, t, expected["statusCode"].(int), body)
-		// log.Printf("Port: %v. GET RES: %v\n", port, res)
 		_, ok := res["result"].(string)
 		if !ok {
 			t.Errorf("localhost:%v: unable to get key: %v", port, key)
@@ -270,12 +310,12 @@ func checkGetKey(t *testing.T, key string, expected map[string]interface{}, askE
 					t.Errorf("localhost:%v: Expected: %v: %v", port, expected["msg"], res["msg"])
 					t.FailNow()
 				}
-				owner, isExist := res["owner"]
+				owner, isExist := res["owner"].(float64)
 				if !isExist {
-					t.Errorf("localhost:%v owner is not exist", port)
+					t.Errorf("localhost:%v owner is not exist. Res: %v", port, res["owner"])
 					t.FailNow()
 				}
-				ownerID = owner.(float64)
+				ownerID = int(owner)
 
 			} else if res["msg"] != expected["msg"] {
 				t.Errorf("localhost:%v: Expected %v: %v", port, expected["msg"], res["msg"])
@@ -288,13 +328,22 @@ func checkGetKey(t *testing.T, key string, expected map[string]interface{}, askE
 	return ownerID
 }
 
-func checkDeleteKey(t *testing.T, key string, expected map[string]interface{}, deleteFromEveryone bool) {
+func checkDeleteKey(t *testing.T, expected map[string]interface{}, deleteFromEveryone bool) {
 	for port := range containersInfos {
 		body := url.Values{}
-		res := sendRequest(port, "DELETE", "keyValue-store/"+key, t, expected["statusCode"].(int), body)
+		randomKey := getRandomKey()
+		res := sendRequest(port, "DELETE", "keyValue-store/"+randomKey, t, expected["statusCode"].(int), body)
+		t.Logf("localhost:%v: deleted key: %v", port, randomKey)
+		if res["result"].(string) != expected["result"].(string) {
+			t.Errorf("localhost:%v: result Expected: %v: %v", port, expected["result"], res["result"])
+		}
 		msg, _ := res["msg"].(string)
 		if msg != expected["msg"].(string) {
-			t.Errorf("localhost:%v: Expected: %v: %v", port, expected["msg"], msg)
+			t.Errorf("localhost:%v: msg Expected: %v: %v", port, expected["msg"], msg)
+		}
+
+		if expected["result"].(string) == "Success" {
+			delete(kvs, randomKey)
 		}
 		if !deleteFromEveryone {
 			return
@@ -307,7 +356,7 @@ func checkPutKey(t *testing.T, key string, val string, expected map[string]inter
 		body := url.Values{}
 		body.Add("val", val)
 		res := sendRequest(port, "PUT", "keyValue-store/"+key, t, expected["statusCode"].(int), body)
-		t.Log(res)
+		// t.Log(res)
 		replaced, isExistReplaced := res["replaced"].(bool)
 		msg, isExistMsg := res["msg"].(string)
 		if !isExistMsg || !isExistReplaced {
@@ -327,30 +376,89 @@ func checkPutKey(t *testing.T, key string, val string, expected map[string]inter
 	}
 }
 
-func getCount(t *testing.T, shardID float64, statusCode int, checkEveryone bool) float64 {
+func checkGetCount(t *testing.T, port string, shardID string, statusCode int, expected map[string]interface{}) int {
 	var count float64
 
-	shardIDString := fmt.Sprint(shardID)
-	for port := range containersInfos {
-		body := url.Values{}
-		res := sendRequest(port, "GET", "shard/count/"+shardIDString, t, statusCode, body)
-		localCount, _ := res["Count"].(float64)
-		if localCount >= count {
-			count = localCount
+	body := url.Values{}
+	res := sendRequest(port, "GET", "shard/count/"+shardID, t, statusCode, body)
+	_, ok := res["result"].(string)
+	if !ok {
+		t.Errorf("localhost:%v: unable to get count from shard ID: %v", port, shardID)
+		t.FailNow()
+	} else {
+		if res["result"] != expected["result"] {
+			t.Errorf("Localhost:%v: Expected %v, got %v\n", port, expected["result"], res["result"])
+			t.FailNow()
 		}
-		if !checkEveryone {
-			break
+		if res["result"] == "Error" {
+			if res["msg"] != expected["msg"] {
+				t.Errorf("Localhost:%v: Expected %v, got %v\n", port, expected["msg"], res["msg"])
+				t.FailNow()
+			}
 		}
+		localCount, isExist := res["Count"].(float64)
+		if !isExist {
+			t.Errorf("localhost:%v: unable to get count from shard ID: %v. ", port, shardID)
+			t.FailNow()
+		}
+		count = localCount
 	}
 
-	return count
+	return int(count)
 }
 
-func putKey(t *testing.T, port string, key string, val string, statusCode int) map[string]interface{} {
-	body := url.Values{}
-	body.Add("val", val)
-	res := sendRequest(port, "PUT", "keyValue-store/"+key, t, statusCode, body)
-	return res
+func checkGetAllCount(t *testing.T) int {
+	t.Logf("Checking stored key is equal to sum of shards")
+	var allCount [][]int
+	var totalCount int
+	shardIDs := checkGetAllShardIDs(t)
+	for _, shardID := range shardIDs {
+		var count []int
+		expectedGetKey := map[string]interface{}{"result": "Success", "statusCode": http.StatusOK}
+		externalPorts := checkGetMembers(t, shardID, expectedGetKey)
+		for _, port := range externalPorts {
+			count = append(count, checkGetCount(t, "80"+port, shardID, http.StatusOK, expectedGetKey))
+		}
+		allCount = append(allCount, count)
+	}
+	for _, count := range allCount {
+		isUnique(t, count)
+		totalCount += count[0]
+	}
+	t.Logf("Received number of keys from shards: %v and sum of shards are %v", allCount, totalCount)
+	if totalCount != len(kvs) {
+		t.Errorf("Total Count %v != len(KVS) %v", totalCount, len(kvs))
+		t.FailNow()
+	}
+	return totalCount
+}
+
+func checkGetMembers(t *testing.T, shardID string, expected map[string]interface{}) []string {
+	var externalPorts []string
+	for port := range containersInfos {
+		body := url.Values{}
+		res := sendRequest(port, "GET", "shard/members/"+shardID, t, expected["statusCode"].(int), body)
+		if res["result"] != expected["result"].(string) {
+			t.Errorf("localhost:%v: Expected result does not match actual result: %v != %v", port, expected["result"], res["result"])
+			t.FailNow()
+		}
+		if res["result"] == "Error" {
+			if res["msg"] != expected["msg"] {
+				t.Errorf("localhost:%v: Expected msg does not match actual msg: %v != %v", port, expected["msg"], res["msg"])
+				t.FailNow()
+			}
+		}
+		// t.Logf("GET MEMBERS. Port: %v. Res: %v", port, res)
+		members := strings.Split(res["members"].(string), ",")
+		for _, member := range members {
+			if !contains(externalPorts, getID(member)) {
+				externalPorts = append(externalPorts, getID(member))
+			}
+
+		}
+	}
+	// t.Logf("externalPorts: %v", externalPorts)
+	return externalPorts
 }
 
 func checkPutShard(t *testing.T, num int, expected map[string]interface{}) {
@@ -363,6 +471,7 @@ func checkPutShard(t *testing.T, num int, expected map[string]interface{}) {
 			t.Errorf("localhost:%v: received empty body: %v", port, res)
 		} else {
 			if result == "Success" {
+				oldNumofShards := initNumOfShards
 				initNumOfShards = num
 				var expectedIDs string
 				for i := 0; i < initNumOfShards; i++ {
@@ -371,6 +480,8 @@ func checkPutShard(t *testing.T, num int, expected map[string]interface{}) {
 				expectedIDs = strings.TrimRight(expectedIDs, ",")
 				if expectedIDs != res["shard_ids"].(string) {
 					t.Errorf("localhost:%v: Expected: %v: %v", port, expectedIDs, res["shard_ids"])
+				} else {
+					t.Logf("localhost:%v: Successfully changed number of shard %v -> %v", port, oldNumofShards, initNumOfShards)
 				}
 				return
 			}
@@ -382,5 +493,71 @@ func checkPutShard(t *testing.T, num int, expected map[string]interface{}) {
 			}
 		}
 		return
+	}
+}
+
+// -------------------- HELPER HELPER functions ------------------------------\\\
+func getRandomKey() string {
+	for k := range kvs {
+		return k
+	}
+	return "Empty kvs"
+}
+func getID(ipport string) string {
+	s := strings.Split(ipport, ":")
+	s = strings.Split(s[0], ".")
+
+	id := s[3]
+	return id
+}
+
+// Contains tells whether a contains x.
+// Source: https://programming.guide/go/find-search-contains-slice.html
+func contains(a []string, x string) bool {
+	for _, n := range a {
+		if x == n {
+			return true
+		}
+	}
+	return false
+}
+
+func isUnique(t *testing.T, count []int) {
+	for i := 1; i < len(count); i++ {
+		if count[i] != count[0] {
+			t.Errorf("Count from each nodes are not!")
+			t.FailNow()
+		}
+	}
+}
+
+func initPutKey(t *testing.T, key string, value string) {
+	expectedPutKey := map[string]interface{}{"replaced": false, "msg": "Added successfully", "statusCode": http.StatusCreated}
+	checkPutKey(t, key, value, expectedPutKey, !askEveryNode)
+}
+
+func putKey(t *testing.T, port string, key string, val string, statusCode int) map[string]interface{} {
+	body := url.Values{}
+	body.Add("val", val)
+	res := sendRequest(port, "PUT", "keyValue-store/"+key, t, statusCode, body)
+	return res
+}
+
+func populateKVS(t *testing.T, numOfKeys int) {
+	kvs = make(map[string]string)
+	for i := 0; i < numOfKeys; i++ {
+		key := "hello" + strconv.Itoa(i)
+		val := "monkey"
+		kvs[key] = val
+		checkPutKey(t, key, val, goodAddedKey, !askEveryNode)
+	}
+	t.Logf("%v keys are created", len(kvs))
+}
+
+func deleteNodeFromInfos(port string) {
+	delete(containersInfos, port)
+	initNumOfContainers--
+	if initNumOfShards/2 == 1 {
+		initNumOfShards--
 	}
 }

@@ -159,10 +159,10 @@ func setup(key string, val string) (string, *mux.Router) {
 	testRouter.HandleFunc(rootURL+keySuffix, testApp.PutHandler).Methods(http.MethodPut)
 	testRouter.HandleFunc(rootURL+keySuffix, testApp.GetHandler).Methods(http.MethodGet)
 	testRouter.HandleFunc(rootURL+keySuffix, testApp.DeleteHandler).Methods(http.MethodDelete)
-	testRouter.HandleFunc(rootURL+search+keySuffix, testApp.SearchHandler).Methods(http.MethodGet)
-	testRouter.HandleFunc(view, testApp.ViewPutHandler).Methods(http.MethodPut)
-	testRouter.HandleFunc(view, testApp.ViewGetHandler).Methods(http.MethodGet)
-	testRouter.HandleFunc(view, testApp.ViewDeleteHandler).Methods(http.MethodDelete)
+	testRouter.HandleFunc(rootURL+searchURL+keySuffix, testApp.SearchHandler).Methods(http.MethodGet)
+	testRouter.HandleFunc(viewURL, testApp.ViewPutHandler).Methods(http.MethodPut)
+	testRouter.HandleFunc(viewURL, testApp.ViewGetHandler).Methods(http.MethodGet)
+	testRouter.HandleFunc(viewURL, testApp.ViewDeleteHandler).Methods(http.MethodDelete)
 
 	// Stub the server
 	testServer := httptest.NewUnstartedServer(testRouter)
@@ -707,7 +707,7 @@ func TestSearchRequestKeyExists(t *testing.T) {
 	subject := keyExists
 
 	// Set up the URL
-	url := serverURL + rootURL + search + "/" + subject
+	url := serverURL + rootURL + searchURL + "/" + subject
 
 	// Stub a request
 	method := http.MethodGet
@@ -751,7 +751,7 @@ func TestSearchRequestKeyDoesntExist(t *testing.T) {
 	subject := keyNotExists
 
 	// Set up the URL
-	url := serverURL + rootURL + search + "/" + subject
+	url := serverURL + rootURL + searchURL + "/" + subject
 
 	// Stub a request
 	method := http.MethodGet
@@ -800,7 +800,7 @@ func TestSearchRequestInvalidKey(t *testing.T) {
 	subject := bigKey
 
 	// Set up the URL
-	url := serverURL + rootURL + search + "/" + subject
+	url := serverURL + rootURL + searchURL + "/" + subject
 
 	// Stub a request
 	method := http.MethodGet
@@ -840,7 +840,7 @@ func TestViewPutRequestViewExists(t *testing.T) {
 	recorder := httptest.NewRecorder()
 
 	// Set up the URL
-	url := serverURL + view
+	url := serverURL + viewURL
 	log.Println("*** this is test view: " + testMain)
 	// Stub a request
 	method := http.MethodPut
@@ -881,7 +881,7 @@ func TestViewPutRequestViewNotExists(t *testing.T) {
 	recorder := httptest.NewRecorder()
 
 	// Set up the URL
-	url := serverURL + view
+	url := serverURL + viewURL
 	log.Println("*** this is test view: " + viewNotExist)
 	// Stub a request
 	method := http.MethodPut
@@ -920,7 +920,7 @@ func TestViewGetRequestViewExists(t *testing.T) {
 	recorder := httptest.NewRecorder()
 
 	// Set up the URL
-	url := serverURL + view
+	url := serverURL + viewURL
 
 	// Stub a request
 	method := http.MethodGet
@@ -957,7 +957,7 @@ func TestViewDeleteRequestViewExists(t *testing.T) {
 	recorder := httptest.NewRecorder()
 
 	// Set up the URL
-	url := serverURL + view
+	url := serverURL + viewURL
 
 	// Stub a request
 	method := http.MethodDelete
@@ -1000,7 +1000,7 @@ func TestViewDeleteRequestViewNotExists(t *testing.T) {
 	recorder := httptest.NewRecorder()
 
 	// Set up the URL
-	url := serverURL + view
+	url := serverURL + viewURL
 
 	// Stub a request
 	method := http.MethodDelete
@@ -1158,7 +1158,7 @@ func TestSearchHandlerValidPayloadKeyExists(t *testing.T) {
 	subject := keyExists
 
 	// Set up the URL
-	url := serverURL + rootURL + search + "/" + subject
+	url := serverURL + rootURL + searchURL + "/" + subject
 	testPayload := map[string]int{keyExists: 1}
 	testPayloadByte, err := json.Marshal(testPayload)
 	ok(t, err)
@@ -1208,7 +1208,7 @@ func TestSearchHandlerStalePayloadKeyExists(t *testing.T) {
 	subject := keyExists
 
 	// Set up the URL
-	url := serverURL + rootURL + search + "/" + subject
+	url := serverURL + rootURL + searchURL + "/" + subject
 	testPayload := map[string]int{keyExists: 2}
 	testPayloadByte, err := json.Marshal(testPayload)
 	ok(t, err)
