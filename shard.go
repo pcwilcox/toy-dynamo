@@ -360,6 +360,67 @@ func (s *ShardList) Add(newShardID string) bool {
 	return false
 }
 
+// AddServer adds a server to the view
+func (s *ShardList) AddServer(newServer string) bool {
+	if s != nil {
+		s.Mutex.Lock()
+		defer s.Mutex.Unlock()
+
+		st := s.string()
+		sp := strings.Split(st, ",")
+		sp = append(sp, newServer)
+		sort.Strings(sp)
+		sg := MakeGlob(sp, s.NumShards)
+		s.overwrite(sg)
+		return true
+	}
+	return false
+}
+
+// RemoveServer removes a server from the view
+func (s *ShardList) RemoveServer(server string) bool {
+	if s != nil {
+		s.Mutex.Lock()
+		defer s.Mutex.Unlock()
+
+		st := s.string()
+		sp := strings.Split(st, ",")
+		newSlice := []string{}
+		for _, v := range sp {
+			if v == server {
+				continue
+			}
+			newSlice = append(newSlice, v)
+		}
+		sort.Strings(newSlice)
+		sg := MakeGlob(newSlice, s.NumShards)
+		s.overwrite(sg)
+		return true
+	}
+	return false
+}
+
+// MakeGlob takes a slice of servers and makes a glob
+func MakeGlob(servers []string, shards int) ShardGlob {
+	sort.Strings(servers)
+	// We'll make a new map for them
+	newMap := make(map[string][]string)
+
+	// iterate over the servers
+	for i := 0; i < len(servers); i++ {
+		// index them into the map, mod the number of shards
+		shardIndex := i % shards
+
+		// the shard id is the index into the name list
+		name := shardNames[shardIndex]
+
+		// append them to the list
+		newMap[name] = append(newMap[name], servers[i])
+	}
+	sg := ShardGlob{newMap}
+	return sg
+}
+
 // PrimaryID returns the actual shard ID I am in
 func (s *ShardList) PrimaryID() string {
 	if s != nil {
@@ -519,24 +580,7 @@ func (s *ShardList) ChangeShardNumber(n int) bool {
 		sort.Strings(sl)
 		log.Println("sorted: ", sl)
 
-		// We'll make a new map for them
-		newMap := make(map[string][]string)
-
-		// iterate over the servers
-		for i := 0; i < len(sl); i++ {
-			// index them into the map, mod the number of shards
-			shardIndex := i % n
-
-			// the shard id is the index into the name list
-			name := shardNames[shardIndex]
-
-			// append them to the list
-			newMap[name] = append(newMap[name], sl[i])
-		}
-
-		log.Println("made a new map: ", newMap)
-		// make a shardglob
-		sg := ShardGlob{ShardList: newMap}
+		sg := MakeGlob(sl, n)
 
 		s.overwrite(sg)
 

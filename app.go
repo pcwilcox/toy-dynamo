@@ -673,7 +673,7 @@ func (app *App) ViewPutHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK) // code 200
 
 		// Add it
-		app.shard.Add(newPort)
+		app.shard.AddServer(newPort)
 
 		// Successful response
 		resp := map[string]interface{}{
@@ -758,7 +758,7 @@ func (app *App) ViewDeleteHandler(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK) // code 200
 
 		// Delete it
-		app.shard.Remove(deletePort)
+		app.shard.RemoveServer(deletePort)
 
 		// Successful response
 		resp := map[string]interface{}{
