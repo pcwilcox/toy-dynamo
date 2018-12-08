@@ -62,8 +62,8 @@ func (app *App) Initialize(l net.Listener) {
 
 	// Thse handlers implement the /shard endpoint and handle GET, PUT
 	r.HandleFunc(shardURL+changeNum+shardSuffix, app.ShardPutChangeNumberHandler).Methods(http.MethodPut)
-	r.HandleFunc(shardURL+shardSuffix, app.ShardGetMyIDHandler).Methods(http.MethodGet)
-	r.HandleFunc(shardURL+shardSuffix, app.ShardGetAllHandler).Methods(http.MethodGet)
+	r.HandleFunc(shardURL+myID, app.ShardGetMyIDHandler).Methods(http.MethodGet)
+	r.HandleFunc(shardURL+allID, app.ShardGetAllHandler).Methods(http.MethodGet)
 	r.HandleFunc(shardURL+membersURL+shardSuffix, app.ShardGetMembersHandler).Methods(http.MethodGet)
 	r.HandleFunc(shardURL+countURL+shardSuffix, app.ShardGetNumKeysHandler).Methods(http.MethodGet)
 
@@ -847,29 +847,18 @@ func (app *App) ShardGetAllHandler(w http.ResponseWriter, r *http.Request) {
 func (app *App) ShardGetMembersHandler(w http.ResponseWriter, r *http.Request) {
 	log.Println("Handling GET members request")
 
-	// Read the key from the URL using Gorilla Mux URL parsing.
-
 	// Declare some variables here and define them below.
-	var body []byte    // Response body
-	var err error      // Error value
-	var shardID string // shard id extracted from request
-	var members string // comma separated servers
-	var invalid bool
+	var body []byte // Response body
+	var err error   // Error value
 
-	log.Println("GET with members: ", members)
+	// Get the key from the URL
+	vars := mux.Vars(r)
+	shardID := vars["shard-id"]
+	log.Println(shardID)
 
-	invalid = false
-	s, _ := ioutil.ReadAll(r.Body)
-	log.Println(string(s))
+	valid := app.shard.ContainsShard(shardID)
 
-	// Python packs the input in Unicode for some reason so we need to convert it
-	sBody, _ := url.QueryUnescape(string(s))
-	// want to grab the value after /shard/members/
-	shardID = strings.Split(sBody, "/shard/members/")[0]
-
-	invalid = app.shard.ContainsShard(shardID)
-
-	if invalid {
+	if valid {
 		log.Println("Shard is invalid")
 		w.WriteHeader(http.StatusBadRequest) // code 400
 

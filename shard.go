@@ -284,6 +284,7 @@ func (s *ShardList) ContainsShard(shardID string) bool {
 	if s != nil {
 		s.Mutex.RLock()
 		defer s.Mutex.RUnlock()
+		log.Println("checking for shard ", shardID)
 		_, ok := s.ShardSlice[shardID]
 		return ok
 	}
