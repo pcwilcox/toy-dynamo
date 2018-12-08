@@ -1,0 +1,10 @@
+11:14:16 main.go:54: Running version ..
+11:14:16 main.go:59: My IP is 
+11:14:16 main.go:69: My view is: 
+11:14:16 main.go:75: There is total of  shard(s)
+11:14:16 main.go:94: Starting server...
+11:14:16 gossip.go:50: Gossip heart starts...
+11:14:16 tcp.go:629: Server has initialized
+11:14:16 tcp.go:80: Listen on [::]:8080
+11:14:16 tcp.go:82: Accept a connection request.
+11:14:16 app.go:83: REST API initialized.
