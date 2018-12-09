@@ -508,10 +508,15 @@ func (k *KVS) ShuffleKeys() bool {
 }
 
 // Size returns the number of keys in the DB
-func (k *KVS) Size() int {
+func (k *KVS) Size(shardID string) int {
 	if k != nil {
-		return len(k.db)
+		if shardID == MyShard.PrimaryID() {
+			k.mutex.RLock()
+			defer k.mutex.RUnlock()
+			return len(k.db)
+		}
+		bob := MyShard.FindBob(shardID)
+		return getBobKeyCount(bob)
 	}
-
 	return 0
 }

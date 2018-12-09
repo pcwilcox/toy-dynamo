@@ -305,7 +305,22 @@ func (e *Endpoint) handleGet(rw *bufio.ReadWriter) {
 		log.Println("error flushing buffer:", err)
 	}
 }
+func (e *Endpoint) handleCount(rw *bufio.ReadWriter) {
+	log.Println("Handling count()")
 
+	count := e.gossip.kvs.Size(MyShard.PrimaryID())
+
+	_, err := rw.WriteString(string(count))
+	if err != nil {
+		log.Println(err)
+	}
+
+	log.Println("flushing buffer")
+	err = rw.Flush()
+	if err != nil {
+		log.Println("error flushing buffer:", err)
+	}
+}
 func (e *Endpoint) handleContains(rw *bufio.ReadWriter) {
 	log.Println("Handling contains()")
 	var data GetRequest
@@ -586,6 +601,39 @@ func sendGetRequest(ip string, g GetRequest) (GetResponse, error) {
 	return data, nil
 }
 
+func getBobKeyCount(ip string) int {
+	rw, err := Open(ip)
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+
+	_, err = rw.WriteString("count\n")
+	if err != nil {
+		log.Println(err)
+		return 0
+
+	}
+	log.Println("flushing buffer")
+	err = rw.Flush()
+	if err != nil {
+		log.Println("error flushing buffer:", err)
+	}
+	resp, err := rw.ReadString('\n')
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+
+	resp = strings.Trim(resp, "\n")
+	count, err := strconv.Atoi(resp)
+	if err != nil {
+		log.Println(err)
+		return 0
+	}
+	return count
+}
+
 func askForHelp(ip string) error {
 	rw, err := Open(ip)
 	if err != nil {
@@ -645,6 +693,7 @@ func addHandlers(e *Endpoint) {
 	e.AddHandleFunc("get", e.handleGet)
 	e.AddHandleFunc("put", e.handlePut)
 	e.AddHandleFunc("delete", e.handleDelete)
+	e.AddHandleFunc("count", e.handleCount)
 }
 
 func register() {

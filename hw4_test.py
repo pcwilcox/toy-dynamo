@@ -327,47 +327,10 @@ class TestHW4(unittest.TestCase):
         initialShardIDs = self.checkGetAllShardIds(ipPort)
 
         self.checkChangeShardNumber(
-            targetNode, 2, 200, "Success", "Abbey, Alana")
+            targetNode, 2, 200, "Success", "Abbey, Adelina")
         time.sleep(propogationTime)
 
         self.assertEqual(2, len(initialShardIDs)-1)
-
-    # removing 1 node from shard with 2 nodes result number of shards
-    # to decrease and lonely node to join other shard
-    def test_g_remove_node_causes_shard_decrease(self):
-        ipPort = self.view[0]["testScriptAddress"]
-        removedNode = self.view.pop()["networkIpPortAddress"]
-        targetNode = self.view[-1]["networkIpPortAddress"]
-
-        self.confirmDeleteNode(ipPort=ipPort,
-                               removedAddress=removedNode,
-                               expectedStatus=200,
-                               expectedResult="Success",
-                               expectedMsg="Successfully removed %s from view" % removedNode)
-
-        time.sleep(propogationTime)
-
-        # â—ï¸check first shard (shard id might be different dependending on how you redestribute the nodes)
-        members = self.checkGetMembers(ipPort, "Abbey")
-
-        lonelyNodeInFirstShard = targetNode in members
-
-        self.assertEqual(True, lonelyNodeInFirstShard)
-
-    # changing shard size to 1 causes all nodes to be in that only shard
-    def test_h_change_shard_size_to_one(self):
-        ipPort = self.view[0]["testScriptAddress"]
-
-        self.checkChangeShardNumber(ipPort, 1, 200, "Success", "Abbey")
-
-        time.sleep(propogationTime)
-
-        members = self.checkGetMembers(ipPort, "Abbey")
-
-        # check if all members are present
-        for view in self.view:
-            currIpInShard = view['networkIpPortAddress'] in members
-            self.assertEqual(True, currIpInShard)
 
     # changing shard size from 1 to 2 should have 3 members in each shard
     def test_i_change_shard_size_from_one_to_two(self):

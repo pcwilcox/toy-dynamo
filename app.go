@@ -911,7 +911,6 @@ func (app *App) ShardGetNumKeysHandler(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
-	numKeys := app.db.Size()
 
 	if !valid {
 		log.Println("Shard is invalid")
@@ -927,6 +926,7 @@ func (app *App) ShardGetNumKeysHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 	} else {
+		numKeys := app.db.Size(shardID)
 		log.Println("Here are your num keys in your shard")
 		// It does
 		w.WriteHeader(http.StatusOK) // code 200

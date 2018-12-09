@@ -17,7 +17,7 @@ import "time"
 // dbAccess interface defines methods for interactions between the REST API front end and the key-value store
 type dbAccess interface {
 	// Size returns the number of keys
-	Size() int
+	Size(string) int
 
 	// Contains returns true if the data store contains an object with key equal to the input
 	Contains(string) (bool, int)
