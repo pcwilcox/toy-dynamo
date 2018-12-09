@@ -314,6 +314,83 @@ class TestHW4(unittest.TestCase):
         self.assertEqual(data['result'], expectedResult)
         self.assertEqual(data['Count'], expectedCount)
 
+##########################################################################
+## Tests start here ##
+##########################################################################
+
+    # check that they do things,
+    # not that they do the right thing,
+    # just that they don't return an error
+
+    def test_a_shard_endpoints(self):
+        ipPort = self.view[0]["testScriptAddress"]
+
+        ID = self.checkGetMyShardId(ipPort)
+        self.checkGetAllShardIds(ipPort)
+        self.checkGetMembers(ipPort, ID)
+        self.getShardView(ipPort)
+
+    def test_b_shard_consistent_view(self):
+        ipPort = self.view[0]["testScriptAddress"]
+
+        shardView = self.getShardView(ipPort)
+        for ID in shardView.keys():
+            self.checkConsistentMembership(ipPort, ID)
+
+    # no node is alone in a shard
+    def test_c_shard_no_lonely_nodes(self):
+        ipPort = self.view[0]["testScriptAddress"]
+
+        shardView = self.getShardView(ipPort)
+        for shard in shardView.items():
+            length = len(shard)
+            self.assertTrue(length > 1)
+
+    # number of shards should not change
+    def test_d_shard_add_node(self):
+        ipPort = self.view[0]["testScriptAddress"]
+
+        initialShardIDs = self.checkGetAllShardIds(ipPort)
+
+        newPort = "%s8" % port_prefix
+        newView = "%s8:8080" % (networkIpPrefix)
+
+        viewSting = getViewString(self.view)
+        viewSting += ",%s" % newView
+        newNode = dc.spinUpDockerContainer(
+            dockerBuildTag, hostIp, networkIpPrefix+"8", newPort, viewSting, 3)
+
+        self.confirmAddNode(ipPort=ipPort,
+                            newAddress=newView,
+                            expectedStatus=200,
+                            expectedResult="Success",
+                            expectedMsg="Successfully added %s to view" % newView)
+
+        time.sleep(propogationTime)
+        newShardIDs = self.checkGetAllShardIds(ipPort)
+
+        self.assertEqual(len(newShardIDs), len(initialShardIDs))
+
+    # removing a node decrease number of shards
+
+    def test_e_shard_remove_node(self):
+        ipPort = self.view[0]["testScriptAddress"]
+        removedNode = self.view.pop()["networkIpPortAddress"]
+
+        initialShardIDs = self.checkGetAllShardIds(ipPort)
+
+        self.confirmDeleteNode(ipPort=ipPort,
+                               removedAddress=removedNode,
+                               expectedStatus=200,
+                               expectedResult="Success",
+                               expectedMsg="Successfully removed %s from view" % removedNode)
+
+        time.sleep(propogationTime)
+
+        newShardIDs = self.checkGetAllShardIds(ipPort)
+
+        self.assertEqual(len(newShardIDs), len(initialShardIDs)-1)
+
     ##########################################################################
     ## Unit tests by Egan Gumiwang Pratama Bisma ##
     ##########################################################################
