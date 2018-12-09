@@ -60,8 +60,8 @@ const (
 var myIP string           // set as environment variable IP_PORT
 var wakeGossip bool       // If true, we wake up during the heartbeat loop
 var needHelp bool         // If this is true, we haven't heard anything in a while
-var ringSize = 1000       // The number of positions on the ring
-var numVirtualNodes = 10  // The number of virtual nodes per shard
+var ringSize = 1000000    // The number of positions on the ring
+var numVirtualNodes = 150 // The number of virtual nodes per shard
 var shardChange bool      // If this si true, we need to communicate a shard transition
 var distributeKeys bool   // If this is true we need to check and distribute any keys
 var defaultShardCount = 1 // if it isn't specified

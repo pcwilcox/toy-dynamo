@@ -46,10 +46,9 @@ func (r *RBTree) get(key int) string {
 
 // Inserts a value associated with a particular key
 func (r *RBTree) put(key int, value string) {
-	log.Println("handling put - key: ", key, " value: ", value)
+	//log.Println("handling put - key: ", key, " value: ", value)
 	if r != nil {
 		if r.Root == nil {
-			log.Println("Made new root")
 			r.Root = newNode(key, value, black)
 		} else {
 			r.Root = r.Root.put(key, value)
@@ -121,6 +120,7 @@ func (r *RBTree) delete(k int) {
 		if r.Root != nil {
 			r.Root.Color = black
 		}
+		log.Println("deleted ", k)
 	}
 }
 
@@ -190,12 +190,12 @@ func (n *RBNode) delete(k int) *RBNode {
 	}
 
 	if k < n.Key {
-		if !n.Left.isRed() && !n.Left.Left.isRed() {
+		if n.Left != nil && n.Left.Left != nil && !n.Left.isRed() && !n.Left.Left.isRed() {
 			n = n.moveRedLeft()
 		}
 		n.Left = n.Left.delete(k)
 	} else {
-		if n.Left.isRed() {
+		if n.Left != nil && n.Left.isRed() {
 			n = n.rotateRight()
 		}
 		if k == n.Key && n.Right == nil {
