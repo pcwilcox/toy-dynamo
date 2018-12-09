@@ -13,6 +13,7 @@
 package main
 
 import (
+	"errors"
 	"log"
 	"math/rand"
 	"sort"
@@ -58,7 +59,7 @@ type Shard interface {
 	RandomGlobal(int) []string
 
 	// FindBob returns a random element of a particular shard
-	FindBob(string) string
+	FindBob(string) (string, error)
 
 	// Overwrite with a new view of the world
 	Overwrite(ShardGlob)
@@ -71,6 +72,8 @@ type Shard interface {
 
 	// GetMembers returns a comma separated string of all member servers addresses
 	GetMembers(string) string
+
+	EveryoneElse() []string
 }
 
 // ShardList is a struct which implements the Shard interface and holds shard ID system of servers
@@ -110,6 +113,25 @@ func (s *ShardList) GetSuccessor(k int) string {
 	return ""
 }
 
+// EveryoneElse gets a list of everyone else
+func (s *ShardList) EveryoneElse() []string {
+	var list []string
+	if s != nil {
+		log.Println("Finding all other servers")
+		s.Mutex.RLock()
+		defer s.Mutex.RUnlock()
+
+		for _, v := range s.ShardSlice {
+			for _, i := range v {
+				if i != s.PrimaryIP {
+					list = append(list, i)
+				}
+			}
+		}
+	}
+	return list
+}
+
 // GetAllShards returns a comma-separated list of shards
 func (s *ShardList) GetAllShards() string {
 	if s != nil {
@@ -137,19 +159,23 @@ func (s *ShardList) GetMembers(shard string) string {
 }
 
 // FindBob returns a random element of the chosen shard
-func (s *ShardList) FindBob(shard string) string {
+func (s *ShardList) FindBob(shard string) (string, error) {
 	if s != nil {
 		s.Mutex.RLock()
 		defer s.Mutex.RUnlock()
 		log.Println("Finding a Bob in shard ", shard)
 		r := rand.Int()
+		log.Println(s.ShardSlice[shard])
+		if _, ok := s.ShardSlice[shard]; !ok {
+			return "", errors.New("no entry for shard " + shard)
+		}
 		l := s.ShardSlice[shard]
 		i := r % len(l)
 		bob := l[i]
 		log.Println("Found Bob: ", bob)
-		return bob
+		return bob, nil
 	}
-	return ""
+	return "", errors.New("shardlist is nil")
 }
 
 // GetShardGlob returns a ShardGlob

@@ -50,4 +50,6 @@ type dbAccess interface {
 
 	// Shuffles keys
 	ShuffleKeys()
+
+	ConflictResolution(string, KeyEntry) bool
 }

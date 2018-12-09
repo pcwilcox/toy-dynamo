@@ -85,11 +85,12 @@ func (g *GossipVals) GossipHeartbeat() {
 
 			}
 			if shardChange {
-				gossipee = g.ShardList.RandomGlobal(2)
+				gossipee = g.ShardList.EveryoneElse()
 				// Propagate views
 				for _, bob := range gossipee {
 					log.Println("sending shardlist update to ", bob)
-					sendShardGob(bob, g.ShardList.GetShardGlob())
+					go sendShardGob(bob, g.ShardList.GetShardGlob())
+					shardChange = false
 				}
 
 				distributeKeys = true
@@ -99,7 +100,7 @@ func (g *GossipVals) GossipHeartbeat() {
 			setTime()
 		}
 		// Sleep
-		time.Sleep(5 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 	}
 }
 
@@ -131,59 +132,8 @@ func (g *GossipVals) BuildEntryGlob(inglob TimeGlob) EntryGlob {
 func (g *GossipVals) UpdateKVS(inglob EntryGlob) {
 	// Loop through all keys, check for conflicts, and update KVS when necessary.
 	for key, aliceEntry := range inglob.Keys {
-		if g.ConflictResolution(key, &aliceEntry) {
-			g.kvs.OverwriteEntry(key, &aliceEntry)
-		}
+		g.kvs.ConflictResolution(key, &aliceEntry)
 	}
-}
-
-// ConflictResolution returns true if Bob should update with Alice's key
-func (g *GossipVals) ConflictResolution(key string, aliceEntry KeyEntry) bool {
-	log.Println("Resolving a conflict")
-	isSmaller := false
-	isLarger := false
-	incomparable := false
-
-	log.Printf("Comparing Alice's version '%#v'\n", aliceEntry)
-	log.Printf("key is ", key)
-	aMap := aliceEntry.GetClock()
-	bMap := g.kvs.GetClock(key)
-	log.Println("aMap: ", aMap)
-	log.Println("bMap: ", bMap)
-
-	// if bob does NOT have the key, we definitely update w/ Alice's stuff
-	if len(bMap) == 0 {
-		log.Println("Bob doesn't have the entry: ", key)
-		return true // Bob can't possibly beat Alice's key with no corresponding key of it's own
-	}
-	// else if Bob DOES have the key, we compare causal history & timestamps
-	for k, v := range bMap {
-		if aMap[k] < v {
-			isSmaller = true
-		} else if aMap[k] > v {
-			isLarger = true
-		}
-	}
-	for k := range aMap {
-		if _, exist := bMap[k]; !exist {
-			incomparable = true
-		}
-	}
-
-	if (isSmaller && isLarger) || (!isSmaller && !isLarger) || incomparable {
-		// incomparable or identical clocks, later timestamp wins
-		if aliceEntry.GetTimestamp().After(g.kvs.GetTimestamp(key)) {
-			log.Println("Alice wins with the later timestamp")
-			return true // alice wins
-		}
-		log.Println("Bob wins with a later timestamp")
-		return false // bob wins
-	} else if isSmaller == false && isLarger == true {
-		log.Println("Alice wins with a larger clock")
-		return true // alice wins
-	}
-	log.Println("Bob wins with a larger clock")
-	return false // bob wins
 }
 
 // UpdateShardList overwrites our view of the shard list

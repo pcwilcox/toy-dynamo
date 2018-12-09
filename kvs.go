@@ -203,7 +203,11 @@ func (k *KVS) Contains(key string) (bool, int) {
 		Key:     key,
 		Payload: nil,
 	}
-	bobIP := MyShard.FindBob(whoShard)
+	bobIP, err := MyShard.FindBob(whoShard)
+	if err != nil {
+		log.Println(err)
+		return false, 0
+	}
 	bobResp, err := sendContainsRequest(bobIP, g)
 	if err != nil {
 		log.Println(err)
@@ -238,7 +242,11 @@ func (k *KVS) Get(key string, payload map[string]int) (val string, clock map[str
 			Payload: payload,
 		}
 		//Retrieving bob's IP
-		bobIP := MyShard.FindBob(whoShard)
+		bobIP, err := MyShard.FindBob(whoShard)
+		if err != nil {
+			log.Println(err)
+			return "", map[string]int{}
+		}
 		//Sending the request and recieving bob's responce
 		bobResp, err := sendGetRequest(bobIP, GetSend)
 		if err != nil {
@@ -293,7 +301,11 @@ func (k *KVS) Delete(key string, time time.Time, payload map[string]int) bool {
 			Payload:   payload,
 		}
 		//Retrieving bob's IP
-		bobIP := MyShard.FindBob(whoShard)
+		bobIP, err := MyShard.FindBob(whoShard)
+		if err != nil {
+			log.Println(err)
+			return false
+		}
 		//Sending the request and recieving bob's responce
 		bobResp, err := sendDeleteRequest(bobIP, GetDelete)
 		if err != nil {
@@ -345,7 +357,11 @@ func (k *KVS) Put(key string, val string, time time.Time, payload map[string]int
 				Payload:   payload,
 			}
 			//Retrieving bob's IP
-			bobIP := MyShard.FindBob(whoShard)
+			bobIP, err := MyShard.FindBob(whoShard)
+			if err != nil {
+				log.Println(err)
+				return false
+			}
 			//Sending the request and recieving bob's responce
 			bobResp, err := sendPutRequest(bobIP, GetDelete)
 			if err != nil {
@@ -433,6 +449,14 @@ func (k *KVS) OverwriteEntry(key string, entry KeyEntry) {
 	}
 }
 
+func (k *KVS) overwriteEntry(key string, entry KeyEntry) {
+	if entry != nil {
+		log.Println("Overwriting entry: ", k.db[key])
+		k.db[key] = entry
+		log.Println("New entry: ", entry)
+	}
+}
+
 // GetTimeGlob returns a struct containing a map of keys to their timestamps
 func (k *KVS) GetTimeGlob() TimeGlob {
 	if k != nil {
@@ -504,9 +528,14 @@ func (k *KVS) ShuffleKeys() {
 		}
 		if len(eg.Keys) > 0 {
 			log.Println("Sending entryglob ", eg, " to bob")
-			bob := MyShard.FindBob(shard)
-			log.Println("sending to bob ", bob)
-			sendEntryGlob(bob, eg)
+			bob, err := MyShard.FindBob(shard)
+			if err != nil {
+				log.Println(err)
+				continue
+			} else {
+				log.Println("sending to bob ", bob)
+				sendEntryGlob(bob, eg)
+			}
 		}
 	}
 	distributeKeys = false
@@ -518,7 +547,11 @@ func (k *KVS) Size(shardID string) int {
 		if shardID == MyShard.PrimaryID() {
 			return k.mySize()
 		}
-		bob := MyShard.FindBob(shardID)
+		bob, err := MyShard.FindBob(shardID)
+		if err != nil {
+			log.Println(err)
+			return 0
+		}
 		return getBobKeyCount(bob)
 	}
 	return 0
@@ -531,4 +564,68 @@ func (k *KVS) mySize() int {
 		return len(k.db)
 	}
 	return 0
+}
+
+// ConflictResolution returns true if Bob should update with Alice's key
+func (k *KVS) ConflictResolution(key string, aliceEntry KeyEntry) bool {
+	if k != nil {
+		replace := false
+		log.Println("Resolving a conflict")
+		k.mutex.Lock()
+		defer k.mutex.Unlock()
+
+		isSmaller := false
+		isLarger := false
+		incomparable := false
+		var bMap map[string]int
+
+		log.Printf("Comparing Alice's version '%#v'\n", aliceEntry)
+		log.Printf("key is ", key)
+		aMap := aliceEntry.GetClock()
+		_, exists := k.db[key]
+		if exists {
+			bMap = k.db[key].GetClock()
+		} else {
+			bMap = make(map[string]int)
+		}
+		log.Println("aMap: ", aMap)
+		log.Println("bMap: ", bMap)
+
+		// if bob does NOT have the key, we definitely update w/ Alice's stuff
+		if len(bMap) == 0 {
+			log.Println("Bob doesn't have the entry: ", key)
+			replace = true // Bob can't possibly beat Alice's key with no corresponding key of it's own
+		} else {
+			// else if Bob DOES have the key, we compare causal history & timestamps
+			for k, v := range bMap {
+				if aMap[k] < v {
+					isSmaller = true
+				} else if aMap[k] > v {
+					isLarger = true
+				}
+			}
+			for k := range aMap {
+				if _, exist := bMap[k]; !exist {
+					incomparable = true
+				}
+			}
+
+			if (isSmaller && isLarger) || (!isSmaller && !isLarger) || incomparable {
+				// incomparable or identical clocks, later timestamp wins
+				if aliceEntry.GetTimestamp().After(k.db[key].GetTimestamp()) {
+					log.Println("Alice wins with the later timestamp")
+					replace = true // alice wins
+				}
+				log.Println("Bob wins with a later timestamp")
+			} else if isSmaller == false && isLarger == true {
+				log.Println("Alice wins with a larger clock")
+				return true // alice wins
+			}
+			log.Println("Bob wins with a larger clock")
+		}
+		if replace {
+			k.overwriteEntry(key, aliceEntry)
+		}
+	}
+	return false
 }

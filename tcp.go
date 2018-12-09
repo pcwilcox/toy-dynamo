@@ -79,13 +79,11 @@ func (e *Endpoint) AddHandleFunc(name string, f HandleFunc) {
 func (e *Endpoint) Listen() error {
 	log.Println("Listen on", e.listener.Addr().String())
 	for {
-		log.Println("Accept a connection request.")
 		conn, err := e.listener.Accept()
 		if err != nil {
 			log.Println("Failed accepting a connection request:", err)
 			continue
 		}
-		log.Println("Handle incoming messages.")
 		go e.handleMessages(conn)
 	}
 }
@@ -103,7 +101,6 @@ func (e *Endpoint) handleMessages(conn net.Conn) {
 		cmd, err := rw.ReadString('\n')
 		switch {
 		case err == io.EOF:
-			log.Println("Reached EOF - close this connection.\n   ---")
 			return
 		case err != nil:
 			log.Println("\nError reading command. Got: '"+cmd+"'\n", err)
@@ -130,8 +127,6 @@ func (e *Endpoint) handleMessages(conn net.Conn) {
 // handleTimeGob reads the timeGob out of the request and passes it to the gossip
 // module, then returns the result to the client
 func (e *Endpoint) handleTimeGob(rw *bufio.ReadWriter) {
-	log.Print("Receive Time Gob data:")
-
 	// Create an empty timeGlob
 	var data TimeGlob
 
@@ -143,14 +138,11 @@ func (e *Endpoint) handleTimeGob(rw *bufio.ReadWriter) {
 		return
 	}
 
-	log.Printf("Decoding timeGlob: %#v\n", data)
-
 	// Pass the data glob to the gossip module and get the result
 	data = e.gossip.ClockPrune(data)
 
 	// Create an encoder on the stream
 	enc := gob.NewEncoder(rw)
-	log.Printf("Encoding response timeGlob back to buffer: %#v\n", data)
 	// Encode the response back to the client
 	err = enc.Encode(data)
 	if err != nil {
@@ -158,17 +150,13 @@ func (e *Endpoint) handleTimeGob(rw *bufio.ReadWriter) {
 	}
 
 	// Flush the buffer to ensure it has all been read before closing it
-	log.Println("Flushing buffer")
 	err = rw.Flush()
 	if err != nil {
 		log.Println("Flush failed.")
 	}
-
-	log.Printf("timeGlob struct: \n%v", data)
 }
 
 func (e *Endpoint) handleEntryGob(rw *bufio.ReadWriter) {
-	log.Println("Receive entryGlob data:")
 	var data EntryGlob
 	// Create a decoder that decodes directly into a struct variable.
 	dec := gob.NewDecoder(rw)
@@ -178,46 +166,33 @@ func (e *Endpoint) handleEntryGob(rw *bufio.ReadWriter) {
 		return
 	}
 
-	log.Println("Decoding entryGlob: ", data)
-	log.Println("Updating KVS")
 	e.gossip.UpdateKVS(data)
-	// Print the complexData struct and the nested one, too, to prove
-	// that both travelled across the wire.
-	log.Printf("Outer complexData struct: \n%#v\n", data)
 }
 
 func (e *Endpoint) handleShardGob(rw *bufio.ReadWriter) {
 	var data ShardGlob
 	dec := gob.NewDecoder(rw)
-	log.Println("Decoding viewGob data")
 	err := dec.Decode(&data)
 	if err != nil {
 		log.Println("Error decoding view data")
 		return
 	}
 
-	log.Println("Updating ShardList - old views: " + e.gossip.ShardList.String())
 	e.gossip.UpdateShardList(data)
-	log.Println("Shards updated: ", data)
 }
 
 func (e *Endpoint) handleHelp(rw *bufio.ReadWriter) {
-	log.Println("Receive call for help")
 	wakeGossip = true
 }
 
 func (e *Endpoint) handleDelete(rw *bufio.ReadWriter) {
-	log.Println("Handling delete()")
 	var data PutRequest
 	dec := gob.NewDecoder(rw)
-	log.Println("Decoding PutRequest data")
 	err := dec.Decode(&data)
 	if err != nil {
 		log.Println("error decoding request data")
 		return
 	}
-
-	log.Println("Received request: ", data)
 
 	written := e.gossip.kvs.Delete(data.Key, data.Timestamp, data.Payload)
 
@@ -233,7 +208,6 @@ func (e *Endpoint) handleDelete(rw *bufio.ReadWriter) {
 		log.Println("error encoding response:", err)
 		log.Println("Could not write response data (" + strconv.Itoa(n) + " bytes written)")
 	}
-	log.Println("flushing buffer")
 	err = rw.Flush()
 	if err != nil {
 		log.Println("error flushing buffer:", err)
@@ -241,10 +215,8 @@ func (e *Endpoint) handleDelete(rw *bufio.ReadWriter) {
 }
 
 func (e *Endpoint) handlePut(rw *bufio.ReadWriter) {
-	log.Println("Handling put()")
 	var data PutRequest
 	dec := gob.NewDecoder(rw)
-	log.Println("Decoding PutRequest data")
 	err := dec.Decode(&data)
 	if err != nil {
 		log.Println("error decoding request data")
@@ -268,7 +240,6 @@ func (e *Endpoint) handlePut(rw *bufio.ReadWriter) {
 		log.Println("Could not write response data (" + strconv.Itoa(n) + " bytes written)")
 		return
 	}
-	log.Println("flushing buffer")
 	err = rw.Flush()
 	if err != nil {
 		log.Println("error flushing buffer:", err)
@@ -276,10 +247,8 @@ func (e *Endpoint) handlePut(rw *bufio.ReadWriter) {
 }
 
 func (e *Endpoint) handleGet(rw *bufio.ReadWriter) {
-	log.Println("Handling get()")
 	var data GetRequest
 	dec := gob.NewDecoder(rw)
-	log.Println("Decoding GetRequest data")
 	err := dec.Decode(&data)
 	if err != nil {
 		log.Println("error decoding request data")
@@ -299,7 +268,6 @@ func (e *Endpoint) handleGet(rw *bufio.ReadWriter) {
 		log.Println("error encoding response:", err)
 		return
 	}
-	log.Println("flushing buffer")
 	err = rw.Flush()
 	if err != nil {
 		log.Println("error flushing buffer:", err)
@@ -316,17 +284,14 @@ func (e *Endpoint) handleCount(rw *bufio.ReadWriter) {
 		log.Println(err)
 	}
 
-	log.Println("flushing buffer")
 	err = rw.Flush()
 	if err != nil {
 		log.Println("error flushing buffer:", err)
 	}
 }
 func (e *Endpoint) handleContains(rw *bufio.ReadWriter) {
-	log.Println("Handling contains()")
 	var data GetRequest
 	dec := gob.NewDecoder(rw)
-	log.Println("Decoding GetRequest data")
 	err := dec.Decode(&data)
 	if err != nil {
 		log.Println("error decoding request data")
@@ -346,7 +311,6 @@ func (e *Endpoint) handleContains(rw *bufio.ReadWriter) {
 		log.Println("error encoding response:", err)
 		return
 	}
-	log.Println("flushing buffer")
 	err = rw.Flush()
 	if err != nil {
 		log.Println("error flushing buffer:", err)
@@ -371,12 +335,10 @@ func sendTimeGlob(ip string, tg TimeGlob) (*TimeGlob, error) {
 		return nil, errors.Wrap(err, "Could not write GOB data ("+strconv.Itoa(n)+" bytes written)")
 	}
 
-	log.Println("Encoding timeGlob")
 	err = enc.Encode(tg)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Encode failed for struct: %#v", tg)
 	}
-	log.Println("Flushing buffer")
 	err = rw.Flush()
 	if err != nil {
 		return nil, errors.Wrap(err, "Flush failed.")
@@ -384,7 +346,6 @@ func sendTimeGlob(ip string, tg TimeGlob) (*TimeGlob, error) {
 
 	// Create a decoder that decodes directly into a struct variable.
 	dec := gob.NewDecoder(rw)
-	log.Println("Reading timeGlob response")
 	err = dec.Decode(&out)
 	if err != nil {
 		log.Println("Error decoding GOB data:", err)
@@ -411,12 +372,10 @@ func sendEntryGlob(ip string, eg EntryGlob) error {
 	if err != nil {
 		return errors.Wrap(err, "Could not write GOB data ("+strconv.Itoa(n)+" bytes written)")
 	}
-	log.Println("Encoding entryGlob: ", eg)
 	err = enc.Encode(eg)
 	if err != nil {
 		return errors.Wrapf(err, "Encode failed for struct: %#v", eg)
 	}
-	log.Println("Flushing buffer")
 	err = rw.Flush()
 	if err != nil {
 		return errors.Wrap(err, "Flush failed.")
@@ -437,13 +396,11 @@ func sendShardGob(ip string, s ShardGlob) error {
 		return errors.Wrap(err, "Could not write shard data ("+strconv.Itoa(n)+" bytes written)")
 	}
 
-	log.Println("Encoding shard struct")
 	err = enc.Encode(s)
 	if err != nil {
 		return errors.Wrapf(err, "Encode failed for shard list: %#v", s)
 
 	}
-	log.Println("Flushing buffer")
 	err = rw.Flush()
 	if err != nil {
 		return errors.Wrap(err, "Flush failed")
@@ -462,19 +419,16 @@ func sendDeleteRequest(ip string, p PutRequest) (bool, error) {
 		return false, errors.Wrap(err, "Could not write delete data ("+strconv.Itoa(n)+" bytes written)")
 	}
 
-	log.Println("Encoding PutRequest")
 	err = enc.Encode(p)
 	if err != nil {
 		return false, errors.Wrapf(err, "Encode failed for PutRequest: %#v", p)
 
 	}
-	log.Println("Flushing buffer")
 	err = rw.Flush()
 	if err != nil {
 		return false, errors.Wrap(err, "Flush failed")
 	}
 
-	log.Println("Reading response")
 	resp, err := rw.ReadString('\n')
 	if err != nil {
 		log.Println("Error decoding response data:", err)
@@ -500,25 +454,22 @@ func sendPutRequest(ip string, p PutRequest) (bool, error) {
 		return false, errors.Wrap(err, "Could not write put data ("+strconv.Itoa(n)+" bytes written)")
 	}
 
-	log.Println("Encoding PutRequest")
 	err = enc.Encode(p)
 	if err != nil {
 		return false, errors.Wrapf(err, "Encode failed for PutRequest: %#v", p)
 
 	}
-	log.Println("Flushing buffer")
 	err = rw.Flush()
 	if err != nil {
 		return false, errors.Wrap(err, "Flush failed")
 	}
 
-	log.Println("Reading response")
 	resp, err := rw.ReadString('\n')
 	if err != nil {
 		log.Println("Error decoding response data:", err)
 		return false, err
 	}
-	resp = strings.Trim(resp, "\n ")
+	resp = strings.Trim(resp, "\n")
 	if resp == "true" {
 		return true, nil
 	}
@@ -538,13 +489,11 @@ func sendContainsRequest(ip string, g GetRequest) (ContainsResponse, error) {
 		return ContainsResponse{}, errors.Wrap(err, "Could not write contains data ("+strconv.Itoa(n)+" bytes written)")
 	}
 
-	log.Println("Encoding GetRequest")
 	err = enc.Encode(g)
 	if err != nil {
 		return ContainsResponse{}, errors.Wrapf(err, "Encode failed for GetRequest: %#v", g)
 
 	}
-	log.Println("Flushing buffer")
 	err = rw.Flush()
 	if err != nil {
 		return ContainsResponse{}, errors.Wrap(err, "Flush failed")
@@ -576,13 +525,11 @@ func sendGetRequest(ip string, g GetRequest) (GetResponse, error) {
 		return GetResponse{}, errors.Wrap(err, "Could not write get data ("+strconv.Itoa(n)+" bytes written)")
 	}
 
-	log.Println("Encoding GetRequest")
 	err = enc.Encode(g)
 	if err != nil {
 		return GetResponse{}, errors.Wrapf(err, "Encode failed for GetRequest: %#v", g)
 
 	}
-	log.Println("Flushing buffer")
 	err = rw.Flush()
 	if err != nil {
 		return GetResponse{}, errors.Wrap(err, "Flush failed")
@@ -592,7 +539,6 @@ func sendGetRequest(ip string, g GetRequest) (GetResponse, error) {
 
 	// Create a decoder that decodes directly into a struct variable.
 	dec := gob.NewDecoder(rw)
-	log.Println("Reading GetResponse")
 	err = dec.Decode(&data)
 	if err != nil {
 		log.Println("Error decoding GOB data:", err)
@@ -617,7 +563,6 @@ func getBobKeyCount(ip string) int {
 		return 0
 
 	}
-	log.Println("flushing buffer")
 	err = rw.Flush()
 	if err != nil {
 		log.Println("error flushing buffer:", err)
@@ -650,7 +595,6 @@ func askForHelp(ip string) error {
 		return errors.Wrap(err, "Could not write view data ("+strconv.Itoa(n)+" bytes written)")
 	}
 
-	log.Println("Flushing buffer")
 	err = rw.Flush()
 	return err
 }
