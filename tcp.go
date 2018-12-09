@@ -308,9 +308,10 @@ func (e *Endpoint) handleGet(rw *bufio.ReadWriter) {
 func (e *Endpoint) handleCount(rw *bufio.ReadWriter) {
 	log.Println("Handling count()")
 
-	count := e.gossip.kvs.Size(MyShard.PrimaryID())
+	count := e.gossip.kvs.mySize()
+	log.Println("my count is ", count)
 
-	_, err := rw.WriteString(string(count))
+	_, err := rw.WriteString(strconv.Itoa(count) + "\n")
 	if err != nil {
 		log.Println(err)
 	}
@@ -608,6 +609,8 @@ func getBobKeyCount(ip string) int {
 		return 0
 	}
 
+	log.Println("asking ", ip, " for key count")
+
 	_, err = rw.WriteString("count\n")
 	if err != nil {
 		log.Println(err)
@@ -624,6 +627,7 @@ func getBobKeyCount(ip string) int {
 		log.Println(err)
 		return 0
 	}
+	log.Println("read string " + resp)
 
 	resp = strings.Trim(resp, "\n")
 	count, err := strconv.Atoi(resp)
@@ -631,6 +635,7 @@ func getBobKeyCount(ip string) int {
 		log.Println(err)
 		return 0
 	}
+	log.Println("returning count ", count)
 	return count
 }
 

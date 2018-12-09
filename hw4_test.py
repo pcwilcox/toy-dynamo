@@ -340,10 +340,10 @@ class TestHW4(unittest.TestCase):
         ipPortTwo = self.view[1]["testScriptAddress"]
 
         members = self.checkGetMembers(ipPortOne, "Abbey")
-        membersTwo = self.checkGetMembers(ipPortTwo, "Alana")
+        membersTwo = self.checkGetMembers(ipPortTwo, "Adelina")
 
         self.checkChangeShardNumber(
-            ipPortOne, 2, 200, "Success", "Abbey, Alana")
+            ipPortOne, 2, 200, "Success", "Abbey, Adelina")
 
         membersOne = self.checkGetMembers(ipPortOne, 0)
         membersTwo = self.checkGetMembers(ipPortTwo, 0)

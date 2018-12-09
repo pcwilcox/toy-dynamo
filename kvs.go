@@ -511,12 +511,19 @@ func (k *KVS) ShuffleKeys() bool {
 func (k *KVS) Size(shardID string) int {
 	if k != nil {
 		if shardID == MyShard.PrimaryID() {
-			k.mutex.RLock()
-			defer k.mutex.RUnlock()
-			return len(k.db)
+			return k.mySize()
 		}
 		bob := MyShard.FindBob(shardID)
 		return getBobKeyCount(bob)
+	}
+	return 0
+}
+
+func (k *KVS) mySize() int {
+	if k != nil {
+		k.mutex.RLock()
+		defer k.mutex.RUnlock()
+		return len(k.db)
 	}
 	return 0
 }
