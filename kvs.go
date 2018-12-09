@@ -389,6 +389,7 @@ func (k *KVS) Put(key string, val string, time time.Time, payload map[string]int
 		log.Println("Inserting new key")
 		// Use the constructor
 		k.db[key] = NewEntry(time, payload, val, 1)
+		log.Println("Entered key ", key)
 		// Initiate Gossip
 		wakeGossip = true
 		return true
@@ -488,6 +489,8 @@ func (k *KVS) GetEntryGlob(tg TimeGlob) EntryGlob {
 			value := k.db[n].GetValue()
 			version := k.db[n].GetVersion()
 			tombstone := !k.db[n].Alive()
+
+			log.Println("Building entry for key ", n, " with clock ", clock)
 			e := Entry{
 				Timestamp: time,
 				Clock:     clock,
@@ -579,12 +582,21 @@ func (k *KVS) ConflictResolution(key string, aliceEntry KeyEntry) bool {
 		incomparable := false
 		var bMap map[string]int
 
+		var bobEntry Entry
+
 		log.Printf("Comparing Alice's version '%#v'\n", aliceEntry)
 		log.Printf("key is ", key)
 		aMap := aliceEntry.GetClock()
 		_, exists := k.db[key]
+		log.Println("key ", key, " exists")
 		if exists {
 			bMap = k.db[key].GetClock()
+			bobEntry.Version = k.db[key].GetVersion()
+			bobEntry.Value = k.db[key].GetValue()
+			bobEntry.Timestamp = k.db[key].GetTimestamp()
+			bobEntry.Tombstone = !k.db[key].Alive()
+			bobEntry.Clock = k.db[key].GetClock()
+			log.Printf("Bob's version '%#v'\n", bobEntry)
 		} else {
 			bMap = make(map[string]int)
 		}
@@ -619,9 +631,10 @@ func (k *KVS) ConflictResolution(key string, aliceEntry KeyEntry) bool {
 				log.Println("Bob wins with a later timestamp")
 			} else if isSmaller == false && isLarger == true {
 				log.Println("Alice wins with a larger clock")
-				return true // alice wins
+				replace = true // alice wins
+			} else {
+				log.Println("Bob wins with a larger clock")
 			}
-			log.Println("Bob wins with a larger clock")
 		}
 		if replace {
 			k.overwriteEntry(key, aliceEntry)
