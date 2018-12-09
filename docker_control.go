@@ -22,8 +22,8 @@ import (
 // ------------ CHANGE THIS LINE --------------------------\\
 var subnetName = "mynet"
 var prefixSubnetAdress = "10.0.0."
-var prefixPort = "80"
-var path = "../src/." // tell where your docker file EX: "." Current path. "../." One path down
+var prefixPort = "808"
+var path = "" // tell where your docker file EX: "." Current path. "../." One path down
 // --------------------END ----------------------------------\\
 
 // ----------------------------------------------------- DO NOT GO BEYOND THIS LINE ----------------------------------------------------\\

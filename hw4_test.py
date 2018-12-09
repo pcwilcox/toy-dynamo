@@ -65,39 +65,39 @@ def viewMatch(collectedView, expectedView):
 
 
 def storeKeyValue(ipPort, key, value, payload):
-    #print('PUT: http://%s/keyValue-store/%s'%(str(ipPort), key))
+    # print('PUT: http://%s/keyValue-store/%s'%(str(ipPort), key))
     return requests.put('http://%s/keyValue-store/%s' % (str(ipPort), key), data={'val': value, 'payload': payload})
 
 
 def checkKey(ipPort, key, payload):
-    #print('GET: http://%s/keyValue-store/search/%s'%(str(ipPort), key))
+    # print('GET: http://%s/keyValue-store/search/%s'%(str(ipPort), key))
     return requests.get('http://%s/keyValue-store/search/%s' % (str(ipPort), key), data={'payload': payload})
 
 
 def getKeyValue(ipPort, key, payload):
-    #print('GET: http://%s/keyValue-store/%s'%(str(ipPort), key))
+    # print('GET: http://%s/keyValue-store/%s'%(str(ipPort), key))
     return requests.get('http://%s/keyValue-store/%s' % (str(ipPort), key), data={'payload': payload})
 
 
 def deleteKey(ipPort, key, payload):
-    #print('DELETE: http://%s/keyValue-store/%s'%(str(ipPort), key))
+    # print('DELETE: http://%s/keyValue-store/%s'%(str(ipPort), key))
     return requests.delete('http://%s/keyValue-store/%s' % (str(ipPort), key), data={'payload': payload})
 
     # Replication Functions
 
 
 def addNode(ipPort, newAddress):
-    #print('PUT: http://%s/view'%str(ipPort))
+    # print('PUT: http://%s/view'%str(ipPort))
     return requests.put('http://%s/view' % str(ipPort), data={'ip_port': newAddress})
 
 
 def removeNode(ipPort, oldAddress):
-    #print('DELETE: http://%s/view'%str(ipPort))
+    # print('DELETE: http://%s/view'%str(ipPort))
     return requests.delete('http://%s/view' % str(ipPort), data={'ip_port': oldAddress})
 
 
 def viewNetwork(ipPort):
-    #print('GET: http://%s/view'%str(ipPort))
+    # print('GET: http://%s/view'%str(ipPort))
     return requests.get('http://%s/view' % str(ipPort))
 
 
@@ -135,7 +135,7 @@ class TestHW4(unittest.TestCase):
                 self.assertTrue(
                     False, "There is likely a problem in the settings of your ip addresses or network.")
 
-        #dc.prepBlockade([instance["containerID"] for instance in self.view])
+        # dc.prepBlockade([instance["containerID"] for instance in self.view])
 
     def tearDown(self):
         dc.cleanUpDockerContainer()
@@ -291,6 +291,29 @@ class TestHW4(unittest.TestCase):
                 ip = ind["testScriptAddress"]
                 self.assertEqual(self.checkGetMyShardId(ip), ID)
 
+    ## Added by the student-wrote unit test ##
+    def checkChangeShardNumber(self, ipPort, newNumber, expectedStatus, expectedResult, expectedShardIds, expectedMsg=""):
+        response = changeShardNumber(ipPort, str(newNumber))
+
+        self.assertEqual(response.status_code, expectedStatus)
+
+        data = response.json()
+        self.assertEqual(data['result'], expectedResult)
+
+        if expectedMsg:
+            self.assertEqual(data['msg'], expectedMsg)
+        else:
+            self.assertEqual(data['shard_ids'], expectedShardIds)
+
+    def checkGetCount(self, ipPort, ID, expectedStatus, expectedResult, expectedCount):
+        response = getCount(ipPort, ID)
+
+        self.assertEqual(response.status_code, expectedStatus)
+
+        data = response.json()
+        self.assertEqual(data['result'], expectedResult)
+        self.assertEqual(data['Count'], expectedCount)
+
 ##########################################################################
 ## Tests start here ##
 ##########################################################################
@@ -367,6 +390,109 @@ class TestHW4(unittest.TestCase):
         newShardIDs = self.checkGetAllShardIds(ipPort)
 
         self.assertEqual(len(newShardIDs), len(initialShardIDs)-1)
+
+    ##########################################################################
+    ## Unit tests by Egan Gumiwang Pratama Bisma ##
+    ##########################################################################
+
+    # change S from 3 to 2 using changeShardNumber endpoint
+
+    def test_f_decrease_shard(self):
+        ipPort = self.view[0]["testScriptAddress"]
+        targetNode = self.view[-1]["networkIpPortAddress"]
+
+        initialShardIDs = self.checkGetAllShardIds(ipPort)
+
+        self.checkChangeShardNumber(targetNode, 2, 200, "Success", "0,1")
+        time.sleep(propogationTime)
+
+        self.assertEqual(2, len(initialShardIDs)-1)
+
+    # removing 1 node from shard with 2 nodes result number of shards
+    # to decrease and lonely node to join other shard
+    def test_g_remove_node_causes_shard_decrease(self):
+        ipPort = self.view[0]["testScriptAddress"]
+        removedNode = self.view.pop()["networkIpPortAddress"]
+        targetNode = self.view[-1]["networkIpPortAddress"]
+
+        self.confirmDeleteNode(ipPort=ipPort,
+                               removedAddress=removedNode,
+                               expectedStatus=200,
+                               expectedResult="Success",
+                               expectedMsg="Successfully removed %s from view" % removedNode)
+
+        time.sleep(propogationTime)
+
+        # â—ï¸check first shard (shard id might be different dependending on how you redestribute the nodes)
+        members = self.checkGetMembers(ipPort, 0)
+
+        lonelyNodeInFirstShard = targetNode in members
+
+        self.assertEqual(True, lonelyNodeInFirstShard)
+
+    # changing shard size to 1 causes all nodes to be in that only shard
+    def test_h_change_shard_size_to_one(self):
+        ipPort = self.view[0]["testScriptAddress"]
+
+        self.checkChangeShardNumber(ipPort, 1, 200, "Success", "0")
+
+        time.sleep(propogationTime)
+
+        members = self.checkGetMembers(ipPort, 0)
+
+        # check if all members are present
+        for view in self.view:
+            currIpInShard = view['networkIpPortAddress'] in members
+            self.assertEqual(True, currIpInShard)
+
+    # changing shard size from 1 to 2 should have 3 members in each shard
+    def test_i_change_shard_size_from_one_to_two(self):
+        self.test_h_change_shard_size_to_one()
+
+        ipPortOne = self.view[0]["testScriptAddress"]
+        ipPortTwo = self.view[1]["testScriptAddress"]
+
+        members = self.checkGetMembers(ipPortOne, 0)
+        membersTwo = self.checkGetMembers(ipPortTwo, 0)
+
+        self.checkChangeShardNumber(ipPortOne, 2, 200, "Success", "0,1")
+
+        membersOne = self.checkGetMembers(ipPortOne, 0)
+        membersTwo = self.checkGetMembers(ipPortTwo, 0)
+
+        self.assertEqual(3, len(membersOne))
+        self.assertEqual(3, len(membersTwo))
+
+    # when shard decreased and an isolated node moved to another shard,
+    # its keys get shared to rest of shard members, and the key's owner is
+    # consistent with new shard id
+    def test_j_key_redistributed(self):
+        ipPort = self.view[0]["testScriptAddress"]
+        removedNode = self.view.pop()["networkIpPortAddress"]
+        targetNode = self.view[-1]["networkIpPortAddress"]
+
+        self.confirmAddKey(targetNode, 'key1', 'value1', 201,
+                           "Added successfully", False, {})
+
+        self.confirmDeleteNode(ipPort=ipPort,
+                               removedAddress=removedNode,
+                               expectedStatus=200,
+                               expectedResult="Success",
+                               expectedMsg="Successfully removed %s from view" % removedNode)
+
+        time.sleep(propogationTime)
+
+        # â—ï¸again, expected owner might be different based on different shard mechanic
+        # we use regular hashing and sha1 as hash function -> hash(key1) % 2 = 1
+        self.confirmGetKey(targetNode, 'key1', 200, "Success", 'value1', "1")
+
+        self.confirmGetKey(ipPort, 'key1', 200, "Success", 'value1', "1")
+
+    # setting shard to <=0 should be invalid
+    def test_k_set_shard_to_zero(self):
+        ipPort = self.view[0]["testScriptAddress"]
+        self.checkChangeShardNumber(
+            ipPort, 0, 400, "Error", "", "Must have at least one shard")
 
 
 if __name__ == '__main__':
