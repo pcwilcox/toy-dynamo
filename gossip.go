@@ -92,7 +92,8 @@ func (g *GossipVals) GossipHeartbeat() {
 					sendShardGob(bob, g.ShardList.GetShardGlob())
 				}
 
-				distributeKeys = g.kvs.ShuffleKeys()
+				distributeKeys = true
+				go g.kvs.ShuffleKeys()
 			}
 			wakeGossip = false
 			setTime()
@@ -144,6 +145,7 @@ func (g *GossipVals) ConflictResolution(key string, aliceEntry KeyEntry) bool {
 	incomparable := false
 
 	log.Printf("Comparing Alice's version '%#v'\n", aliceEntry)
+	log.Printf("key is ", key)
 	aMap := aliceEntry.GetClock()
 	bMap := g.kvs.GetClock(key)
 	log.Println("aMap: ", aMap)

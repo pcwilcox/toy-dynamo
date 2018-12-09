@@ -49,5 +49,5 @@ type dbAccess interface {
 	GetEntryGlob(TimeGlob) EntryGlob
 
 	// Shuffles keys
-	ShuffleKeys() bool
+	ShuffleKeys()
 }

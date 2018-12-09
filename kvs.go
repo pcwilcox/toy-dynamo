@@ -16,6 +16,7 @@ package main
 
 import (
 	"log"
+	"strings"
 	"sync"
 	"time"
 )
@@ -479,13 +480,16 @@ func (k *KVS) GetEntryGlob(tg TimeGlob) EntryGlob {
 }
 
 // ShuffleKeys checks all the keys, and if it finds some that belong to another server then it sends them over that way
-func (k *KVS) ShuffleKeys() bool {
-	var eg EntryGlob
+func (k *KVS) ShuffleKeys() {
 	k.mutex.Lock()
 	defer k.mutex.Unlock()
-	for shard := range MyShard.ShardSlice {
+	shards := strings.Split(MyShard.GetAllShards(), ",")
+	var eg EntryGlob
+	for _, shard := range shards {
 		log.Println("Checking for keys belonging to shard ", shard)
 		for key := range k.db {
+			eg.Keys = make(map[string]Entry)
+
 			if shard == MyShard.GetSuccessor(getKeyPosition(key)) {
 				log.Println("Found key ", key)
 				eg.Keys[key] = Entry{
@@ -499,12 +503,13 @@ func (k *KVS) ShuffleKeys() bool {
 			}
 		}
 		if len(eg.Keys) > 0 {
+			log.Println("Sending entryglob ", eg, " to bob")
 			bob := MyShard.FindBob(shard)
+			log.Println("sending to bob ", bob)
 			sendEntryGlob(bob, eg)
-			return true
 		}
 	}
-	return false
+	distributeKeys = false
 }
 
 // Size returns the number of keys in the DB

@@ -906,6 +906,9 @@ func (app *App) ShardGetNumKeysHandler(w http.ResponseWriter, r *http.Request) {
 
 	valid := app.shard.ContainsShard(shardID)
 
+	if distributeKeys {
+		log.Println("waiting until keys are finished redistributing")
+	}
 	for {
 		if !distributeKeys {
 			break

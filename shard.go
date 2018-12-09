@@ -119,6 +119,7 @@ func (s *ShardList) GetAllShards() string {
 		for k := range s.ShardString {
 			sl = append(sl, k)
 		}
+		sort.Strings(sl)
 		st := strings.Join(sl, ", ")
 		return st
 	}
