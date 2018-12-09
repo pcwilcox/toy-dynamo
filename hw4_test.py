@@ -403,7 +403,8 @@ class TestHW4(unittest.TestCase):
 
         initialShardIDs = self.checkGetAllShardIds(ipPort)
 
-        self.checkChangeShardNumber(targetNode, 2, 200, "Success", "0,1")
+        self.checkChangeShardNumber(
+            targetNode, 2, 200, "Success", "Abbey, Alana")
         time.sleep(propogationTime)
 
         self.assertEqual(2, len(initialShardIDs)-1)
@@ -424,7 +425,7 @@ class TestHW4(unittest.TestCase):
         time.sleep(propogationTime)
 
         # â—ï¸check first shard (shard id might be different dependending on how you redestribute the nodes)
-        members = self.checkGetMembers(ipPort, 0)
+        members = self.checkGetMembers(ipPort, "Abbey")
 
         lonelyNodeInFirstShard = targetNode in members
 
@@ -434,11 +435,11 @@ class TestHW4(unittest.TestCase):
     def test_h_change_shard_size_to_one(self):
         ipPort = self.view[0]["testScriptAddress"]
 
-        self.checkChangeShardNumber(ipPort, 1, 200, "Success", "0")
+        self.checkChangeShardNumber(ipPort, 1, 200, "Success", "Abbey")
 
         time.sleep(propogationTime)
 
-        members = self.checkGetMembers(ipPort, 0)
+        members = self.checkGetMembers(ipPort, "Abbey")
 
         # check if all members are present
         for view in self.view:
@@ -452,10 +453,11 @@ class TestHW4(unittest.TestCase):
         ipPortOne = self.view[0]["testScriptAddress"]
         ipPortTwo = self.view[1]["testScriptAddress"]
 
-        members = self.checkGetMembers(ipPortOne, 0)
-        membersTwo = self.checkGetMembers(ipPortTwo, 0)
+        members = self.checkGetMembers(ipPortOne, "Abbey")
+        membersTwo = self.checkGetMembers(ipPortTwo, "Alana")
 
-        self.checkChangeShardNumber(ipPortOne, 2, 200, "Success", "0,1")
+        self.checkChangeShardNumber(
+            ipPortOne, 2, 200, "Success", "Abbey, Alana")
 
         membersOne = self.checkGetMembers(ipPortOne, 0)
         membersTwo = self.checkGetMembers(ipPortTwo, 0)
