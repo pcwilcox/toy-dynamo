@@ -1,10 +1,10 @@
 Contributions
-Annie Shen - Gossip Module, Ability to implement a view change, Refactor integration tests, Pruning entry clocks
+Annie Shen - Sharding-read from system enviorment, help with Victoria with sharding frontend, and helped with Pete other miscellaneous testing tasks  
 
-Lawrence Lawson - TCP connection manager, Context-dependent read acceptance
+Lawrence Lawson - Added sharding logic to KVS system
 
-Pete Wilcox - Refactor KVS, Refactor integration tests, gobbing funtionality, Context-dependent read acceptance
+Pete Wilcox - System architect; designed and implemented a majority of the code base. 
 
-Victoria Tran - Ability to compare vector clocks, unit tests for ConflictResolution
+Victoria Tran - Shard handlers for rest frontend, help from Annie of course.
 ----------------------------------------------------------------------------------------------------------------
 You can take a look at our issues board to get a better breakdown on team member contributions.
