@@ -18,3 +18,5 @@
 {"timestamp": 1544754381.9321964, "event": "partition", "status": "Success", "targets": [["002a828c7e4f"], ["c516fc95c6d4"]], "message": ""}
 {"timestamp": 1544754734.9893208, "event": "partition", "status": "Success", "targets": [["704b151641a8"], ["adaaae85510a"]], "message": ""}
 {"timestamp": 1544754994.686106, "event": "partition", "status": "Success", "targets": [["6004de1a74f7"], ["81062f1ccc42"]], "message": ""}
+{"timestamp": 1544755392.2760606, "event": "partition", "status": "Success", "targets": [["4dded4cdd4ea"], ["35a922484653"]], "message": ""}
+{"timestamp": 1544755714.6508427, "event": "partition", "status": "Success", "targets": [["4f98105d6310"], ["63374620b4bc"]], "message": ""}

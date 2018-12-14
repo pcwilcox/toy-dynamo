@@ -343,7 +343,7 @@ class TestHW3Subset(unittest.TestCase):
                                             expectedStatus=200,
                                             expectedResult="Success",
                                             expectedValue=valueOne,
-                                            payload=payloadClient2)
+                                            payload=payloadClient1)
 
         time.sleep(propogationTime)
         print("Client X should NOT return X=0!")
