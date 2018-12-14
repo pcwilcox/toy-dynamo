@@ -30,7 +30,7 @@ propogationTime = 3
 # you may lower this to speed up your testing if you know that your system is fast enough to propigate information faster than this
 # I do not recomend increasing this
 
-shouldJsonify = False
+shouldJsonify = True
 
 dc = docker_control.docker_controller(networkName, needSudo)
 
@@ -221,6 +221,7 @@ class TestHW3Subset(unittest.TestCase):
                          expectedMsg="Added successfully",
                          expectedReplaced=False)
 
+      time.sleep(propogationTime)
       print("Client X reads X (=0) from A, writes X=1 to B (with appropriate causal history).")
       payloadClient1 = self.confirmGetKey(ipPort=nodeA,
                                           key=keyX,
@@ -230,6 +231,7 @@ class TestHW3Subset(unittest.TestCase):
 
       valueOne = "One"
 
+      time.sleep(propogationTime)
       payloadClient1 = self.confirmAddKey(ipPort=nodeB,
                                           key=keyX,
                                           value=valueOne,
@@ -238,6 +240,7 @@ class TestHW3Subset(unittest.TestCase):
                                           expectedReplaced=True,
                                           payload=payloadClient1)
 
+      time.sleep(propogationTime)
       print("Client Y then reads X=1, writes Y=1 (both to B).")
       payloadClient2 = self.confirmGetKey(ipPort=nodeB,
                                           key=keyX,
@@ -247,6 +250,7 @@ class TestHW3Subset(unittest.TestCase):
 
       keyY = "TheKeyY"
 
+      time.sleep(propogationTime)
       payloadClient2 = self.confirmAddKey(ipPort=nodeB,
                                           key=keyY,
                                           value=valueOne,
@@ -255,6 +259,7 @@ class TestHW3Subset(unittest.TestCase):
                                           expectedReplaced=False,
                                           payload=payloadClient1)
 
+      time.sleep(propogationTime)
       print("Client X then reads Y=1 from B and reads X=1 from A.")
       payloadClient1 = self.confirmGetKey(ipPort=nodeB,
                                           key=keyY,
@@ -263,6 +268,7 @@ class TestHW3Subset(unittest.TestCase):
                                           expectedValue=valueOne,
                                           payload=payloadClient1)
 
+      time.sleep(propogationTime)
       payloadClient1 = self.confirmGetKey(ipPort=nodeA,
                                           key=keyX,
                                           expectedStatus=200,
@@ -291,6 +297,7 @@ class TestHW3Subset(unittest.TestCase):
                            expectedStatus=200,
                            expectedMsg="Added successfully",
                            expectedReplaced=False)
+        time.sleep(propogationTime)
 
         print("Client X reads X (=0) from A, writes X=1 to B (with appropriate causal history).")
         payloadClient1 = self.confirmGetKey(ipPort=nodeA,
@@ -301,6 +308,7 @@ class TestHW3Subset(unittest.TestCase):
 
         valueOne = "One"
 
+        time.sleep(propogationTime)
         payloadClient1 = self.confirmAddKey(ipPort=nodeB,
                                             key=keyX,
                                             value=valueOne,
@@ -309,6 +317,7 @@ class TestHW3Subset(unittest.TestCase):
                                             expectedReplaced=False,
                                             payload=payloadClient1)
 
+        time.sleep(propogationTime)
         print("Client Y then reads X=1, writes Y=1 (both to B).")
         payloadClient2 = self.confirmGetKey(ipPort=nodeB,
                                             key=keyX,
@@ -316,6 +325,7 @@ class TestHW3Subset(unittest.TestCase):
                                             expectedResult="Success",
                                             expectedValue=valueOne)
 
+        time.sleep(propogationTime)
         keyY = "TheKeyY"
 
         payloadClient2 = self.confirmAddKey(ipPort=nodeB,
@@ -324,16 +334,18 @@ class TestHW3Subset(unittest.TestCase):
                                             expectedStatus=200,
                                             expectedMsg="Added successfully",
                                             expectedReplaced=False,
-                                            payload=payloadClient1)
+                                            payload=payloadClient2)
 
+        time.sleep(propogationTime)
         print("Client X then reads Y=1 from B and attempts to read X from A.")
         payloadClient1 = self.confirmGetKey(ipPort=nodeB,
                                             key=keyY,
                                             expectedStatus=200,
                                             expectedResult="Success",
                                             expectedValue=valueOne,
-                                            payload=payloadClient1)
+                                            payload=payloadClient2)
 
+        time.sleep(propogationTime)
         print("Client X should NOT return X=0!")
 
         response = getKeyValue(nodeA, keyX, payloadClient1)

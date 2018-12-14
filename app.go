@@ -142,6 +142,7 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 			// to an int and store it in the map.
 			payloadInt[k] = int(v.(float64))
 		}
+		log.Println("payloadInt: ", payloadInt)
 
 		// This pulls the {subject} out of the URL, that forms the key. It's called
 		// {subject} instead of {key} because the spec for HW2 called it that and it
@@ -209,7 +210,12 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 				time := time.Now()
 
 				// Create the payload to be inserted into the db, starting with this key
-				newPayload := map[string]int{key: version + 1}
+				keyVersion := payloadInt[key]
+
+				if version > keyVersion {
+					keyVersion = version + 1
+				}
+				newPayload := map[string]int{key: keyVersion}
 
 				// Add each of the client's payload elements
 				for k, v := range payloadInt {
@@ -243,7 +249,11 @@ func (app *App) PutHandler(w http.ResponseWriter, r *http.Request) {
 				time := time.Now()
 
 				// Create the payload to be inserted into the db, starting with this key
-				newPayload := map[string]int{key: version + 1}
+				keyVersion := payloadInt[key] + 1
+
+				log.Println("Entering key with version ", keyVersion)
+
+				newPayload := map[string]int{key: keyVersion}
 
 				// Add each of the client's payload elements
 				for k, v := range payloadInt {

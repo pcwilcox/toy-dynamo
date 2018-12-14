@@ -281,7 +281,7 @@ func (k *KVS) Put(key string, val string, time time.Time, payload map[string]int
 		}
 		log.Println("Inserting new key")
 		// Use the constructor
-		k.db[key] = NewEntry(time, payload, val, 1)
+		k.db[key] = NewEntry(time, payload, val, payload[key])
 		// Initiate Gossip
 		wakeGossip = true
 		return true
